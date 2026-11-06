@@ -591,36 +591,16 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
           </div>
 
-          {/* Row 3: Category & Description */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-1">
-              <label className="block font-semibold text-slate-700 mb-1">Kategori Produk</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
-              >
-                <option value="Elektronik & Gadget">Elektronik & Gadget</option>
-                <option value="Bahan Pokok & Grosir">Bahan Pokok & Grosir</option>
-                <option value="Fashion & Tekstil">Fashion & Tekstil</option>
-                <option value="Perlengkapan Rumah">Perlengkapan Rumah</option>
-                <option value="Kosmetik & Perawatan">Kosmetik & Perawatan</option>
-                <option value="Perlengkapan Kantor">Perlengkapan Kantor</option>
-                <option value="Makanan & Minuman">Makanan & Minuman</option>
-                <option value="Umum">Umum / Lainnya</option>
-              </select>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block font-semibold text-slate-700 mb-1">Rincian Barang / Deskripsi Faktur</label>
-              <input
-                type="text"
-                value={itemsDescription}
-                onChange={(e) => setItemsDescription(e.target.value)}
-                placeholder="Misal: 1x Smart TV 43 Inch + Braket Dinding"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
-              />
-            </div>
+          {/* Row 3: Rincian Barang / Keterangan Faktur */}
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">Rincian Barang / Keterangan Faktur (Opsional)</label>
+            <input
+              type="text"
+              value={itemsDescription}
+              onChange={(e) => setItemsDescription(e.target.value)}
+              placeholder="Contoh: Belanja Bulanan / TV LED 43 Inch / Grosir Minyak"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
+            />
           </div>
 
           {/* Row 4: Purchase Amount & Live Calculation */}

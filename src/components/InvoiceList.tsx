@@ -12,7 +12,8 @@ import {
   AlertCircle,
   Calendar,
   Tag,
-  ArrowUpDown
+  ArrowUpDown,
+  Upload
 } from 'lucide-react';
 import { ClaimStatus, Invoice, PayoutMethod } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
@@ -25,6 +26,7 @@ interface InvoiceListProps {
   onViewReceipt: (invoice: Invoice) => void;
   onUpdateStatus: (invoiceId: string, newStatus: ClaimStatus) => void;
   onExportExcel: () => void;
+  onOpenImportExcel?: () => void;
   initialCustomerFilter?: string;
   onClearCustomerFilter?: () => void;
 }
@@ -37,6 +39,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   onViewReceipt,
   onUpdateStatus,
   onExportExcel,
+  onOpenImportExcel,
   initialCustomerFilter,
   onClearCustomerFilter,
 }) => {
@@ -159,10 +162,20 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenImportExcel && (
+              <button
+                onClick={onOpenImportExcel}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                title="Import data faktur dari Excel (.xlsx)"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Import Excel</span>
+              </button>
+            )}
             <button
               onClick={onExportExcel}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export Excel</span>
@@ -299,10 +312,10 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                 </div>
               </div>
 
-              {/* Category / Description */}
+              {/* Description */}
               {inv.itemsDescription && (
-                <p className="text-[11px] text-slate-500 truncate">
-                  <span className="font-medium text-slate-700">{inv.category}:</span> {inv.itemsDescription}
+                <p className="text-[11px] text-slate-600 truncate">
+                  <span className="font-medium text-slate-500">Ket:</span> {inv.itemsDescription}
                 </p>
               )}
 
@@ -359,7 +372,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                 <th className="py-3 px-4">No. Faktur</th>
                 <th className="py-3 px-4">Tanggal</th>
                 <th className="py-3 px-4">Konsumen</th>
-                <th className="py-3 px-4">Kategori & Barang</th>
+                <th className="py-3 px-4">Keterangan Barang</th>
                 <th className="py-3 px-4 text-right">Nilai Belanja</th>
                 <th className="py-3 px-4 text-center">% Rate</th>
                 <th className="py-3 px-4 text-right">Nilai Cashback</th>
@@ -397,16 +410,11 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                       </div>
                     </td>
 
-                    {/* Category & Description */}
+                    {/* Description */}
                     <td className="py-3 px-4 max-w-xs">
-                      <span className="text-[11px] font-medium text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
-                        {inv.category}
-                      </span>
-                      {inv.itemsDescription && (
-                        <div className="text-[11px] text-slate-500 truncate mt-1" title={inv.itemsDescription}>
-                          {inv.itemsDescription}
-                        </div>
-                      )}
+                      <div className="text-xs text-slate-800 font-medium truncate" title={inv.itemsDescription || 'Faktur Pembelian'}>
+                        {inv.itemsDescription || '-'}
+                      </div>
                     </td>
 
                     {/* Purchase Amount */}

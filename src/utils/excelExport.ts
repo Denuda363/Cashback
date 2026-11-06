@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { CashbackSettings, CustomerMaster, CustomerSummary, Invoice } from '../types/cashback';
+import { CashbackSettings, CustomerMaster, CustomerSummary, Invoice, ClaimStatus, PayoutMethod } from '../types/cashback';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Menunggu Klaim',
@@ -853,3 +853,178 @@ export async function exportCashbackToExcel(
 
   saveAs(blob, filename);
 }
+
+/**
+ * Export clean Excel Template for Importing Invoices
+ */
+export async function exportInvoiceImportTemplate(): Promise<void> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'CashbackPro';
+  wb.lastModifiedBy = 'CashbackPro';
+  wb.created = new Date();
+  wb.modified = new Date();
+
+  const ws = wb.addWorksheet('Template Faktur');
+
+  ws.columns = [
+    { header: 'No. Faktur (Wajib)', key: 'invoiceNumber', width: 22 },
+    { header: 'Tanggal (YYYY-MM-DD)', key: 'date', width: 20 },
+    { header: 'Nama Konsumen (Wajib)', key: 'customerName', width: 26 },
+    { header: 'No. WhatsApp / HP (Wajib)', key: 'customerPhone', width: 24 },
+    { header: 'Nilai Belanja (Angka Rp)', key: 'purchaseAmount', width: 22 },
+    { header: 'Keterangan Barang (Opsional)', key: 'itemsDescription', width: 32 },
+    { header: 'Status Klaim (pending/ready/disbursed)', key: 'claimStatus', width: 28 },
+    { header: 'Metode Pencairan (transfer_bank/e_wallet/potongan_belanja/tunai)', key: 'payoutMethod', width: 32 },
+  ];
+
+  const headerRow = ws.getRow(1);
+  headerRow.height = 32;
+  headerRow.eachCell((cell) => {
+    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF0F172A' },
+    };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cell.border = thinBorder;
+  });
+
+  // Example sample rows
+  const sampleRows = [
+    ['INV-2026-001', '2026-01-15', 'Fatur', '081234567890', 5000000, 'Belanja Perlengkapan Rumah', 'ready', 'transfer_bank'],
+    ['INV-2026-002', '2026-01-18', 'fabio', '085712345678', 4000000, 'Elektronik & Aksesoris', 'disbursed', 'transfer_bank'],
+    ['INV-2026-003', '2026-02-05', 'Hendra Wijaya', '081398765432', 8500000, 'Grosir Sembako & Minyak', 'pending', 'e_wallet'],
+    ['INV-2026-004', '2026-03-12', 'Siti Rahmawati', '082155667788', 3500000, 'Peralatan Masak', 'ready', 'potongan_belanja'],
+  ];
+
+  sampleRows.forEach((r) => {
+    const row = ws.addRow(r);
+    row.height = 22;
+    row.eachCell((cell, colNumber) => {
+      cell.font = dataFont;
+      cell.border = thinBorder;
+      if (colNumber === 5) {
+        cell.numFmt = RUPIAH_NUM_FMT;
+        cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      } else if (colNumber === 2 || colNumber === 7 || colNumber === 8) {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      } else {
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      }
+    });
+  });
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  saveAs(blob, 'Template_Import_Faktur_Cashback.xlsx');
+}
+
+export interface ParsedImportInvoice {
+  invoiceNumber: string;
+  date: string;
+  customerName: string;
+  customerPhone: string;
+  purchaseAmount: number;
+  itemsDescription?: string;
+  claimStatus: ClaimStatus;
+  payoutMethod: PayoutMethod;
+  isValid: boolean;
+  validationError?: string;
+}
+
+/**
+ * Parses uploaded Excel file into invoice records
+ */
+export async function parseInvoicesFromExcel(file: File): Promise<ParsedImportInvoice[]> {
+  const arrayBuffer = await file.arrayBuffer();
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(arrayBuffer);
+  const ws = wb.worksheets[0];
+  if (!ws) throw new Error('File Excel tidak memiliki lembar kerja (worksheet).');
+
+  const results: ParsedImportInvoice[] = [];
+
+  ws.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // Skip header
+
+    const rawInvNum = row.getCell(1).text || String(row.getCell(1).value || '');
+    const rawDate = row.getCell(2).text || String(row.getCell(2).value || '');
+    const rawCustName = row.getCell(3).text || String(row.getCell(3).value || '');
+    const rawPhone = row.getCell(4).text || String(row.getCell(4).value || '');
+    const rawAmount = row.getCell(5).value;
+    const rawDesc = row.getCell(6).text || String(row.getCell(6).value || '');
+    const rawStatus = (row.getCell(7).text || String(row.getCell(7).value || '')).toLowerCase().trim();
+    const rawPayout = (row.getCell(8).text || String(row.getCell(8).value || '')).toLowerCase().trim();
+
+    if (!rawInvNum && !rawCustName && !rawAmount) return;
+
+    let purchaseAmount = 0;
+    if (typeof rawAmount === 'number') {
+      purchaseAmount = rawAmount;
+    } else if (typeof rawAmount === 'string') {
+      purchaseAmount = Number(rawAmount.replace(/[^0-9.-]+/g, '')) || 0;
+    }
+
+    const rawValDate = row.getCell(2).value;
+    let date = new Date().toISOString().split('T')[0];
+    if (rawValDate instanceof Date) {
+      date = rawValDate.toISOString().split('T')[0];
+    } else if (typeof rawValDate === 'string' && rawValDate.trim()) {
+      const d = new Date(rawValDate);
+      if (!isNaN(d.getTime())) {
+        date = d.toISOString().split('T')[0];
+      }
+    } else if (rawDate) {
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        date = d.toISOString().split('T')[0];
+      }
+    }
+
+    let claimStatus: ClaimStatus = 'pending';
+    if (rawStatus === 'disbursed' || rawStatus.includes('cair') || rawStatus.includes('lunas')) {
+      claimStatus = 'disbursed';
+    } else if (rawStatus === 'ready' || rawStatus.includes('siap')) {
+      claimStatus = 'ready';
+    }
+
+    let payoutMethod: PayoutMethod = 'transfer_bank';
+    if (rawPayout === 'e_wallet' || rawPayout.includes('wallet') || rawPayout.includes('gopay') || rawPayout.includes('ovo') || rawPayout.includes('dana')) {
+      payoutMethod = 'e_wallet';
+    } else if (rawPayout === 'potongan_belanja' || rawPayout.includes('potong') || rawPayout.includes('voucher')) {
+      payoutMethod = 'potongan_belanja';
+    } else if (rawPayout === 'tunai' || rawPayout.includes('cash')) {
+      payoutMethod = 'tunai';
+    }
+
+    let isValid = true;
+    let validationError = '';
+
+    if (!rawCustName.trim()) {
+      isValid = false;
+      validationError = 'Nama konsumen kosong';
+    } else if (purchaseAmount <= 0) {
+      isValid = false;
+      validationError = 'Nilai belanja Rp 0';
+    }
+
+    results.push({
+      invoiceNumber: rawInvNum.trim() || `INV-${Date.now()}-${rowNumber}`,
+      date,
+      customerName: rawCustName.trim(),
+      customerPhone: rawPhone.trim() || '08xxxxxxxx',
+      purchaseAmount,
+      itemsDescription: rawDesc.trim() || undefined,
+      claimStatus,
+      payoutMethod,
+      isValid,
+      validationError,
+    });
+  });
+
+  return results;
+}
+

@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Wallet,
   Cloud,
+  Upload,
 } from 'lucide-react';
 import { ActiveTab, NavPosition } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
@@ -30,6 +31,7 @@ interface SmartNavigationProps {
   onChangeNavPosition: (pos: NavPosition) => void;
   onOpenNewInvoice: () => void;
   onExportExcel: () => void;
+  onOpenImportExcel?: () => void;
   totalInvoicesCount: number;
   totalMasterCustomersCount: number;
   totalCashbackSum?: number;
@@ -45,6 +47,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   onChangeNavPosition,
   onOpenNewInvoice,
   onExportExcel,
+  onOpenImportExcel,
   totalInvoicesCount,
   totalMasterCustomersCount,
   totalCashbackSum = 0,
@@ -315,17 +318,29 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
               {!isSidebarCollapsed && <span>Input Faktur</span>}
             </button>
 
-            {/* Position Selector Widget & Excel Export */}
+            {/* Position Selector Widget & Excel Actions */}
             <div className={`flex items-center justify-between gap-1 pt-1 ${isSidebarCollapsed ? 'flex-col' : ''}`}>
+              {onOpenImportExcel && (
+                <button
+                  onClick={onOpenImportExcel}
+                  title="Import data faktur dari file Excel (.xlsx)"
+                  className={`p-2 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                    isSidebarCollapsed ? 'w-full' : 'flex-1'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5 shrink-0" />
+                  {!isSidebarCollapsed && <span className="text-[11px]">Import</span>}
+                </button>
+              )}
               <button
                 onClick={onExportExcel}
                 title="Export data ke file Excel (.xlsx)"
-                className={`p-2 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                className={`p-2 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors flex items-center justify-center gap-1 ${
                   isSidebarCollapsed ? 'w-full' : 'flex-1'
                 }`}
               >
                 <Download className="w-3.5 h-3.5 shrink-0" />
-                {!isSidebarCollapsed && <span className="text-[11px]">Excel</span>}
+                {!isSidebarCollapsed && <span className="text-[11px]">Export</span>}
               </button>
 
               <div title="Pindah posisi navigasi (Samping / Atas / Bawah)">
@@ -415,13 +430,24 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                   <PositionSwitcher />
                 </div>
 
+                {onOpenImportExcel && (
+                  <button
+                    onClick={onOpenImportExcel}
+                    title="Import data faktur dari Excel (.xlsx)"
+                    className="hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Import Excel</span>
+                  </button>
+                )}
+
                 <button
                   onClick={onExportExcel}
                   title="Export data ke file Excel (.xlsx)"
-                  className="hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
+                  className="hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Excel</span>
+                  <span>Export</span>
                 </button>
 
                 <button
@@ -497,9 +523,19 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
               <FirebaseStatusBadge />
             </div>
             <PositionSwitcher />
+            {onOpenImportExcel && (
+              <button
+                onClick={onOpenImportExcel}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                title="Import data faktur dari Excel"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Import Excel</span>
+              </button>
+            )}
             <button
               onClick={onExportExcel}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Export Excel</span>

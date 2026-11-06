@@ -25,7 +25,9 @@ import { InvoiceModal } from './components/InvoiceModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ReceiptModal } from './components/ReceiptModal';
 import { ExportModal } from './components/ExportModal';
-import { CheckCircle2, FileSpreadsheet } from 'lucide-react';
+import { DateRangeFilterBar } from './components/DateRangeFilterBar';
+import { ImportExcelModal } from './components/ImportExcelModal';
+import { CheckCircle2, FileSpreadsheet, Upload } from 'lucide-react';
 import {
   testFirestoreConnection,
   seedFirestoreIfEmpty,
@@ -104,9 +106,12 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [receiptInvoice, setReceiptInvoice] = useState<Invoice | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  // Cross-tab filters
+  // Cross-tab filters & Global Date Range Filter
   const [customerFilterForInvoices, setCustomerFilterForInvoices] = useState<string>('');
+  const [startDateFilter, setStartDateFilter] = useState<string>('');
+  const [endDateFilter, setEndDateFilter] = useState<string>('');
 
   // Toast feedback state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -118,14 +123,23 @@ export default function App() {
     }, 3500);
   };
 
-  // Aggregated summaries & ranking
+  // Filter invoices based on global date range (e.g. 1 Jan 2026 - 30 Des 2026)
+  const dateFilteredInvoices = useMemo(() => {
+    return invoices.filter((inv) => {
+      if (startDateFilter && inv.date < startDateFilter) return false;
+      if (endDateFilter && inv.date > endDateFilter) return false;
+      return true;
+    });
+  }, [invoices, startDateFilter, endDateFilter]);
+
+  // Aggregated summaries & ranking based on active date range
   const customerSummaries = useMemo(() => {
-    return aggregateCustomerSummaries(invoices, settings.minSpendForParcel || 5000000);
-  }, [invoices, settings.minSpendForParcel]);
+    return aggregateCustomerSummaries(dateFilteredInvoices, settings.minSpendForParcel || 5000000);
+  }, [dateFilteredInvoices, settings.minSpendForParcel]);
 
   const totalCashbackSum = useMemo(() => {
-    return invoices.reduce((sum, inv) => sum + inv.cashbackAmount, 0);
-  }, [invoices]);
+    return dateFilteredInvoices.reduce((sum, inv) => sum + inv.cashbackAmount, 0);
+  }, [dateFilteredInvoices]);
 
   // Nav Position Handler
   const handleChangeNavPosition = (pos: NavPosition) => {
@@ -133,6 +147,29 @@ export default function App() {
     saveStoredNavPosition(pos);
     const label = pos === 'sidebar' ? 'Samping (Sidebar)' : pos === 'top' ? 'Atas (Top Bar)' : 'Bawah (Dock Jempol)';
     showToast(`Posisi navigasi dipindahkan ke: ${label}`);
+  };
+
+  // Import Invoices from Excel Handler
+  const handleImportSuccess = (importedInvoices: Invoice[], newCustomers: CustomerMaster[]) => {
+    const updatedInvoices = [...importedInvoices, ...invoices];
+    setInvoices(updatedInvoices);
+    saveStoredInvoices(updatedInvoices);
+    batchUpdateInvoicesInFirestore(updatedInvoices).catch((err) => console.warn('Firestore import sync:', err));
+
+    if (newCustomers.length > 0) {
+      const updatedCustomers = [...newCustomers, ...customers];
+      setCustomers(updatedCustomers);
+      saveStoredCustomers(updatedCustomers);
+      newCustomers.forEach((c) => {
+        saveCustomerToFirestore(c).catch((err) => console.warn('Firestore new cust import:', err));
+      });
+    }
+
+    showToast(
+      `Berhasil mengimpor ${importedInvoices.length} faktur dari Excel! ${
+        newCustomers.length > 0 ? `(${newCustomers.length} konsumen baru didaftarkan)` : ''
+      }`
+    );
   };
 
   // Invoice Handlers
@@ -354,6 +391,7 @@ export default function App() {
         setIsInvoiceModalOpen(true);
       }}
       onExportExcel={handleExportExcel}
+      onOpenImportExcel={() => setIsImportModalOpen(true)}
       totalInvoicesCount={invoices.length}
       totalMasterCustomersCount={customers.length}
       totalCashbackSum={totalCashbackSum}
@@ -363,6 +401,20 @@ export default function App() {
       {/* Main Viewport Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6">
         
+        {/* Global Date Range Filter Bar */}
+        <DateRangeFilterBar
+          startDate={startDateFilter}
+          endDate={endDateFilter}
+          onChangeStartDate={setStartDateFilter}
+          onChangeEndDate={setEndDateFilter}
+          onResetDates={() => {
+            setStartDateFilter('');
+            setEndDateFilter('');
+          }}
+          totalFilteredCount={dateFilteredInvoices.length}
+          totalAllCount={invoices.length}
+        />
+
         {/* Toast alert */}
         {toastMessage && (
           <div className="mb-4 p-3 rounded-lg bg-slate-900 text-white text-xs font-medium flex items-center justify-between shadow-md transition-all animate-in fade-in">
@@ -382,7 +434,7 @@ export default function App() {
         {/* Tab 1: Dashboard Analytics */}
         {activeTab === 'dashboard' && (
           <DashboardAnalytics
-            invoices={invoices}
+            invoices={dateFilteredInvoices}
             settings={settings}
             customerSummaries={customerSummaries}
             onNavigateToTab={(tab) => {
@@ -404,7 +456,7 @@ export default function App() {
         {activeTab === 'top10' && (
           <Top10Leaderboard
             customerSummaries={customerSummaries}
-            invoices={invoices}
+            invoices={dateFilteredInvoices}
             onSelectCustomer={handleSelectCustomerForInvoices}
             onExportExcel={handleExportExcel}
           />
@@ -413,7 +465,7 @@ export default function App() {
         {/* Tab 3: Rekap Faktur List */}
         {activeTab === 'invoices' && (
           <InvoiceList
-            invoices={invoices}
+            invoices={dateFilteredInvoices}
             onOpenNewInvoice={() => {
               setEditingInvoice(null);
               setIsInvoiceModalOpen(true);
@@ -426,6 +478,7 @@ export default function App() {
             onViewReceipt={(inv) => setReceiptInvoice(inv)}
             onUpdateStatus={handleUpdateStatus}
             onExportExcel={handleExportExcel}
+            onOpenImportExcel={() => setIsImportModalOpen(true)}
             initialCustomerFilter={customerFilterForInvoices}
             onClearCustomerFilter={() => setCustomerFilterForInvoices('')}
           />
@@ -444,7 +497,7 @@ export default function App() {
         {activeTab === 'master_customers' && (
           <MasterCustomerList
             customers={customers}
-            invoices={invoices}
+            invoices={dateFilteredInvoices}
             customerSummaries={customerSummaries}
             onOpenNewCustomer={() => {
               setEditingCustomer(null);
@@ -487,6 +540,13 @@ export default function App() {
             </button>
             <span aria-hidden="true">·</span>
             <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1"
+            >
+              <Upload className="w-3.5 h-3.5" /> Import Excel
+            </button>
+            <span aria-hidden="true">·</span>
+            <button
               onClick={handleExportExcel}
               className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1"
             >
@@ -509,6 +569,15 @@ export default function App() {
         existingInvoices={invoices}
         masterCustomers={customers}
         onQuickAddMasterCustomer={handleQuickAddMasterCustomer}
+      />
+
+      {/* Import Invoices from Excel Modal */}
+      <ImportExcelModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        settings={settings}
+        masterCustomers={customers}
+        onImportSuccess={handleImportSuccess}
       />
 
       {/* Master Customer Modal (Create & Edit) */}
@@ -546,7 +615,7 @@ export default function App() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        invoices={invoices}
+        invoices={dateFilteredInvoices}
         customerSummaries={customerSummaries}
         settings={settings}
         masterCustomers={customers}
