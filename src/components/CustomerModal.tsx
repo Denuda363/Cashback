@@ -120,21 +120,21 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-xl max-w-xl w-full max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-slate-900 text-white rounded-lg">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="p-1.5 sm:p-2 bg-slate-900 text-white rounded-lg">
               <UserPlus className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">
-                {editingCustomer ? 'Edit Master Data Konsumen' : 'Tambah Master Data Konsumen Baru'}
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900">
+                {editingCustomer ? 'Edit Master Data Konsumen' : 'Tambah Master Data Konsumen'}
               </h2>
-              <p className="text-[11px] text-slate-500">
-                Simpan data identitas dan informasi rekening pencairan cashback
+              <p className="text-[10px] sm:text-[11px] text-slate-500">
+                Data identitas dan rekening pencairan cashback
               </p>
             </div>
           </div>
@@ -147,7 +147,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+        <form onSubmit={handleSubmit} className="p-3.5 sm:p-6 overflow-y-auto space-y-3.5 sm:space-y-4 flex-1 text-xs">
           
           {error && (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">

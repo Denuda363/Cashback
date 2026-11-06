@@ -407,8 +407,89 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
           </div>
         </div>
 
-        {/* Responsive Table */}
-        <div className="overflow-x-auto">
+        {/* Mobile View: Minimalist Cards for Top 10 */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {top10.length === 0 ? (
+            <div className="p-8 text-center text-slate-400">
+              <p className="text-sm font-semibold text-slate-600">Tidak ada konsumen ditemukan</p>
+            </div>
+          ) : (
+            top10.map((cust) => (
+              <div key={cust.customerPhone || cust.customerName} className="p-3.5 space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={`inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs shrink-0 ${
+                        cust.rank === 1
+                          ? 'bg-amber-400 text-amber-950 font-black shadow-xs'
+                          : cust.rank === 2
+                          ? 'bg-slate-300 text-slate-900 font-bold'
+                          : cust.rank === 3
+                          ? 'bg-amber-700/80 text-white font-bold'
+                          : 'bg-slate-100 text-slate-700 font-semibold'
+                      }`}
+                    >
+                      #{cust.rank}
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">{cust.customerName}</h3>
+                      <p className="text-[11px] text-slate-500 font-mono">{cust.customerPhone}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {cust.getParcel && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-0.5">
+                        <Gift className="w-2.5 h-2.5" /> Parcel
+                      </span>
+                    )}
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                      {cust.tier}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Amount Box */}
+                <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 rounded-lg text-xs font-mono tabular-nums">
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-sans block">Total Belanja</span>
+                    <span className="font-semibold text-slate-800">{formatRupiah(cust.totalPurchase)}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-500 font-sans block">Total Cashback</span>
+                    <span className="font-bold text-emerald-700 text-sm">{formatRupiah(cust.totalCashback)}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {cust.invoiceCount} transaksi
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onSelectCustomer(cust.customerName)}
+                      className="flex items-center gap-1 px-2.5 py-1 font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      <span>Faktur</span>
+                    </button>
+                    <button
+                      onClick={() => handleContactWhatsApp(cust.customerPhone, cust.customerName, cust.totalCashback)}
+                      className="flex items-center gap-1 px-2.5 py-1 font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>WA</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table (hidden on mobile, visible on desktop) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/70 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">

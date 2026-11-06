@@ -262,8 +262,96 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
 
       </div>
 
-      {/* Main Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Mobile Card View (Minimalist & Thumb Friendly) */}
+      <div className="md:hidden space-y-2.5">
+        {filteredInvoices.length === 0 ? (
+          <div className="p-8 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
+            <p className="text-sm font-semibold text-slate-700">Tidak ada faktur ditemukan</p>
+            <p className="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci atau filter status.</p>
+          </div>
+        ) : (
+          filteredInvoices.map((inv) => (
+            <div key={inv.id} className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs space-y-2.5">
+              {/* Header: Customer Name & Status */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-slate-900 truncate">{inv.customerName}</h3>
+                  <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                    <span className="font-semibold text-slate-700">{inv.invoiceNumber}</span>
+                    <span>·</span>
+                    <span>{inv.date}</span>
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  {getStatusBadge(inv.claimStatus)}
+                </div>
+              </div>
+
+              {/* Spend & Cashback Summary Box */}
+              <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 rounded-lg text-xs font-mono tabular-nums">
+                <div>
+                  <span className="text-[10px] text-slate-500 font-sans block">Nilai Belanja</span>
+                  <span className="font-semibold text-slate-800">{formatRupiah(inv.purchaseAmount)}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 font-sans block">Cashback ({inv.cashbackPercentage}%)</span>
+                  <span className="font-bold text-emerald-700 text-sm">{formatRupiah(inv.cashbackAmount)}</span>
+                </div>
+              </div>
+
+              {/* Category / Description */}
+              {inv.itemsDescription && (
+                <p className="text-[11px] text-slate-500 truncate">
+                  <span className="font-medium text-slate-700">{inv.category}:</span> {inv.itemsDescription}
+                </p>
+              )}
+
+              {/* Mobile Actions */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <button
+                  onClick={() => onViewReceipt(inv)}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:text-emerald-700 bg-slate-100 hover:bg-emerald-50 rounded-lg transition-colors"
+                >
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span>Struk</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {inv.claimStatus !== 'disbursed' && (
+                    <button
+                      onClick={() => onUpdateStatus(inv.id, 'disbursed')}
+                      className="px-2.5 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg"
+                    >
+                      Cairkan
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onEditInvoice(inv)}
+                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg"
+                    title="Edit Faktur"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Yakin ingin menghapus faktur ${inv.invoiceNumber} milik ${inv.customerName}?`)) {
+                        onDeleteInvoice(inv.id);
+                      }
+                    }}
+                    className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                    title="Hapus Faktur"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Main Table (hidden on mobile, visible on tablet & desktop) */}
+      <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

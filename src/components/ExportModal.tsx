@@ -76,20 +76,20 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const samplePreview = customerSummaries.slice(0, 5);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-600 text-white rounded-lg shadow-xs">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="p-1.5 sm:p-2 bg-emerald-600 text-white rounded-lg shadow-xs">
               <FileSpreadsheet className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">
-                Export Rekap Cashback ke File Excel (.xlsx)
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900">
+                Export Rekap Cashback ke Excel
               </h2>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[10px] sm:text-[11px] text-slate-500">
                 Pilih format lembar kerja Excel yang diinginkan
               </p>
             </div>
@@ -103,7 +103,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs">
+        <form onSubmit={(e) => { e.preventDefault(); handleDownload(); }} className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1 text-xs">
           
           {/* Format Options */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -368,7 +368,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
           </div>
 
-        </div>
+        </form>
 
       </div>
     </div>

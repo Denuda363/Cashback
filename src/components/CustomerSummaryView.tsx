@@ -149,8 +149,89 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Mobile Minimalist Card View */}
+      <div className="md:hidden space-y-2.5">
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
+            <p className="text-sm font-semibold text-slate-700">Tidak ada konsumen ditemukan</p>
+          </div>
+        ) : (
+          filtered.map((cust, idx) => {
+            const unclaimed = cust.totalCashback - cust.disbursedCashback;
+
+            return (
+              <div key={cust.customerPhone || cust.customerName} className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0">
+                      {cust.rank || idx + 1}
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">{cust.customerName}</h3>
+                      <p className="text-[11px] text-slate-500 font-mono">{cust.customerPhone}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {cust.getParcel && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-0.5">
+                        <Gift className="w-2.5 h-2.5" /> Parcel
+                      </span>
+                    )}
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                      {cust.tier}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Financial Summary */}
+                <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 rounded-lg text-xs font-mono tabular-nums">
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-sans block">Total Belanja</span>
+                    <span className="font-semibold text-slate-800">{formatRupiah(cust.totalPurchase)}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-500 font-sans block">Total Cashback</span>
+                    <span className="font-bold text-emerald-700 text-sm">{formatRupiah(cust.totalCashback)}</span>
+                  </div>
+                  {unclaimed > 0 && (
+                    <div className="col-span-2 pt-1 border-t border-slate-200/60 flex justify-between text-[11px]">
+                      <span className="text-slate-500 font-sans">Sisa Belum Dicairkan:</span>
+                      <span className="font-bold text-amber-700">{formatRupiah(unclaimed)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile Actions */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {cust.invoiceCount} Faktur
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onSelectCustomerForInvoices(cust.customerName)}
+                      className="flex items-center gap-1 px-2.5 py-1 font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      <span>Faktur</span>
+                    </button>
+                    <button
+                      onClick={() => handleContactWhatsApp(cust.customerPhone, cust.customerName, unclaimed > 0 ? unclaimed : cust.totalCashback)}
+                      className="flex items-center gap-1 px-2.5 py-1 font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>WA</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Table (hidden on mobile, visible on desktop) */}
+      <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
