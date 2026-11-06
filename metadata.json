@@ -1,0 +1,6 @@
+{
+  "name": "CashbackPro - Rekap & Analitik Cashback Konsumen",
+  "description": "Aplikasi rekapitulasi dan analitik cashback konsumen transparan dengan leaderboard 10 besar, pengaturan persentase, input faktur, dan ekspor Excel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

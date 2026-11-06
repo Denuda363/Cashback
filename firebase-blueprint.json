@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Faktur pembelian konsumen dengan kalkulasi cashback",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "date": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "category": { "type": "string" },
+        "itemsDescription": { "type": "string" },
+        "purchaseAmount": { "type": "number" },
+        "cashbackPercentage": { "type": "number" },
+        "cashbackAmount": { "type": "number" },
+        "claimStatus": { "type": "string", "enum": ["pending", "ready", "disbursed"] },
+        "payoutMethod": { "type": "string", "enum": ["transfer_bank", "e_wallet", "potongan_belanja", "tunai"] },
+        "disbursedDate": { "type": "string" },
+        "getParcel": { "type": "boolean" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["invoiceNumber", "date", "customerName", "customerPhone", "purchaseAmount", "cashbackPercentage", "cashbackAmount", "claimStatus", "payoutMethod"]
+    },
+    "CustomerMaster": {
+      "title": "CustomerMaster",
+      "description": "Master data konsumen toko",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerCode": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "city": { "type": "string" },
+        "address": { "type": "string" },
+        "bankName": { "type": "string" },
+        "bankAccountNumber": { "type": "string" },
+        "bankAccountHolder": { "type": "string" },
+        "eWalletType": { "type": "string" },
+        "eWalletNumber": { "type": "string" },
+        "preferredPayoutMethod": { "type": "string", "enum": ["transfer_bank", "e_wallet", "potongan_belanja", "tunai"] },
+        "joinedDate": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "notes": { "type": "string" }
+      },
+      "required": ["customerCode", "name", "phone", "joinedDate", "isActive"]
+    },
+    "CashbackSettings": {
+      "title": "CashbackSettings",
+      "description": "Pengaturan persentase dan kebijakan toko",
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["flat", "tiered"] },
+        "flatPercentage": { "type": "number" },
+        "minPurchaseAmount": { "type": "number" },
+        "maxCashbackPerTransaction": { "type": "number" },
+        "rounding": { "type": "string", "enum": ["exact", "round_hundred", "round_thousand"] },
+        "claimValidityDays": { "type": "number" },
+        "storeName": { "type": "string" },
+        "currency": { "type": "string" },
+        "minSpendForParcel": { "type": "number" }
+      },
+      "required": ["mode", "flatPercentage", "minPurchaseAmount", "rounding", "claimValidityDays", "storeName", "currency"]
+    }
+  },
+  "firestore": {
+    "/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Koleksi faktur transaksi konsumen"
+    },
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/CustomerMaster" },
+      "description": "Koleksi master data konsumen"
+    },
+    "/settings/{settingsId}": {
+      "schema": { "$ref": "#/entities/CashbackSettings" },
+      "description": "Konfigurasi kebijakan dan persentase cashback toko"
+    }
+  }
+}
