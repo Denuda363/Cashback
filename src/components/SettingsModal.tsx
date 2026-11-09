@@ -21,7 +21,8 @@ import {
   Archive,
   Database,
   FileJson,
-  Loader2
+  Loader2,
+  BookOpen
 } from 'lucide-react';
 import { CashbackSettings, CustomerMaster, Invoice, NavPosition, TierRule } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
@@ -43,6 +44,7 @@ interface SettingsModalProps {
   onBackupData: () => void;
   onRestoreBackup: (backup: AppBackupData) => Promise<void>;
   onWipeAllDataPermanent: () => Promise<void>;
+  onOpenGuide?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -60,6 +62,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onBackupData,
   onRestoreBackup,
   onWipeAllDataPermanent,
+  onOpenGuide,
 }) => {
   const [mode, setMode] = useState<'flat' | 'tiered'>(settings.mode);
   const [flatPercentage, setFlatPercentage] = useState<number>(settings.flatPercentage);
@@ -207,17 +210,62 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {onOpenGuide && (
+              <button
+                type="button"
+                onClick={onOpenGuide}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                title="Buka panduan lengkap penggunaan aplikasi"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Buku Panduan</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Content Form */}
         <form onSubmit={handleSubmit} className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1 text-xs">
           
+          {/* User Guide Card Banner */}
+          {onOpenGuide && (
+            <div className="p-3.5 sm:p-4 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="p-2 rounded-xl bg-emerald-700 text-white shrink-0 mt-0.5 sm:mt-0 shadow-xs">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-xs sm:text-sm">
+                      Panduan Lengkap Penggunaan Aplikasi
+                    </h3>
+                    <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">
+                      Langkah demi Langkah
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                    Petunjuk detail mulai dari konfigurasi cashback, master konsumen, input faktur, kirim bukti WA, hingga backup database.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenGuide}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-xs transition-colors shrink-0"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Buka Panduan Lengkap</span>
+              </button>
+            </div>
+          )}
+
           {/* Store Name */}
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Nama Toko / Usaha</label>

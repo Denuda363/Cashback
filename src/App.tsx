@@ -31,7 +31,8 @@ import { ExportModal } from './components/ExportModal';
 import { DateRangeFilterBar } from './components/DateRangeFilterBar';
 import { ImportExcelModal } from './components/ImportExcelModal';
 import { ImportCustomerModal } from './components/ImportCustomerModal';
-import { CheckCircle2, FileSpreadsheet, Upload } from 'lucide-react';
+import { UserGuideModal } from './components/UserGuideModal';
+import { CheckCircle2, FileSpreadsheet, Upload, BookOpen } from 'lucide-react';
 import {
   testFirestoreConnection,
   ensureFirestoreTablesExist,
@@ -128,6 +129,7 @@ export default function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImportCustomerModalOpen, setIsImportCustomerModalOpen] = useState(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
 
   // Cross-tab filters & Global Date Range Filter
   const [customerFilterForInvoices, setCustomerFilterForInvoices] = useState<string>('');
@@ -670,6 +672,13 @@ export default function App() {
             >
               <FileSpreadsheet className="w-3.5 h-3.5" /> Unduh Format Excel
             </button>
+            <span aria-hidden="true">·</span>
+            <button
+              onClick={() => setIsGuideModalOpen(true)}
+              className="text-slate-800 hover:text-emerald-700 font-bold flex items-center gap-1 bg-slate-100 hover:bg-emerald-50 px-2 py-0.5 rounded-md transition-colors"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-emerald-600" /> Buku Panduan
+            </button>
           </div>
         </div>
       </footer>
@@ -718,7 +727,7 @@ export default function App() {
         existingCustomers={customers}
       />
 
-      {/* Settings Modal (% Cashback & Rules & Navigation Position & Cloud Sync & Backup & Wipe) */}
+      {/* Settings Modal (% Cashback & Rules & Navigation Position & Cloud Sync & Backup & Wipe & Guide) */}
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
@@ -734,6 +743,14 @@ export default function App() {
         onBackupData={handleBackupData}
         onRestoreBackup={handleRestoreBackup}
         onWipeAllDataPermanent={handleWipeAllDataPermanent}
+        onOpenGuide={() => setIsGuideModalOpen(true)}
+      />
+
+      {/* Comprehensive Step-by-Step User Guide Modal */}
+      <UserGuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
       />
 
       {/* Digital Receipt Modal */}
