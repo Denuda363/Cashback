@@ -71,7 +71,14 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
     const message = encodeURIComponent(
       `Halo Kak ${name},\nKami dari tim customer relation ingin menginfokan bahwa saat ini Anda memiliki saldo cashback siap cair sebesar ${formatRupiah(balance)}. Silakan konfirmasi rekening atau metode pencairan yang diinginkan. Terima kasih!`
     );
-    window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
+    const url = `https://wa.me/${formattedPhone}?text=${message}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (

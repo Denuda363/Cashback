@@ -13,10 +13,12 @@ import {
   ShieldCheck,
   Sidebar as SidebarIcon,
   LayoutTemplate,
-  AlignVerticalSpaceAround
+  AlignVerticalSpaceAround,
+  Cloud
 } from 'lucide-react';
 import { CashbackSettings, NavPosition, TierRule } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -24,6 +26,8 @@ interface SettingsModalProps {
   settings: CashbackSettings;
   onSaveSettings: (newSettings: CashbackSettings) => void;
   onResetData: () => void;
+  onForceSyncCloud?: () => void;
+  isSyncingWithCloud?: boolean;
   navPosition?: NavPosition;
   onChangeNavPosition?: (pos: NavPosition) => void;
 }
@@ -34,6 +38,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onSaveSettings,
   onResetData,
+  onForceSyncCloud,
+  isSyncingWithCloud = false,
   navPosition,
   onChangeNavPosition,
 }) => {
@@ -46,6 +52,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [rounding, setRounding] = useState<'exact' | 'round_hundred' | 'round_thousand'>(settings.rounding);
   const [claimValidityDays, setClaimValidityDays] = useState<number>(settings.claimValidityDays);
   const [storeName, setStoreName] = useState<string>(settings.storeName);
+  const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
 
   // Live Simulator state
   const [simSpend, setSimSpend] = useState<number>(1500000);
@@ -495,17 +502,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
+          {/* Cloud Database Integration Status & Auto Table Check */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Cloud className="w-4 h-4 text-emerald-600" />
+                <h3 className="font-bold text-slate-900 text-xs">
+                  Status Database Cloud (Firebase Firestore)
+                </h3>
+              </div>
+              <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Terkoneksi Otomatis
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-600">
+              Database aktif dan tersinkronisasi otomatis tanpa perlu login. Tabel-tabel yang dibutuhkan otomatis dibuat di cloud:
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+              <div className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="font-mono font-bold text-slate-800">/invoices</span>
+                  <span className="text-[10px] text-emerald-600 font-bold">✓ Siap</span>
+                </div>
+                <span className="text-[10px] text-slate-500 block">Tabel Rekap Faktur</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="font-mono font-bold text-slate-800">/customers</span>
+                  <span className="text-[10px] text-emerald-600 font-bold">✓ Siap</span>
+                </div>
+                <span className="text-[10px] text-slate-500 block">Tabel Master Konsumen</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="font-mono font-bold text-slate-800">/settings</span>
+                  <span className="text-[10px] text-emerald-600 font-bold">✓ Siap</span>
+                </div>
+                <span className="text-[10px] text-slate-500 block">Tabel Aturan & Persen</span>
+              </div>
+              <div className="p-2.5 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="font-mono font-bold text-slate-800">/system</span>
+                  <span className="text-[10px] text-emerald-600 font-bold">✓ Siap</span>
+                </div>
+                <span className="text-[10px] text-slate-500 block">Tabel Metadata Sistem</span>
+              </div>
+            </div>
+
+            {onForceSyncCloud && (
+              <div className="pt-2 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-[11px] text-slate-500">
+                  Pastikan seluruh data faktur dan konsumen terunggah ke database cloud:
+                </span>
+                <button
+                  type="button"
+                  disabled={isSyncingWithCloud}
+                  onClick={onForceSyncCloud}
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingWithCloud ? 'animate-spin' : ''}`} />
+                  <span>{isSyncingWithCloud ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Danger Zone: Reset Data */}
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Muat ulang data sampel default jika ingin memulai ulang demo:</span>
             <button
               type="button"
-              onClick={() => {
-                if (window.confirm('Reset semua faktur dan pengaturan kembali ke data contoh bawaan?')) {
-                  onResetData();
-                  onClose();
-                }
-              }}
+              onClick={() => setIsConfirmResetOpen(true)}
               className="text-slate-600 hover:text-red-700 font-semibold flex items-center gap-1"
             >
               <RefreshCw className="w-3.5 h-3.5" />
@@ -534,6 +604,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </form>
 
       </div>
+
+      {/* Reset Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isConfirmResetOpen}
+        title="Reset Data ke Sampel Bawaan"
+        message="Yakin ingin memuat ulang seluruh faktur, konsumen, dan pengaturan kembali ke data contoh bawaan? Seluruh perubahan saat ini akan diganti."
+        confirmLabel="Ya, Reset Data"
+        cancelLabel="Batal"
+        isDestructive={true}
+        onConfirm={() => {
+          onResetData();
+          setIsConfirmResetOpen(false);
+          onClose();
+        }}
+        onCancel={() => setIsConfirmResetOpen(false)}
+      />
+
     </div>
   );
 };

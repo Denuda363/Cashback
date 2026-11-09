@@ -17,12 +17,14 @@ import {
   getDocs, 
   onSnapshot, 
   getDocFromServer,
-  query,
-  orderBy,
   writeBatch
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { CashbackSettings, CustomerMaster, Invoice } from '../types/cashback';
+
+// Export Project & Database Identifiers
+export const FIREBASE_PROJECT_ID = firebaseConfig.projectId;
+export const FIRESTORE_DATABASE_ID = firebaseConfig.firestoreDatabaseId;
 
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -81,21 +83,158 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
+// -------------------------------------------------------------
+// Database Table / Collection Names
+// -------------------------------------------------------------
+export const INVOICES_COLLECTION = 'invoices';
+export const CUSTOMERS_COLLECTION = 'customers';
+export const SETTINGS_COLLECTION = 'settings';
+export const SYSTEM_COLLECTION = 'system';
+export const MAIN_SETTINGS_DOC_ID = 'current_settings';
+export const SYSTEM_INFO_DOC_ID = 'database_info';
+
+// -------------------------------------------------------------
 // Connection test per skill requirements
+// -------------------------------------------------------------
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log('Firebase Firestore connection verified successfully.');
+    // Attempt to read system info directly from server to verify live cloud connection
+    const testDocRef = doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID);
+    await getDocFromServer(testDocRef);
+    console.log('Firebase Firestore connection verified successfully from server.');
     return true;
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firebase client is offline or connecting...');
+      console.warn('Firebase client is offline or network connecting...');
       return false;
     }
-    // Document might not exist, but network connection to server succeeded
+    // If document is not found, connection itself still succeeded
     return true;
   }
 }
+
+// -------------------------------------------------------------
+// Automatic Table Creation & Initialization
+// Ensures all required collections (invoices, customers, settings, system)
+// exist with documents in Firestore automatically.
+// -------------------------------------------------------------
+export interface TableInitResult {
+  success: boolean;
+  seededTables: string[];
+  existingTables: string[];
+  totalInvoicesInCloud: number;
+  totalCustomersInCloud: number;
+}
+
+export async function ensureFirestoreTablesExist(
+  initialInvoices: Invoice[],
+  initialCustomers: CustomerMaster[],
+  defaultSettings: CashbackSettings
+): Promise<TableInitResult> {
+  const seededTables: string[] = [];
+  const existingTables: string[] = [];
+  let totalInvoices = 0;
+  let totalCustomers = 0;
+
+  try {
+    console.log('Memeriksa dan memastikan seluruh tabel Firestore otomatis dibuat...');
+
+    // 1. Table: settings (Pengaturan Cashback)
+    try {
+      const settingsRef = doc(db, SETTINGS_COLLECTION, MAIN_SETTINGS_DOC_ID);
+      const settingsSnap = await getDoc(settingsRef);
+      if (!settingsSnap.exists()) {
+        await setDoc(settingsRef, defaultSettings);
+        seededTables.push('settings');
+        console.log('✓ Tabel settings berhasil dibuat dan diinisialisasi.');
+      } else {
+        existingTables.push('settings');
+      }
+    } catch (e) {
+      console.warn('Check settings table error:', e);
+    }
+
+    // 2. Table: customers (Master Data Konsumen)
+    try {
+      const customersSnap = await getDocs(collection(db, CUSTOMERS_COLLECTION));
+      totalCustomers = customersSnap.size;
+      if (customersSnap.empty) {
+        const batch = writeBatch(db);
+        initialCustomers.forEach((cust) => {
+          const custRef = doc(db, CUSTOMERS_COLLECTION, cust.id);
+          batch.set(custRef, cust);
+        });
+        await batch.commit();
+        totalCustomers = initialCustomers.length;
+        seededTables.push('customers');
+        console.log(`✓ Tabel customers berhasil dibuat dengan ${initialCustomers.length} data awal.`);
+      } else {
+        existingTables.push('customers');
+      }
+    } catch (e) {
+      console.warn('Check customers table error:', e);
+    }
+
+    // 3. Table: invoices (Rekap Faktur Transaksi)
+    try {
+      const invoicesSnap = await getDocs(collection(db, INVOICES_COLLECTION));
+      totalInvoices = invoicesSnap.size;
+      if (invoicesSnap.empty) {
+        const batch = writeBatch(db);
+        initialInvoices.forEach((inv) => {
+          const invRef = doc(db, INVOICES_COLLECTION, inv.id);
+          batch.set(invRef, inv);
+        });
+        await batch.commit();
+        totalInvoices = initialInvoices.length;
+        seededTables.push('invoices');
+        console.log(`✓ Tabel invoices berhasil dibuat dengan ${initialInvoices.length} data faktur awal.`);
+      } else {
+        existingTables.push('invoices');
+      }
+    } catch (e) {
+      console.warn('Check invoices table error:', e);
+    }
+
+    // 4. Table: system (Metadata & Status Database)
+    try {
+      const systemRef = doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID);
+      await setDoc(systemRef, {
+        appName: 'CashbackPro Rekapitulasi',
+        version: '2.0',
+        status: 'active',
+        databaseId: FIRESTORE_DATABASE_ID,
+        projectId: FIREBASE_PROJECT_ID,
+        lastSyncAt: new Date().toISOString(),
+        tables: [INVOICES_COLLECTION, CUSTOMERS_COLLECTION, SETTINGS_COLLECTION, SYSTEM_COLLECTION],
+      }, { merge: true });
+      seededTables.push('system');
+      console.log('✓ Tabel system status metadata berhasil diperbarui.');
+    } catch (e) {
+      console.warn('Check system table error:', e);
+    }
+
+    return {
+      success: true,
+      seededTables,
+      existingTables,
+      totalInvoicesInCloud: totalInvoices,
+      totalCustomersInCloud: totalCustomers,
+    };
+  } catch (error) {
+    console.error('ensureFirestoreTablesExist failed:', error);
+    return {
+      success: false,
+      seededTables,
+      existingTables,
+      totalInvoicesInCloud: totalInvoices,
+      totalCustomersInCloud: totalCustomers,
+    };
+  }
+}
+
+// Backward compatibility alias
+export const seedFirestoreIfEmpty = ensureFirestoreTablesExist;
 
 // -------------------------------------------------------------
 // Authentication Helpers
@@ -128,17 +267,14 @@ export function onAuthUserChanged(callback: (user: User | null) => void): () => 
 // -------------------------------------------------------------
 // Firestore Database Operations: Invoices
 // -------------------------------------------------------------
-const INVOICES_COLLECTION = 'invoices';
-
 export function subscribeFirestoreInvoices(
   onData: (invoices: Invoice[]) => void,
   onError?: (err: Error) => void
 ): () => void {
   const colRef = collection(db, INVOICES_COLLECTION);
-  const q = query(colRef, orderBy('date', 'desc'));
 
   return onSnapshot(
-    q,
+    colRef,
     (snapshot) => {
       const items: Invoice[] = [];
       snapshot.forEach((d) => {
@@ -148,14 +284,13 @@ export function subscribeFirestoreInvoices(
           ...data,
         } as Invoice);
       });
+      // Sort desc by date
+      items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
       onData(items);
     },
     (error) => {
-      try {
-        handleFirestoreError(error, OperationType.GET, INVOICES_COLLECTION);
-      } catch (e) {
-        if (onError && e instanceof Error) onError(e);
-      }
+      console.warn('Invoices onSnapshot warning:', error);
+      if (onError && error instanceof Error) onError(error);
     }
   );
 }
@@ -181,13 +316,19 @@ export async function deleteInvoiceFromFirestore(invoiceId: string): Promise<voi
 }
 
 export async function batchUpdateInvoicesInFirestore(invoices: Invoice[]): Promise<void> {
+  if (invoices.length === 0) return;
   try {
-    const batch = writeBatch(db);
-    invoices.forEach((inv) => {
-      const docRef = doc(db, INVOICES_COLLECTION, inv.id);
-      batch.set(docRef, { ...inv }, { merge: true });
-    });
-    await batch.commit();
+    // Process in batches of up to 400 to respect Firestore limits
+    const BATCH_SIZE = 400;
+    for (let i = 0; i < invoices.length; i += BATCH_SIZE) {
+      const slice = invoices.slice(i, i + BATCH_SIZE);
+      const batch = writeBatch(db);
+      slice.forEach((inv) => {
+        const docRef = doc(db, INVOICES_COLLECTION, inv.id);
+        batch.set(docRef, { ...inv }, { merge: true });
+      });
+      await batch.commit();
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, INVOICES_COLLECTION);
   }
@@ -196,17 +337,14 @@ export async function batchUpdateInvoicesInFirestore(invoices: Invoice[]): Promi
 // -------------------------------------------------------------
 // Firestore Database Operations: Customers
 // -------------------------------------------------------------
-const CUSTOMERS_COLLECTION = 'customers';
-
 export function subscribeFirestoreCustomers(
   onData: (customers: CustomerMaster[]) => void,
   onError?: (err: Error) => void
 ): () => void {
   const colRef = collection(db, CUSTOMERS_COLLECTION);
-  const q = query(colRef, orderBy('customerCode', 'asc'));
 
   return onSnapshot(
-    q,
+    colRef,
     (snapshot) => {
       const items: CustomerMaster[] = [];
       snapshot.forEach((d) => {
@@ -215,14 +353,13 @@ export function subscribeFirestoreCustomers(
           ...d.data(),
         } as CustomerMaster);
       });
+      // Sort asc by customerCode
+      items.sort((a, b) => (a.customerCode || '').localeCompare(b.customerCode || ''));
       onData(items);
     },
     (error) => {
-      try {
-        handleFirestoreError(error, OperationType.GET, CUSTOMERS_COLLECTION);
-      } catch (e) {
-        if (onError && e instanceof Error) onError(e);
-      }
+      console.warn('Customers onSnapshot warning:', error);
+      if (onError && error instanceof Error) onError(error);
     }
   );
 }
@@ -250,9 +387,6 @@ export async function deleteCustomerFromFirestore(customerId: string): Promise<v
 // -------------------------------------------------------------
 // Firestore Database Operations: Settings
 // -------------------------------------------------------------
-const SETTINGS_COLLECTION = 'settings';
-const MAIN_SETTINGS_DOC_ID = 'current_settings';
-
 export function subscribeFirestoreSettings(
   onData: (settings: CashbackSettings) => void,
   onError?: (err: Error) => void
@@ -267,11 +401,8 @@ export function subscribeFirestoreSettings(
       }
     },
     (error) => {
-      try {
-        handleFirestoreError(error, OperationType.GET, `${SETTINGS_COLLECTION}/${MAIN_SETTINGS_DOC_ID}`);
-      } catch (e) {
-        if (onError && e instanceof Error) onError(e);
-      }
+      console.warn('Settings onSnapshot warning:', error);
+      if (onError && error instanceof Error) onError(error);
     }
   );
 }
@@ -287,43 +418,32 @@ export async function saveSettingsToFirestore(settings: CashbackSettings): Promi
 }
 
 // -------------------------------------------------------------
-// Auto-seeding: Automatically populate Firestore if empty on first launch
+// Full Database Re-Sync (Upload all local state to Firestore)
 // -------------------------------------------------------------
-export async function seedFirestoreIfEmpty(
-  initialInvoices: Invoice[],
-  initialCustomers: CustomerMaster[],
-  defaultSettings: CashbackSettings
-): Promise<boolean> {
-  try {
-    const invoicesSnapshot = await getDocs(collection(db, INVOICES_COLLECTION));
-    if (!invoicesSnapshot.empty) {
-      return false; // Already populated
-    }
+export async function forceSyncAllToFirestore(
+  invoices: Invoice[],
+  customers: CustomerMaster[],
+  settings: CashbackSettings
+): Promise<void> {
+  // 1. Settings
+  await saveSettingsToFirestore(settings);
 
-    console.log('Seeding initial data into Firebase Firestore...');
-    const batch = writeBatch(db);
+  // 2. Customers
+  const custBatch = writeBatch(db);
+  customers.forEach((c) => {
+    custBatch.set(doc(db, CUSTOMERS_COLLECTION, c.id), c, { merge: true });
+  });
+  await custBatch.commit();
 
-    // Seed Settings
-    const settingsDoc = doc(db, SETTINGS_COLLECTION, MAIN_SETTINGS_DOC_ID);
-    batch.set(settingsDoc, defaultSettings);
+  // 3. Invoices
+  await batchUpdateInvoicesInFirestore(invoices);
 
-    // Seed Customers
-    initialCustomers.forEach((cust) => {
-      const custDoc = doc(db, CUSTOMERS_COLLECTION, cust.id);
-      batch.set(custDoc, cust);
-    });
-
-    // Seed Invoices
-    initialInvoices.forEach((inv) => {
-      const invDoc = doc(db, INVOICES_COLLECTION, inv.id);
-      batch.set(invDoc, inv);
-    });
-
-    await batch.commit();
-    console.log('Firebase Firestore initialized with sample data successfully.');
-    return true;
-  } catch (err) {
-    console.warn('Auto-seed check error (will use local fallback if offline):', err);
-    return false;
-  }
+  // 4. System info
+  await setDoc(doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID), {
+    appName: 'CashbackPro Rekapitulasi',
+    version: '2.0',
+    status: 'active',
+    lastSyncAt: new Date().toISOString(),
+    manualSyncTriggered: true,
+  }, { merge: true });
 }

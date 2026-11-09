@@ -129,7 +129,14 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
     const message = encodeURIComponent(
       `Halo Kak ${name},\nTerima kasih atas loyalitas belanja di toko kami! Anda masuk dalam daftar 10 Besar Konsumen dengan cashback tertinggi sebesar ${formatRupiah(cashback)}. Silakan hubungi kami untuk konfirmasi pencairan cashback Anda. Terima kasih!`
     );
-    window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
+    const url = `https://wa.me/${formattedPhone}?text=${message}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { ClaimStatus, Invoice, PayoutMethod } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -47,6 +48,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | ClaimStatus>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'cashback_desc'>('date_desc');
+  const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
 
   // Categories list
   const categories = useMemo(() => {
@@ -346,11 +348,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                     <Edit3 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => {
-                      if (window.confirm(`Yakin ingin menghapus faktur ${inv.invoiceNumber} milik ${inv.customerName}?`)) {
-                        onDeleteInvoice(inv.id);
-                      }
-                    }}
+                    onClick={() => setDeletingInvoice(inv)}
                     className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg"
                     title="Hapus Faktur"
                   >
@@ -469,11 +467,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                           <Edit3 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => {
-                            if (window.confirm(`Yakin ingin menghapus faktur ${inv.invoiceNumber} milik ${inv.customerName}?`)) {
-                              onDeleteInvoice(inv.id);
-                            }
-                          }}
+                          onClick={() => setDeletingInvoice(inv)}
                           title="Hapus Faktur"
                           className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
                         >
@@ -489,6 +483,21 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={deletingInvoice !== null}
+        title="Hapus Data Faktur"
+        message={`Yakin ingin menghapus faktur ${deletingInvoice?.invoiceNumber} (${deletingInvoice?.customerName})? Faktur akan dihapus permanen dari sistem dan cloud.`}
+        confirmLabel="Ya, Hapus Faktur"
+        onConfirm={() => {
+          if (deletingInvoice) {
+            onDeleteInvoice(deletingInvoice.id);
+            setDeletingInvoice(null);
+          }
+        }}
+        onCancel={() => setDeletingInvoice(null)}
+      />
 
     </div>
   );

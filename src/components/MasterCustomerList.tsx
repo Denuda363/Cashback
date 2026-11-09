@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { CustomerMaster, CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface MasterCustomerListProps {
   customers: CustomerMaster[];
@@ -46,6 +47,7 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name_asc' | 'code_asc' | 'cashback_desc' | 'joined_desc'>('code_asc');
+  const [deletingCustomer, setDeletingCustomer] = useState<CustomerMaster | null>(null);
 
   // Map customer stats by phone or name for quick lookup
   const statsMap = useMemo(() => {
@@ -117,7 +119,14 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
   const handleContactWhatsApp = (phone: string, name: string) => {
     const cleanPhone = phone.replace(/\D/g, '');
     const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
-    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(`Halo Kak ${name}, salam hangat dari toko kami!`)}`, '_blank');
+    const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(`Halo Kak ${name}, salam hangat dari toko kami!`)}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
@@ -332,11 +341,7 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => {
-                        if (window.confirm(`Hapus konsumen ${cust.name} dari Master Data?`)) {
-                          onDeleteCustomer(cust.id);
-                        }
-                      }}
+                      onClick={() => setDeletingCustomer(cust)}
                       className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg"
                       title="Hapus"
                     >
@@ -511,11 +516,7 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => {
-                              if (window.confirm(`Yakin ingin menghapus konsumen ${cust.name} (${cust.customerCode}) dari Master Data?`)) {
-                                onDeleteCustomer(cust.id);
-                              }
-                            }}
+                            onClick={() => setDeletingCustomer(cust)}
                             title="Hapus Konsumen"
                             className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
                           >
@@ -532,6 +533,21 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Delete Customer Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={deletingCustomer !== null}
+        title="Hapus Data Konsumen"
+        message={`Yakin ingin menghapus konsumen ${deletingCustomer?.name} (${deletingCustomer?.customerCode}) dari Master Data? Data konsumen akan dihapus secara permanen.`}
+        confirmLabel="Ya, Hapus Konsumen"
+        onConfirm={() => {
+          if (deletingCustomer) {
+            onDeleteCustomer(deletingCustomer.id);
+            setDeletingCustomer(null);
+          }
+        }}
+        onCancel={() => setDeletingCustomer(null)}
+      />
 
     </div>
   );

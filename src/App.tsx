@@ -30,7 +30,8 @@ import { ImportExcelModal } from './components/ImportExcelModal';
 import { CheckCircle2, FileSpreadsheet, Upload } from 'lucide-react';
 import {
   testFirestoreConnection,
-  seedFirestoreIfEmpty,
+  ensureFirestoreTablesExist,
+  forceSyncAllToFirestore,
   subscribeFirestoreInvoices,
   subscribeFirestoreCustomers,
   subscribeFirestoreSettings,
@@ -40,6 +41,8 @@ import {
   deleteCustomerFromFirestore,
   saveSettingsToFirestore,
   batchUpdateInvoicesInFirestore,
+  FIRESTORE_DATABASE_ID,
+  FIREBASE_PROJECT_ID,
 } from './services/firebase';
 
 export default function App() {
@@ -51,6 +54,7 @@ export default function App() {
 
   // Firebase Real-time Auto-Connection State (Direct & Automatic without login)
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(true);
+  const [isSyncingWithCloud, setIsSyncingWithCloud] = useState<boolean>(false);
 
   // Firestore Real-time synchronization lifecycle
   useEffect(() => {
@@ -59,24 +63,34 @@ export default function App() {
     let unsubSettings = () => {};
 
     // 1. Test Firestore Cloud connection automatically on mount
-    testFirestoreConnection().then((connected) => {
+    testFirestoreConnection().then(async (connected) => {
       setIsFirebaseConnected(connected);
       if (connected) {
-        // 2. Automatically seed Firestore if brand new & empty
-        seedFirestoreIfEmpty(invoices, customers, settings).catch((err) => {
-          console.warn('Seed Firestore check:', err);
-        });
+        // 2. Automatically ensure all required tables (invoices, customers, settings, system) exist in Firestore
+        try {
+          const res = await ensureFirestoreTablesExist(invoices, customers, settings);
+          if (res.seededTables.length > 0) {
+            console.log('Tabel Firestore berhasil otomatis dibuat:', res.seededTables);
+            showToast(`Database Cloud siap! Tabel [${res.seededTables.join(', ')}] otomatis aktif.`);
+          }
+        } catch (err) {
+          console.warn('Auto table check error:', err);
+        }
 
         // 3. Attach live real-time listeners for instant multi-device sync
+        let hasLoadedInvoicesOnce = false;
         unsubInvoices = subscribeFirestoreInvoices((liveInvoices) => {
-          if (liveInvoices && liveInvoices.length > 0) {
+          if (liveInvoices.length > 0 || hasLoadedInvoicesOnce) {
+            hasLoadedInvoicesOnce = true;
             setInvoices(liveInvoices);
             saveStoredInvoices(liveInvoices);
           }
         });
 
+        let hasLoadedCustomersOnce = false;
         unsubCustomers = subscribeFirestoreCustomers((liveCustomers) => {
-          if (liveCustomers && liveCustomers.length > 0) {
+          if (liveCustomers.length > 0 || hasLoadedCustomersOnce) {
+            hasLoadedCustomersOnce = true;
             setCustomers(liveCustomers);
             saveStoredCustomers(liveCustomers);
           }
@@ -352,15 +366,28 @@ export default function App() {
     );
   };
 
+  const handleForceSyncCloud = async () => {
+    setIsSyncingWithCloud(true);
+    try {
+      await forceSyncAllToFirestore(invoices, customers, settings);
+      showToast('Seluruh tabel faktur, konsumen, & pengaturan berhasil disinkronkan ke Firebase Firestore!');
+    } catch (err) {
+      console.error('Force sync error:', err);
+      showToast('Gagal sinkronisasi ke cloud: silakan periksa koneksi internet.');
+    } finally {
+      setIsSyncingWithCloud(false);
+    }
+  };
+
   const handleResetData = () => {
     const defaultData = resetToDefaultData();
     setInvoices(defaultData.invoices);
     setSettings(defaultData.settings);
     setCustomers(defaultData.customers);
-    seedFirestoreIfEmpty(defaultData.invoices, defaultData.customers, defaultData.settings).catch((err) => {
+    forceSyncAllToFirestore(defaultData.invoices, defaultData.customers, defaultData.settings).catch((err) => {
       console.warn('Firestore reset seed:', err);
     });
-    showToast('Data sampel default berhasil dimuat ulang dan disinkronkan ke Firebase.');
+    showToast('Data sampel default berhasil dimuat ulang dan disinkronkan ke semua tabel Firebase.');
   };
 
   // Export to Excel Dialog Handler
@@ -592,13 +619,15 @@ export default function App() {
         existingCustomers={customers}
       />
 
-      {/* Settings Modal (% Cashback & Rules & Navigation Position) */}
+      {/* Settings Modal (% Cashback & Rules & Navigation Position & Cloud Sync) */}
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         settings={settings}
         onSaveSettings={handleSaveSettings}
         onResetData={handleResetData}
+        onForceSyncCloud={handleForceSyncCloud}
+        isSyncingWithCloud={isSyncingWithCloud}
         navPosition={navPosition}
         onChangeNavPosition={handleChangeNavPosition}
       />

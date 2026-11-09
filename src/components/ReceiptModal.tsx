@@ -63,7 +63,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const handleWhatsAppShare = () => {
     const cleanPhone = invoice.customerPhone.replace(/\D/g, '');
     const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
-    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(shareText)}`, '_blank');
+    const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(shareText)}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (

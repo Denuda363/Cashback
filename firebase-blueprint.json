@@ -65,6 +65,20 @@
         "minSpendForParcel": { "type": "number" }
       },
       "required": ["mode", "flatPercentage", "minPurchaseAmount", "rounding", "claimValidityDays", "storeName", "currency"]
+    },
+    "SystemInfo": {
+      "title": "SystemInfo",
+      "description": "Metadata sistem database dan status koneksi",
+      "type": "object",
+      "properties": {
+        "appName": { "type": "string" },
+        "version": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "lastSyncAt": { "type": "string" },
+        "tables": { "type": "array" }
+      },
+      "required": ["appName", "status", "lastSyncAt"]
     }
   },
   "firestore": {
@@ -79,6 +93,10 @@
     "/settings/{settingsId}": {
       "schema": { "$ref": "#/entities/CashbackSettings" },
       "description": "Konfigurasi kebijakan dan persentase cashback toko"
+    },
+    "/system/{docId}": {
+      "schema": { "$ref": "#/entities/SystemInfo" },
+      "description": "Informasi inisialisasi dan verifikasi sistem database"
     }
   }
 }
