@@ -1028,3 +1028,210 @@ export async function parseInvoicesFromExcel(file: File): Promise<ParsedImportIn
   return results;
 }
 
+// -------------------------------------------------------------
+// MASTER CUSTOMER IMPORT TEMPLATE & PARSER
+// -------------------------------------------------------------
+
+export interface ParsedImportCustomer {
+  customerCode?: string;
+  name: string;
+  phone: string;
+  email?: string;
+  city?: string;
+  address?: string;
+  preferredPayoutMethod: PayoutMethod;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountHolder?: string;
+  eWalletType?: string;
+  eWalletNumber?: string;
+  notes?: string;
+  isValid: boolean;
+  validationError?: string;
+}
+
+/**
+ * Generates and downloads the official Master Customer Excel template
+ */
+export async function exportCustomerImportTemplate(): Promise<void> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'CashbackPro';
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet('Template Master Konsumen', {
+    views: [{ showGridLines: true }],
+  });
+
+  ws.columns = [
+    { header: 'No', key: 'no', width: 6 },
+    { header: 'Kode Konsumen', key: 'code', width: 16 },
+    { header: 'Nama Konsumen (Wajib)', key: 'name', width: 26 },
+    { header: 'No. WhatsApp / HP (Wajib)', key: 'phone', width: 22 },
+    { header: 'Email', key: 'email', width: 24 },
+    { header: 'Kota / Domisili', key: 'city', width: 18 },
+    { header: 'Alamat Lengkap', key: 'address', width: 32 },
+    { header: 'Metode Pencairan', key: 'payout', width: 20 },
+    { header: 'Nama Bank', key: 'bank_name', width: 16 },
+    { header: 'Nomor Rekening', key: 'bank_account', width: 22 },
+    { header: 'Nama Pemilik Rekening', key: 'account_holder', width: 24 },
+    { header: 'Jenis E-Wallet', key: 'ewallet_type', width: 16 },
+    { header: 'Nomor E-Wallet', key: 'ewallet_number', width: 20 },
+    { header: 'Catatan', key: 'notes', width: 25 },
+  ];
+
+  const headerRow = ws.getRow(1);
+  headerRow.height = 32;
+  headerRow.eachCell((cell) => {
+    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF047857' }, // Emerald dark header
+    };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cell.border = thinBorder;
+  });
+
+  // Example sample rows with Indonesian profiles
+  const sampleRows = [
+    [1, 'CUST-001', 'Fatur', '081234567890', 'fatur@example.com', 'Surabaya', 'Jl. Pemuda No. 45', 'transfer_bank', 'BCA', '8220192831', 'Fatur Rochman', '', '', 'Pelanggan setia elektronik'],
+    [2, 'CUST-002', 'fabio', '085712345678', 'fabio@example.com', 'Sidoarjo', 'Ruko Graha Indah B-12', 'transfer_bank', 'Mandiri', '1420019283741', 'Fabio Pratama', '', '', 'Member toko VIP'],
+    [3, 'CUST-003', 'Hendra Wijaya', '081398765432', 'hendra@example.com', 'Gresik', 'Jl. Veteran No. 8', 'e_wallet', '', '', '', 'GoPay', '081398765432', 'Pencairan via GoPay'],
+    [4, 'CUST-004', 'Siti Rahmawati', '082155667788', '', 'Malang', 'Jl. Ijen No. 15', 'transfer_bank', 'BRI', '002101928374501', 'Siti Rahmawati', '', '', 'Toko Kelontong Berkah'],
+    [5, 'CUST-005', 'Budi Santoso', '081877665544', 'budi@example.com', 'Surabaya', 'Jl. Dharmahusada No. 22', 'tunai', '', '', '', '', '', 'Ambil tunai kasir toko'],
+  ];
+
+  sampleRows.forEach((r) => {
+    const row = ws.addRow(r);
+    row.height = 22;
+    row.eachCell((cell, colNumber) => {
+      cell.font = dataFont;
+      cell.border = thinBorder;
+      // Text formatting for phone and accounts so zeroes are preserved
+      if (colNumber === 1 || colNumber === 2 || colNumber === 8 || colNumber === 9 || colNumber === 12) {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      } else {
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      }
+    });
+  });
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  saveAs(blob, 'Template_Import_Master_Konsumen.xlsx');
+}
+
+/**
+ * Parses uploaded Excel file into CustomerMaster records
+ */
+export async function parseCustomersFromExcel(file: File): Promise<ParsedImportCustomer[]> {
+  const arrayBuffer = await file.arrayBuffer();
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(arrayBuffer);
+  const ws = wb.worksheets[0];
+  if (!ws) throw new Error('File Excel tidak memiliki lembar kerja (worksheet).');
+
+  const results: ParsedImportCustomer[] = [];
+
+  ws.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // Skip header
+
+    // Detect if column 1 is 'No' sequence or 'Kode Konsumen'
+    const col1Val = row.getCell(1).text || String(row.getCell(1).value || '');
+    const col2Val = row.getCell(2).text || String(row.getCell(2).value || '');
+    const isCol1Sequence = !isNaN(Number(col1Val)) && col1Val.trim().length <= 4 && col2Val.trim().length > 0;
+
+    let rawCode = '';
+    let rawName = '';
+    let rawPhone = '';
+    let rawEmail = '';
+    let rawCity = '';
+    let rawAddress = '';
+    let rawPayout = '';
+    let rawBankName = '';
+    let rawBankAcc = '';
+    let rawAccHolder = '';
+    let rawEWalletType = '';
+    let rawEWalletNumber = '';
+    let rawNotes = '';
+
+    if (isCol1Sequence) {
+      rawCode = row.getCell(2).text || String(row.getCell(2).value || '');
+      rawName = row.getCell(3).text || String(row.getCell(3).value || '');
+      rawPhone = row.getCell(4).text || String(row.getCell(4).value || '');
+      rawEmail = row.getCell(5).text || String(row.getCell(5).value || '');
+      rawCity = row.getCell(6).text || String(row.getCell(6).value || '');
+      rawAddress = row.getCell(7).text || String(row.getCell(7).value || '');
+      rawPayout = (row.getCell(8).text || String(row.getCell(8).value || '')).toLowerCase().trim();
+      rawBankName = row.getCell(9).text || String(row.getCell(9).value || '');
+      rawBankAcc = row.getCell(10).text || String(row.getCell(10).value || '');
+      rawAccHolder = row.getCell(11).text || String(row.getCell(11).value || '');
+      rawEWalletType = row.getCell(12).text || String(row.getCell(12).value || '');
+      rawEWalletNumber = row.getCell(13).text || String(row.getCell(13).value || '');
+      rawNotes = row.getCell(14).text || String(row.getCell(14).value || '');
+    } else {
+      rawCode = row.getCell(1).text || String(row.getCell(1).value || '');
+      rawName = row.getCell(2).text || String(row.getCell(2).value || '');
+      rawPhone = row.getCell(3).text || String(row.getCell(3).value || '');
+      rawEmail = row.getCell(4).text || String(row.getCell(4).value || '');
+      rawCity = row.getCell(5).text || String(row.getCell(5).value || '');
+      rawAddress = row.getCell(6).text || String(row.getCell(6).value || '');
+      rawPayout = (row.getCell(7).text || String(row.getCell(7).value || '')).toLowerCase().trim();
+      rawBankName = row.getCell(8).text || String(row.getCell(8).value || '');
+      rawBankAcc = row.getCell(9).text || String(row.getCell(9).value || '');
+      rawAccHolder = row.getCell(10).text || String(row.getCell(10).value || '');
+      rawEWalletType = row.getCell(11).text || String(row.getCell(11).value || '');
+      rawEWalletNumber = row.getCell(12).text || String(row.getCell(12).value || '');
+      rawNotes = row.getCell(13).text || String(row.getCell(13).value || '');
+    }
+
+    if (!rawName.trim() && !rawPhone.trim() && !rawCode.trim()) return;
+
+    let payoutMethod: PayoutMethod = 'transfer_bank';
+    if (rawPayout === 'e_wallet' || rawPayout.includes('wallet') || rawPayout.includes('gopay') || rawPayout.includes('ovo') || rawPayout.includes('dana') || rawPayout.includes('shopee')) {
+      payoutMethod = 'e_wallet';
+    } else if (rawPayout === 'potongan_belanja' || rawPayout.includes('potong') || rawPayout.includes('belanja') || rawPayout.includes('voucher')) {
+      payoutMethod = 'potongan_belanja';
+    } else if (rawPayout === 'tunai' || rawPayout.includes('cash') || rawPayout.includes('kasir')) {
+      payoutMethod = 'tunai';
+    }
+
+    // Clean phone number (strip spaces, dashes)
+    const cleanPhone = rawPhone.trim().replace(/[\s-]/g, '');
+
+    let isValid = true;
+    let validationError = '';
+
+    if (!rawName.trim()) {
+      isValid = false;
+      validationError = 'Nama konsumen wajib diisi';
+    } else if (!cleanPhone) {
+      isValid = false;
+      validationError = 'Nomor WhatsApp / telepon wajib diisi';
+    }
+
+    results.push({
+      customerCode: rawCode.trim() || undefined,
+      name: rawName.trim(),
+      phone: cleanPhone || '08xxxxxxxx',
+      email: rawEmail.trim() || undefined,
+      city: rawCity.trim() || undefined,
+      address: rawAddress.trim() || undefined,
+      preferredPayoutMethod: payoutMethod,
+      bankName: rawBankName.trim() || undefined,
+      bankAccountNumber: rawBankAcc.trim() || undefined,
+      bankAccountHolder: rawAccHolder.trim() || undefined,
+      eWalletType: rawEWalletType.trim() || undefined,
+      eWalletNumber: rawEWalletNumber.trim() || undefined,
+      notes: rawNotes.trim() || undefined,
+      isValid,
+      validationError,
+    });
+  });
+
+  return results;
+}
+
+

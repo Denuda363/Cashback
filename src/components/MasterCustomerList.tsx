@@ -14,7 +14,8 @@ import {
   XCircle,
   MapPin,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  Upload
 } from 'lucide-react';
 import { CustomerMaster, CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
@@ -30,6 +31,7 @@ interface MasterCustomerListProps {
   onToggleStatus: (customerId: string) => void;
   onSelectCustomerForInvoices: (customerName: string) => void;
   onExportExcel: () => void;
+  onOpenImportExcel?: () => void;
 }
 
 export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
@@ -42,6 +44,7 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
   onToggleStatus,
   onSelectCustomerForInvoices,
   onExportExcel,
+  onOpenImportExcel,
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -151,10 +154,21 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenImportExcel && (
+              <button
+                onClick={onOpenImportExcel}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                title="Import master data konsumen dari Excel (.xlsx)"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Import Excel</span>
+              </button>
+            )}
+
             <button
               onClick={onExportExcel}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export Master</span>

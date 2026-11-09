@@ -27,6 +27,7 @@ import { ReceiptModal } from './components/ReceiptModal';
 import { ExportModal } from './components/ExportModal';
 import { DateRangeFilterBar } from './components/DateRangeFilterBar';
 import { ImportExcelModal } from './components/ImportExcelModal';
+import { ImportCustomerModal } from './components/ImportCustomerModal';
 import { CheckCircle2, FileSpreadsheet, Upload } from 'lucide-react';
 import {
   testFirestoreConnection,
@@ -121,6 +122,7 @@ export default function App() {
   const [receiptInvoice, setReceiptInvoice] = useState<Invoice | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImportCustomerModalOpen, setIsImportCustomerModalOpen] = useState(false);
 
   // Cross-tab filters & Global Date Range Filter
   const [customerFilterForInvoices, setCustomerFilterForInvoices] = useState<string>('');
@@ -183,6 +185,24 @@ export default function App() {
       `Berhasil mengimpor ${importedInvoices.length} faktur dari Excel! ${
         newCustomers.length > 0 ? `(${newCustomers.length} konsumen baru didaftarkan)` : ''
       }`
+    );
+  };
+
+  // Import Master Customers from Excel Handler
+  const handleImportCustomersSuccess = (importedCustomers: CustomerMaster[]) => {
+    const updatedCustomers = [...importedCustomers, ...customers];
+    setCustomers(updatedCustomers);
+    saveStoredCustomers(updatedCustomers);
+
+    // Sync each imported customer directly to Firestore Cloud in real-time
+    importedCustomers.forEach((cust) => {
+      saveCustomerToFirestore(cust).catch((err) =>
+        console.warn('Firestore customer import sync error:', err)
+      );
+    });
+
+    showToast(
+      `Berhasil mengimpor ${importedCustomers.length} data konsumen ke Master Data & Firebase Cloud!`
     );
   };
 
@@ -538,6 +558,7 @@ export default function App() {
             onToggleStatus={handleToggleCustomerStatus}
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
             onExportExcel={handleExportExcel}
+            onOpenImportExcel={() => setIsImportCustomerModalOpen(true)}
           />
         )}
 
@@ -605,6 +626,14 @@ export default function App() {
         settings={settings}
         masterCustomers={customers}
         onImportSuccess={handleImportSuccess}
+      />
+
+      {/* Import Master Customers from Excel Modal */}
+      <ImportCustomerModal
+        isOpen={isImportCustomerModalOpen}
+        onClose={() => setIsImportCustomerModalOpen(false)}
+        existingCustomers={customers}
+        onImportSuccess={handleImportCustomersSuccess}
       />
 
       {/* Master Customer Modal (Create & Edit) */}
