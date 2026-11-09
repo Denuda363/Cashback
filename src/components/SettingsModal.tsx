@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   X, 
   Settings as SettingsIcon, 
@@ -14,11 +14,19 @@ import {
   Sidebar as SidebarIcon,
   LayoutTemplate,
   AlignVerticalSpaceAround,
-  Cloud
+  Cloud,
+  Download,
+  Upload,
+  AlertTriangle,
+  Archive,
+  Database,
+  FileJson,
+  Loader2
 } from 'lucide-react';
-import { CashbackSettings, NavPosition, TierRule } from '../types/cashback';
+import { CashbackSettings, CustomerMaster, Invoice, NavPosition, TierRule } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
+import { AppBackupData, parseBackupJSON } from '../utils/storage';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -30,6 +38,11 @@ interface SettingsModalProps {
   isSyncingWithCloud?: boolean;
   navPosition?: NavPosition;
   onChangeNavPosition?: (pos: NavPosition) => void;
+  invoices: Invoice[];
+  customers: CustomerMaster[];
+  onBackupData: () => void;
+  onRestoreBackup: (backup: AppBackupData) => Promise<void>;
+  onWipeAllDataPermanent: () => Promise<void>;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -42,6 +55,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isSyncingWithCloud = false,
   navPosition,
   onChangeNavPosition,
+  invoices,
+  customers,
+  onBackupData,
+  onRestoreBackup,
+  onWipeAllDataPermanent,
 }) => {
   const [mode, setMode] = useState<'flat' | 'tiered'>(settings.mode);
   const [flatPercentage, setFlatPercentage] = useState<number>(settings.flatPercentage);
@@ -52,12 +70,74 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [rounding, setRounding] = useState<'exact' | 'round_hundred' | 'round_thousand'>(settings.rounding);
   const [claimValidityDays, setClaimValidityDays] = useState<number>(settings.claimValidityDays);
   const [storeName, setStoreName] = useState<string>(settings.storeName);
+  
+  // Danger zone & Backup states
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
+  const [isConfirmWipeOpen, setIsConfirmWipeOpen] = useState(false);
+  const [isWiping, setIsWiping] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [pendingBackupToRestore, setPendingBackupToRestore] = useState<AppBackupData | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const restoreFileInputRef = useRef<HTMLInputElement>(null);
 
   // Live Simulator state
   const [simSpend, setSimSpend] = useState<number>(1500000);
 
   if (!isOpen) return null;
+
+  const handleRestoreFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    setRestoreError(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const backup = parseBackupJSON(text);
+        setPendingBackupToRestore(backup);
+      } catch (err: any) {
+        console.error('Failed to parse backup file:', err);
+        setRestoreError(
+          err?.message || 'File backup tidak valid. Pastikan file berformat .JSON cadangan dari sistem ini.'
+        );
+      } finally {
+        if (restoreFileInputRef.current) restoreFileInputRef.current.value = '';
+      }
+    };
+    reader.onerror = () => {
+      setRestoreError('Gagal membaca file dari penyimpanan perangkat.');
+      if (restoreFileInputRef.current) restoreFileInputRef.current.value = '';
+    };
+    reader.readAsText(selectedFile);
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!pendingBackupToRestore) return;
+    try {
+      setIsRestoring(true);
+      await onRestoreBackup(pendingBackupToRestore);
+      setPendingBackupToRestore(null);
+      onClose();
+    } catch (err) {
+      console.error('Restore error:', err);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const handleConfirmWipe = async () => {
+    try {
+      setIsWiping(true);
+      await onWipeAllDataPermanent();
+      setIsConfirmWipeOpen(false);
+      onClose();
+    } catch (err) {
+      console.error('Wipe error:', err);
+    } finally {
+      setIsWiping(false);
+    }
+  };
 
   // Simulator calculation using current form inputs
   const currentDraftSettings: CashbackSettings = {
@@ -570,13 +650,102 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
           </div>
 
-          {/* Danger Zone: Reset Data */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          {/* Section: Backup & Restore Data */}
+          <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Archive className="w-4 h-4 text-blue-700" />
+                <h3 className="font-bold text-slate-900 text-xs">
+                  Backup & Pemulihan Data
+                </h3>
+              </div>
+              <span className="text-[10px] font-semibold text-blue-800 bg-blue-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <FileJson className="w-3 h-3 text-blue-700" />
+                Format Cadangan .JSON
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Unduh salinan cadangan lengkap seluruh data faktur ({invoices.length} faktur), master konsumen ({customers.length} konsumen), dan konfigurasi toko. File dapat disimpan di komputer/HP dan dipulihkan (restore) sewaktu-waktu.
+            </p>
+
+            {restoreError && (
+              <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{restoreError}</span>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-blue-200/70 flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={onBackupData}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-700 hover:bg-blue-800 rounded-lg shadow-2xs transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh Backup Data (.JSON)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => restoreFileInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-blue-800 bg-white hover:bg-blue-100 border border-blue-300 rounded-lg transition-colors"
+              >
+                <Upload className="w-3.5 h-3.5 text-blue-700" />
+                <span>Pulihkan / Restore dari Backup</span>
+              </button>
+
+              <input
+                ref={restoreFileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={handleRestoreFileSelected}
+              />
+            </div>
+          </div>
+
+          {/* Section: Hapus Semua Data Permanen (Zona Bahaya) */}
+          <div className="p-4 rounded-xl border border-red-300 bg-red-50/50 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+                <h3 className="font-bold text-red-950 text-xs">
+                  Hapus Semua Data Permanen
+                </h3>
+              </div>
+              <span className="text-[10px] font-bold text-red-700 bg-red-100 border border-red-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                Tindakan Permanen & Tidak Dapat Dibatalkan
+              </span>
+            </div>
+
+            <p className="text-[11px] text-red-800 leading-relaxed">
+              Tindakan ini akan mengosongkan dan menghapus SELURUH <strong className="font-bold">{invoices.length} faktur transaksi</strong> serta <strong className="font-bold">{customers.length} master data konsumen</strong> secara permanen dari penyimpanan browser lokal dan Cloud Firebase Firestore.
+            </p>
+
+            <div className="pt-2 border-t border-red-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-[11px] text-red-700 font-medium">
+                Saran: Unduh file Backup Data di atas terlebih dahulu sebelum menghapus.
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setIsConfirmWipeOpen(true)}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-2xs transition-colors shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Semua Data Permanen</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Reset Data Sampel Demo */}
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Muat ulang data sampel default jika ingin memulai ulang demo:</span>
             <button
               type="button"
               onClick={() => setIsConfirmResetOpen(true)}
-              className="text-slate-600 hover:text-red-700 font-semibold flex items-center gap-1"
+              className="text-slate-600 hover:text-slate-900 font-semibold flex items-center gap-1"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Reset Data Sampel</span>
@@ -619,6 +788,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           onClose();
         }}
         onCancel={() => setIsConfirmResetOpen(false)}
+      />
+
+      {/* Restore Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={pendingBackupToRestore !== null}
+        title="Konfirmasi Pemulihan Data (Restore)"
+        message={`Pulihkan ${pendingBackupToRestore?.totalInvoices} faktur dan ${pendingBackupToRestore?.totalCustomers} konsumen dari file cadangan (${pendingBackupToRestore?.storeName})? Seluruh data faktur dan konsumen saat ini akan digantikan dan disinkronkan ke Cloud Firebase.`}
+        confirmLabel="Ya, Pulihkan Sekarang"
+        cancelLabel="Batal"
+        isDestructive={false}
+        isLoading={isRestoring}
+        loadingText="Memulihkan ke Cloud & Lokal..."
+        onConfirm={handleConfirmRestore}
+        onCancel={() => setPendingBackupToRestore(null)}
+      />
+
+      {/* Permanent Wipe Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isConfirmWipeOpen}
+        title="Hapus SEMUA Data Secara Permanen"
+        message={`PERINGATAN: Tindakan ini akan menghapus permanen ${invoices.length} faktur transaksi dan ${customers.length} master konsumen dari penyimpanan lokal (browser) serta Cloud Firebase Firestore. Data yang terhapus TIDAK DAPAT DIPULIHKAN.`}
+        confirmLabel="Hapus Semua Data Permanen"
+        cancelLabel="Batal"
+        isDestructive={true}
+        requireText="HAPUS"
+        isLoading={isWiping}
+        loadingText="Menghapus Cloud & Lokal..."
+        onConfirm={handleConfirmWipe}
+        onCancel={() => setIsConfirmWipeOpen(false)}
       />
 
     </div>

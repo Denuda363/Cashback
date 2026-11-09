@@ -9,7 +9,10 @@ import {
   loadStoredNavPosition,
   saveStoredNavPosition,
   aggregateCustomerSummaries, 
-  resetToDefaultData 
+  resetToDefaultData,
+  exportBackupJSON,
+  wipeAllLocalData,
+  AppBackupData
 } from './utils/storage';
 import { exportCashbackToExcel, exportTandaTerimaFormat } from './utils/excelExport';
 import { calculateCashback } from './utils/cashbackCalculator';
@@ -42,6 +45,8 @@ import {
   deleteCustomerFromFirestore,
   saveSettingsToFirestore,
   batchUpdateInvoicesInFirestore,
+  deleteAllDataFromFirestore,
+  restoreBackupToFirestore,
   FIRESTORE_DATABASE_ID,
   FIREBASE_PROJECT_ID,
 } from './services/firebase';
@@ -410,6 +415,71 @@ export default function App() {
     showToast('Data sampel default berhasil dimuat ulang dan disinkronkan ke semua tabel Firebase.');
   };
 
+  // Backup & Restore Handlers
+  const handleBackupData = () => {
+    try {
+      exportBackupJSON(invoices, customers, settings);
+      showToast(
+        `Cadangan data (${invoices.length} faktur, ${customers.length} konsumen) berhasil diunduh.`
+      );
+    } catch (err: any) {
+      console.error('Backup error:', err);
+      showToast('Gagal mengunduh backup data: ' + (err?.message || 'Error'));
+    }
+  };
+
+  const handleRestoreBackup = async (backup: AppBackupData) => {
+    setIsSyncingWithCloud(true);
+    try {
+      // 1. Update React state
+      setInvoices(backup.invoices);
+      setCustomers(backup.customers);
+      setSettings(backup.settings);
+
+      // 2. Save to local storage
+      saveStoredInvoices(backup.invoices);
+      saveStoredCustomers(backup.customers);
+      saveStoredSettings(backup.settings);
+
+      // 3. Restore to Firestore Cloud
+      await restoreBackupToFirestore(backup.invoices, backup.customers, backup.settings);
+
+      showToast(
+        `Data berhasil dipulihkan dari backup: ${backup.invoices.length} faktur dan ${backup.customers.length} konsumen telah aktif di cloud & lokal!`
+      );
+    } catch (err: any) {
+      console.error('Restore error:', err);
+      showToast('Gagal memulihkan data dari file backup: ' + (err?.message || 'Error'));
+    } finally {
+      setIsSyncingWithCloud(false);
+    }
+  };
+
+  // Permanent Total Wipe Handler (Hapus All Data Permanen)
+  const handleWipeAllDataPermanent = async () => {
+    setIsSyncingWithCloud(true);
+    try {
+      // 1. Delete all invoices and customers from Cloud Firestore
+      const wipeResult = await deleteAllDataFromFirestore();
+
+      // 2. Clear local storage
+      wipeAllLocalData();
+
+      // 3. Clear local React state
+      setInvoices([]);
+      setCustomers([]);
+
+      showToast(
+        `Seluruh data berhasil dihapus permanen! (${wipeResult?.deletedInvoices || 0} faktur & ${wipeResult?.deletedCustomers || 0} konsumen telah dibersihkan dari Cloud & Lokal).`
+      );
+    } catch (err: any) {
+      console.error('Wipe data error:', err);
+      showToast('Gagal menghapus data di cloud: ' + (err?.message || 'Error'));
+    } finally {
+      setIsSyncingWithCloud(false);
+    }
+  };
+
   // Export to Excel Dialog Handler
   const handleExportExcel = () => {
     setIsExportModalOpen(true);
@@ -648,7 +718,7 @@ export default function App() {
         existingCustomers={customers}
       />
 
-      {/* Settings Modal (% Cashback & Rules & Navigation Position & Cloud Sync) */}
+      {/* Settings Modal (% Cashback & Rules & Navigation Position & Cloud Sync & Backup & Wipe) */}
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
@@ -659,6 +729,11 @@ export default function App() {
         isSyncingWithCloud={isSyncingWithCloud}
         navPosition={navPosition}
         onChangeNavPosition={handleChangeNavPosition}
+        invoices={invoices}
+        customers={customers}
+        onBackupData={handleBackupData}
+        onRestoreBackup={handleRestoreBackup}
+        onWipeAllDataPermanent={handleWipeAllDataPermanent}
       />
 
       {/* Digital Receipt Modal */}

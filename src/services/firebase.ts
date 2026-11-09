@@ -447,3 +447,120 @@ export async function forceSyncAllToFirestore(
     manualSyncTriggered: true,
   }, { merge: true });
 }
+
+// -------------------------------------------------------------
+// Total Wipe: Permanently delete all invoices and customers from Firestore
+// -------------------------------------------------------------
+export async function deleteAllDataFromFirestore(): Promise<{
+  deletedInvoices: number;
+  deletedCustomers: number;
+}> {
+  try {
+    let deletedInvoices = 0;
+    let deletedCustomers = 0;
+
+    // 1. Delete all invoices in batches
+    const invSnap = await getDocs(collection(db, INVOICES_COLLECTION));
+    deletedInvoices = invSnap.size;
+    if (!invSnap.empty) {
+      const BATCH_SIZE = 400;
+      const docs = invSnap.docs;
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        docs.slice(i, i + BATCH_SIZE).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+
+    // 2. Delete all customers in batches
+    const custSnap = await getDocs(collection(db, CUSTOMERS_COLLECTION));
+    deletedCustomers = custSnap.size;
+    if (!custSnap.empty) {
+      const BATCH_SIZE = 400;
+      const docs = custSnap.docs;
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        docs.slice(i, i + BATCH_SIZE).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+
+    // 3. Update system table with wipe record
+    const systemRef = doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID);
+    await setDoc(
+      systemRef,
+      {
+        lastWipedAt: new Date().toISOString(),
+        status: 'wiped',
+        totalInvoices: 0,
+        totalCustomers: 0,
+      },
+      { merge: true }
+    );
+
+    console.log(`Firestore Wipe: Dihapus ${deletedInvoices} faktur dan ${deletedCustomers} konsumen.`);
+    return { deletedInvoices, deletedCustomers };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, 'all_collections');
+  }
+}
+
+// -------------------------------------------------------------
+// Restore from Backup to Firestore
+// -------------------------------------------------------------
+export async function restoreBackupToFirestore(
+  invoices: Invoice[],
+  customers: CustomerMaster[],
+  settings?: CashbackSettings
+): Promise<void> {
+  try {
+    // 1. Clear existing data in Firestore
+    await deleteAllDataFromFirestore();
+
+    // 2. Restore customers
+    if (customers.length > 0) {
+      const BATCH_SIZE = 400;
+      for (let i = 0; i < customers.length; i += BATCH_SIZE) {
+        const slice = customers.slice(i, i + BATCH_SIZE);
+        const batch = writeBatch(db);
+        slice.forEach((c) => {
+          batch.set(doc(db, CUSTOMERS_COLLECTION, c.id), c);
+        });
+        await batch.commit();
+      }
+    }
+
+    // 3. Restore invoices
+    if (invoices.length > 0) {
+      const BATCH_SIZE = 400;
+      for (let i = 0; i < invoices.length; i += BATCH_SIZE) {
+        const slice = invoices.slice(i, i + BATCH_SIZE);
+        const batch = writeBatch(db);
+        slice.forEach((inv) => {
+          batch.set(doc(db, INVOICES_COLLECTION, inv.id), inv);
+        });
+        await batch.commit();
+      }
+    }
+
+    // 4. Restore settings if provided
+    if (settings) {
+      await saveSettingsToFirestore(settings);
+    }
+
+    // 5. Update system metadata
+    await setDoc(
+      doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID),
+      {
+        appName: 'CashbackPro Rekapitulasi',
+        lastRestoredAt: new Date().toISOString(),
+        totalInvoices: invoices.length,
+        totalCustomers: customers.length,
+        status: 'active',
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'restore_backup');
+  }
+}

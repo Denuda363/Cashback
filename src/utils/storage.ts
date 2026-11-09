@@ -29,12 +29,12 @@ export function saveStoredNavPosition(pos: NavPosition): void {
 export function loadStoredCustomers(): CustomerMaster[] {
   try {
     const raw = localStorage.getItem(CUSTOMERS_KEY);
-    if (!raw) {
+    if (raw === null) {
       saveStoredCustomers(INITIAL_CUSTOMERS);
       return INITIAL_CUSTOMERS;
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed;
     }
     return INITIAL_CUSTOMERS;
@@ -55,12 +55,12 @@ export function saveStoredCustomers(customers: CustomerMaster[]): void {
 export function loadStoredInvoices(): Invoice[] {
   try {
     const raw = localStorage.getItem(INVOICES_KEY);
-    if (!raw) {
+    if (raw === null) {
       saveStoredInvoices(INITIAL_INVOICES);
       return INITIAL_INVOICES;
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed;
     }
     return INITIAL_INVOICES;
@@ -106,6 +106,92 @@ export function resetToDefaultData(): { invoices: Invoice[]; settings: CashbackS
   saveStoredSettings(DEFAULT_SETTINGS);
   saveStoredCustomers(INITIAL_CUSTOMERS);
   return { invoices: INITIAL_INVOICES, settings: DEFAULT_SETTINGS, customers: INITIAL_CUSTOMERS };
+}
+
+export interface AppBackupData {
+  backupVersion: string;
+  exportedAt: string;
+  appName: string;
+  storeName: string;
+  totalInvoices: number;
+  totalCustomers: number;
+  invoices: Invoice[];
+  customers: CustomerMaster[];
+  settings: CashbackSettings;
+}
+
+/**
+ * Downloads a complete JSON backup file containing all invoices, customers, and settings.
+ */
+export function exportBackupJSON(
+  invoices: Invoice[],
+  customers: CustomerMaster[],
+  settings: CashbackSettings
+): void {
+  const backup: AppBackupData = {
+    backupVersion: '2.0',
+    exportedAt: new Date().toISOString(),
+    appName: 'CashbackPro Rekapitulasi & Master Data',
+    storeName: settings.storeName || 'CashbackPro',
+    totalInvoices: invoices.length,
+    totalCustomers: customers.length,
+    invoices,
+    customers,
+    settings,
+  };
+
+  const jsonStr = JSON.stringify(backup, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeName = (settings.storeName || 'CashbackPro')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '_');
+  const dateStr = new Date().toISOString().split('T')[0];
+
+  a.href = url;
+  a.download = `Backup_CashbackPro_${safeName}_${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Parses and validates an uploaded backup JSON file.
+ */
+export function parseBackupJSON(fileContent: string): AppBackupData {
+  const parsed = JSON.parse(fileContent);
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Format file backup tidak valid. Harus berupa file JSON.');
+  }
+  if (!Array.isArray(parsed.invoices) || !Array.isArray(parsed.customers)) {
+    throw new Error('File cadangan tidak memiliki array data faktur atau konsumen yang valid.');
+  }
+  return {
+    backupVersion: parsed.backupVersion || '2.0',
+    exportedAt: parsed.exportedAt || new Date().toISOString(),
+    appName: parsed.appName || 'CashbackPro',
+    storeName: parsed.storeName || 'Toko',
+    totalInvoices: parsed.invoices.length,
+    totalCustomers: parsed.customers.length,
+    invoices: parsed.invoices,
+    customers: parsed.customers,
+    settings: parsed.settings || DEFAULT_SETTINGS,
+  };
+}
+
+/**
+ * Wipes all invoices, customers, and resets settings in local storage.
+ */
+export function wipeAllLocalData(): void {
+  try {
+    localStorage.setItem(INVOICES_KEY, JSON.stringify([]));
+    localStorage.setItem(CUSTOMERS_KEY, JSON.stringify([]));
+    saveStoredSettings(DEFAULT_SETTINGS);
+  } catch (e) {
+    console.error('Failed to wipe local data', e);
+  }
 }
 
 /**
