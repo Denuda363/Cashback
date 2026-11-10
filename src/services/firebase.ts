@@ -137,7 +137,7 @@ export async function ensureFirestoreTablesExist(
   let totalCustomers = 0;
 
   try {
-    console.log('Memeriksa dan memastikan seluruh tabel Firestore otomatis dibuat...');
+    console.log('Memeriksa status tabel database Firestore Cloud...');
 
     // 1. Table: settings (Pengaturan Cashback)
     try {
@@ -155,43 +155,21 @@ export async function ensureFirestoreTablesExist(
     }
 
     // 2. Table: customers (Master Data Konsumen)
+    // PERINGATAN: Jangan pernah mengisi ulang data sampel jika kosong agar data yang sudah dihapus tidak kembali!
     try {
       const customersSnap = await getDocs(collection(db, CUSTOMERS_COLLECTION));
       totalCustomers = customersSnap.size;
-      if (customersSnap.empty) {
-        const batch = writeBatch(db);
-        initialCustomers.forEach((cust) => {
-          const custRef = doc(db, CUSTOMERS_COLLECTION, cust.id);
-          batch.set(custRef, cust);
-        });
-        await batch.commit();
-        totalCustomers = initialCustomers.length;
-        seededTables.push('customers');
-        console.log(`✓ Tabel customers berhasil dibuat dengan ${initialCustomers.length} data awal.`);
-      } else {
-        existingTables.push('customers');
-      }
+      existingTables.push('customers');
     } catch (e) {
       console.warn('Check customers table error:', e);
     }
 
     // 3. Table: invoices (Rekap Faktur Transaksi)
+    // PERINGATAN: Jangan pernah mengisi ulang faktur sampel jika kosong agar faktur yang sudah dihapus tidak kembali!
     try {
       const invoicesSnap = await getDocs(collection(db, INVOICES_COLLECTION));
       totalInvoices = invoicesSnap.size;
-      if (invoicesSnap.empty) {
-        const batch = writeBatch(db);
-        initialInvoices.forEach((inv) => {
-          const invRef = doc(db, INVOICES_COLLECTION, inv.id);
-          batch.set(invRef, inv);
-        });
-        await batch.commit();
-        totalInvoices = initialInvoices.length;
-        seededTables.push('invoices');
-        console.log(`✓ Tabel invoices berhasil dibuat dengan ${initialInvoices.length} data faktur awal.`);
-      } else {
-        existingTables.push('invoices');
-      }
+      existingTables.push('invoices');
     } catch (e) {
       console.warn('Check invoices table error:', e);
     }
@@ -199,17 +177,23 @@ export async function ensureFirestoreTablesExist(
     // 4. Table: system (Metadata & Status Database)
     try {
       const systemRef = doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID);
-      await setDoc(systemRef, {
-        appName: 'CashbackPro Rekapitulasi',
-        version: '2.0',
-        status: 'active',
-        databaseId: FIRESTORE_DATABASE_ID,
-        projectId: FIREBASE_PROJECT_ID,
-        lastSyncAt: new Date().toISOString(),
-        tables: [INVOICES_COLLECTION, CUSTOMERS_COLLECTION, SETTINGS_COLLECTION, SYSTEM_COLLECTION],
-      }, { merge: true });
-      seededTables.push('system');
-      console.log('✓ Tabel system status metadata berhasil diperbarui.');
+      const systemSnap = await getDoc(systemRef);
+      if (!systemSnap.exists()) {
+        await setDoc(systemRef, {
+          appName: 'CashbackPro Rekapitulasi',
+          version: '2.0',
+          status: 'active',
+          isInitialized: true,
+          databaseId: FIRESTORE_DATABASE_ID,
+          projectId: FIREBASE_PROJECT_ID,
+          lastSyncAt: new Date().toISOString(),
+          tables: [INVOICES_COLLECTION, CUSTOMERS_COLLECTION, SETTINGS_COLLECTION, SYSTEM_COLLECTION],
+        });
+        seededTables.push('system');
+        console.log('✓ Tabel system status metadata berhasil diinisialisasi.');
+      } else {
+        existingTables.push('system');
+      }
     } catch (e) {
       console.warn('Check system table error:', e);
     }

@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, INITIAL_CUSTOMERS, INITIAL_INVOICES } from '../data/initialData';
+import { DEFAULT_SETTINGS } from '../data/initialData';
 import { CashbackSettings, CustomerMaster, CustomerSummary, Invoice, NavPosition } from '../types/cashback';
 
 const INVOICES_KEY = 'cashback_app_invoices_v2';
@@ -30,17 +30,17 @@ export function loadStoredCustomers(): CustomerMaster[] {
   try {
     const raw = localStorage.getItem(CUSTOMERS_KEY);
     if (raw === null) {
-      saveStoredCustomers(INITIAL_CUSTOMERS);
-      return INITIAL_CUSTOMERS;
+      saveStoredCustomers([]);
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       return parsed;
     }
-    return INITIAL_CUSTOMERS;
+    return [];
   } catch (e) {
     console.error('Failed to load customers from localStorage', e);
-    return INITIAL_CUSTOMERS;
+    return [];
   }
 }
 
@@ -56,17 +56,17 @@ export function loadStoredInvoices(): Invoice[] {
   try {
     const raw = localStorage.getItem(INVOICES_KEY);
     if (raw === null) {
-      saveStoredInvoices(INITIAL_INVOICES);
-      return INITIAL_INVOICES;
+      saveStoredInvoices([]);
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       return parsed;
     }
-    return INITIAL_INVOICES;
+    return [];
   } catch (e) {
     console.error('Failed to load invoices from localStorage', e);
-    return INITIAL_INVOICES;
+    return [];
   }
 }
 
@@ -99,13 +99,6 @@ export function saveStoredSettings(settings: CashbackSettings): void {
   } catch (e) {
     console.error('Failed to save settings to localStorage', e);
   }
-}
-
-export function resetToDefaultData(): { invoices: Invoice[]; settings: CashbackSettings; customers: CustomerMaster[] } {
-  saveStoredInvoices(INITIAL_INVOICES);
-  saveStoredSettings(DEFAULT_SETTINGS);
-  saveStoredCustomers(INITIAL_CUSTOMERS);
-  return { invoices: INITIAL_INVOICES, settings: DEFAULT_SETTINGS, customers: INITIAL_CUSTOMERS };
 }
 
 export interface AppBackupData {

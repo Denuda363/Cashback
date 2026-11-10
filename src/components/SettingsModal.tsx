@@ -34,7 +34,6 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: CashbackSettings;
   onSaveSettings: (newSettings: CashbackSettings) => void;
-  onResetData: () => void;
   onForceSyncCloud?: () => void;
   isSyncingWithCloud?: boolean;
   navPosition?: NavPosition;
@@ -52,7 +51,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   settings,
   onSaveSettings,
-  onResetData,
   onForceSyncCloud,
   isSyncingWithCloud = false,
   navPosition,
@@ -75,7 +73,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [storeName, setStoreName] = useState<string>(settings.storeName);
   
   // Danger zone & Backup states
-  const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
   const [isConfirmWipeOpen, setIsConfirmWipeOpen] = useState(false);
   const [isWiping, setIsWiping] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -787,19 +784,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
-          {/* Reset Data Sampel Demo */}
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Muat ulang data sampel default jika ingin memulai ulang demo:</span>
-            <button
-              type="button"
-              onClick={() => setIsConfirmResetOpen(true)}
-              className="text-slate-600 hover:text-slate-900 font-semibold flex items-center gap-1"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Reset Data Sampel</span>
-            </button>
-          </div>
-
           {/* Modal Actions */}
           <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2">
             <button
@@ -821,22 +805,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </form>
 
       </div>
-
-      {/* Reset Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={isConfirmResetOpen}
-        title="Reset Data ke Sampel Bawaan"
-        message="Yakin ingin memuat ulang seluruh faktur, konsumen, dan pengaturan kembali ke data contoh bawaan? Seluruh perubahan saat ini akan diganti."
-        confirmLabel="Ya, Reset Data"
-        cancelLabel="Batal"
-        isDestructive={true}
-        onConfirm={() => {
-          onResetData();
-          setIsConfirmResetOpen(false);
-          onClose();
-        }}
-        onCancel={() => setIsConfirmResetOpen(false)}
-      />
 
       {/* Restore Confirmation Dialog */}
       <ConfirmDialog

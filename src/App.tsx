@@ -9,7 +9,6 @@ import {
   loadStoredNavPosition,
   saveStoredNavPosition,
   aggregateCustomerSummaries, 
-  resetToDefaultData,
   exportBackupJSON,
   wipeAllLocalData,
   AppBackupData
@@ -85,22 +84,14 @@ export default function App() {
         }
 
         // 3. Attach live real-time listeners for instant multi-device sync
-        let hasLoadedInvoicesOnce = false;
         unsubInvoices = subscribeFirestoreInvoices((liveInvoices) => {
-          if (liveInvoices.length > 0 || hasLoadedInvoicesOnce) {
-            hasLoadedInvoicesOnce = true;
-            setInvoices(liveInvoices);
-            saveStoredInvoices(liveInvoices);
-          }
+          setInvoices(liveInvoices);
+          saveStoredInvoices(liveInvoices);
         });
 
-        let hasLoadedCustomersOnce = false;
         unsubCustomers = subscribeFirestoreCustomers((liveCustomers) => {
-          if (liveCustomers.length > 0 || hasLoadedCustomersOnce) {
-            hasLoadedCustomersOnce = true;
-            setCustomers(liveCustomers);
-            saveStoredCustomers(liveCustomers);
-          }
+          setCustomers(liveCustomers);
+          saveStoredCustomers(liveCustomers);
         });
 
         unsubSettings = subscribeFirestoreSettings((liveSettings) => {
@@ -404,17 +395,6 @@ export default function App() {
     } finally {
       setIsSyncingWithCloud(false);
     }
-  };
-
-  const handleResetData = () => {
-    const defaultData = resetToDefaultData();
-    setInvoices(defaultData.invoices);
-    setSettings(defaultData.settings);
-    setCustomers(defaultData.customers);
-    forceSyncAllToFirestore(defaultData.invoices, defaultData.customers, defaultData.settings).catch((err) => {
-      console.warn('Firestore reset seed:', err);
-    });
-    showToast('Data sampel default berhasil dimuat ulang dan disinkronkan ke semua tabel Firebase.');
   };
 
   // Backup & Restore Handlers
@@ -733,7 +713,6 @@ export default function App() {
         onClose={() => setIsSettingsModalOpen(false)}
         settings={settings}
         onSaveSettings={handleSaveSettings}
-        onResetData={handleResetData}
         onForceSyncCloud={handleForceSyncCloud}
         isSyncingWithCloud={isSyncingWithCloud}
         navPosition={navPosition}
