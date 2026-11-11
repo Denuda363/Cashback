@@ -22,12 +22,14 @@ import {
   Database,
   FileJson,
   Loader2,
-  BookOpen
+  BookOpen,
+  Smartphone
 } from 'lucide-react';
 import { CashbackSettings, CustomerMaster, Invoice, NavPosition, TierRule } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
 import { AppBackupData, parseBackupJSON } from '../utils/storage';
+import { PWAInstallModal, PWAInstallButton } from './PWAInstallPrompt';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -82,6 +84,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   // Live Simulator state
   const [simSpend, setSimSpend] = useState<number>(1500000);
+  const [isPwaModalOpen, setIsPwaModalOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -695,6 +698,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
           </div>
 
+          {/* Section: Instal Aplikasi ke Semua Perangkat (PWA) */}
+          <div className="p-4 rounded-xl border border-emerald-300 bg-emerald-50/50 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-emerald-700" />
+                <h3 className="font-bold text-slate-900 text-xs">
+                  Instal Aplikasi ke Perangkat (Android, iOS & Komputer)
+                </h3>
+              </div>
+              <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <Download className="w-3 h-3 text-emerald-700" />
+                PWA Siap Pakai
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Pasang CashbackPro ke layar utama HP Android, iPhone / iPad, atau desktop komputer Anda. Bekerja tanpa perlu download dari Google Play Store / App Store, berjalan offline, dan terasa seperti aplikasi native tanpa bilah browser.
+            </p>
+
+            <div className="pt-2 border-t border-emerald-200/70 flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <PWAInstallButton variant="primary" />
+                <button
+                  type="button"
+                  onClick={() => setIsPwaModalOpen(true)}
+                  className="px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-white hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors"
+                >
+                  Lihat Panduan Instalasi Semua OS
+                </button>
+              </div>
+              <span className="text-[11px] text-slate-500">
+                Mendukung Android • iOS Safari • Windows • macOS
+              </span>
+            </div>
+          </div>
+
           {/* Section: Backup & Restore Data */}
           <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-3">
             <div className="flex items-center justify-between">
@@ -833,6 +872,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         loadingText="Menghapus Cloud & Lokal..."
         onConfirm={handleConfirmWipe}
         onCancel={() => setIsConfirmWipeOpen(false)}
+      />
+
+      {/* PWA Installation Modal */}
+      <PWAInstallModal
+        isOpen={isPwaModalOpen}
+        onClose={() => setIsPwaModalOpen(false)}
       />
 
     </div>

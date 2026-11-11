@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { ActiveTab, NavPosition } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
+import { PWAInstallButton } from './PWAInstallPrompt';
 
 interface SmartNavigationProps {
   activeTab: ActiveTab;
@@ -318,6 +319,13 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
               {!isSidebarCollapsed && <span>Input Faktur</span>}
             </button>
 
+            {/* PWA Install Button */}
+            {!isSidebarCollapsed && (
+              <div className="pt-1">
+                <PWAInstallButton className="w-full justify-center" variant="chip" />
+              </div>
+            )}
+
             {/* Position Selector Widget & Excel Actions */}
             <div className={`flex items-center justify-between gap-1 pt-1 ${isSidebarCollapsed ? 'flex-col' : ''}`}>
               {onOpenImportExcel && (
@@ -430,6 +438,10 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                   <PositionSwitcher />
                 </div>
 
+                <div className="hidden sm:block">
+                  <PWAInstallButton variant="chip" />
+                </div>
+
                 {onOpenImportExcel && (
                   <button
                     onClick={onOpenImportExcel}
@@ -523,6 +535,9 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
               <FirebaseStatusBadge />
             </div>
             <PositionSwitcher />
+            <div className="hidden sm:block">
+              <PWAInstallButton variant="chip" />
+            </div>
             {onOpenImportExcel && (
               <button
                 onClick={onOpenImportExcel}

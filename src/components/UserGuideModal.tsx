@@ -23,7 +23,9 @@ import {
   ExternalLink,
   Percent,
   Wallet,
-  Phone
+  Phone,
+  Smartphone,
+  Laptop
 } from 'lucide-react';
 
 interface UserGuideModalProps {
@@ -340,6 +342,54 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             ],
             warning:
               'Tindakan ini tidak dapat dibatalkan! Selalu unduh file Backup Data (.JSON) terlebih dahulu sebelum melakukan pembersihan permanen.',
+          },
+        ],
+      },
+      {
+        id: 'install_pwa',
+        title: 'Panduan Instalasi di Semua Perangkat (Android, iOS & PC)',
+        shortTitle: 'Instal di Semua HP & PC',
+        icon: Smartphone,
+        tag: 'PWA Multi-Perangkat',
+        summary:
+          'Aplikasi CashbackPro dapat dipasang langsung ke layar utama HP Android, iPhone / iPad, atau desktop PC tanpa perlu ke Play Store atau App Store.',
+        steps: [
+          {
+            title: 'A. Cara Pasang di Smartphone Android (Chrome, Edge, Samsung Internet)',
+            description:
+              'Aplikasi dapat dipasang langsung menjadi icon aplikasi di homescreen Android Anda:',
+            details: [
+              'Buka website CashbackPro menggunakan Google Chrome atau Microsoft Edge.',
+              'Ketuk tombol "Instal App" di navigasi atas atau buka menu Pengaturan -> "Instal Aplikasi ke Perangkat".',
+              'Atau ketuk menu titik tiga (⋮) di pojok kanan atas browser -> pilih "Instal aplikasi" atau "Tambahkan ke Layar Utama".',
+              'Ketuk "Instal". CashbackPro akan otomatis muncul di laci aplikasi (app drawer) & layar depan.',
+            ],
+            tips: 'Saat dibuka dari layar utama, aplikasi berjalan dalam mode layar penuh (Full Screen) tanpa kolom URL browser.',
+          },
+          {
+            title: 'B. Cara Pasang di iPhone & iPad (Apple Safari)',
+            description:
+              'Untuk pengguna Apple iOS, instalasi dilakukan melalui fitur "Add to Home Screen" di Safari:',
+            details: [
+              'Buka website CashbackPro menggunakan browser resmi Safari di iPhone atau iPad.',
+              'Ketuk tombol Bagikan / Share (ikon kotak dengan tanda panah mengarah ke atas di bilah bawah).',
+              'Gulir menu tindakan ke bawah dan ketuk "Tambah ke Layar Utama" (Add to Home Screen).',
+              'Beri nama (default: CashbackPro) lalu ketuk "Tambah" di pojok kanan atas.',
+              'Ikon CashbackPro langsung muncul di layar utama iOS Anda dengan logo resmi.',
+            ],
+            tips: 'Data Anda tetap tersimpan di perangkat dan otomatis tersinkronisasi ke Cloud Firebase Firestore.',
+          },
+          {
+            title: 'C. Cara Pasang di Komputer PC / Laptop (Windows, Mac, Linux)',
+            description:
+              'Dapat dijalankan sebagai aplikasi desktop tersendiri layaknya software native:',
+            details: [
+              'Buka aplikasi menggunakan Google Chrome atau Microsoft Edge di PC / Laptop Anda.',
+              'Perhatikan bilah alamat (URL bar) di kanan atas, klik ikon komputer/instal (⊕ atau monitor kecil).',
+              'Atau klik menu titik tiga (⋮) Chrome -> "Simpan dan bagikan" -> "Instal halaman sebagai aplikasi".',
+              'Klik "Instal". Aplikasi akan memiliki jendela tersendiri dan ikon shortcut di Desktop / Start Menu Windows / Mac Launchpad.',
+            ],
+            tips: 'Aplikasi desktop sangat nyaman untuk kasir toko dengan layar monitor besar.',
           },
         ],
       },

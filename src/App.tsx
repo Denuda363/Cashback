@@ -31,6 +31,7 @@ import { DateRangeFilterBar } from './components/DateRangeFilterBar';
 import { ImportExcelModal } from './components/ImportExcelModal';
 import { ImportCustomerModal } from './components/ImportCustomerModal';
 import { UserGuideModal } from './components/UserGuideModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { CheckCircle2, FileSpreadsheet, Upload, BookOpen } from 'lucide-react';
 import {
   testFirestoreConnection,
@@ -751,6 +752,9 @@ export default function App() {
         onSaveSettings={handleSaveSettings}
         onSuccessToast={showToast}
       />
+
+      {/* Real-time Connectivity Indicator */}
+      <OfflineIndicator />
 
     </SmartNavigation>
   );
