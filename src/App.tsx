@@ -46,6 +46,7 @@ import {
   deleteCustomerFromFirestore,
   saveSettingsToFirestore,
   batchUpdateInvoicesInFirestore,
+  batchUpdateCustomersInFirestore,
   deleteAllDataFromFirestore,
   restoreBackupToFirestore,
   FIRESTORE_DATABASE_ID,
@@ -77,8 +78,8 @@ export default function App() {
         try {
           const res = await ensureFirestoreTablesExist(invoices, customers, settings);
           if (res.seededTables.length > 0) {
-            console.log('Tabel Firestore berhasil otomatis dibuat:', res.seededTables);
-            showToast(`Database Cloud siap! Tabel [${res.seededTables.join(', ')}] otomatis aktif.`);
+            console.log('Tabel Firestore berhasil otomatis dibuat/disinkronkan:', res.seededTables);
+            showToast(`Firebase Cloud aktif! Data tersinkronisasi otomatis.`);
           }
         } catch (err) {
           console.warn('Auto table check error:', err);
@@ -86,13 +87,35 @@ export default function App() {
 
         // 3. Attach live real-time listeners for instant multi-device sync
         unsubInvoices = subscribeFirestoreInvoices((liveInvoices) => {
-          setInvoices(liveInvoices);
-          saveStoredInvoices(liveInvoices);
+          if (liveInvoices && liveInvoices.length > 0) {
+            setInvoices(liveInvoices);
+            saveStoredInvoices(liveInvoices);
+          } else {
+            const local = loadStoredInvoices();
+            if (local.length > 0) {
+              console.log('[Firestore] Mengunggah data faktur lokal ke Firebase Cloud...');
+              batchUpdateInvoicesInFirestore(local).catch((e) => console.warn('Sync local invoices error:', e));
+            } else {
+              setInvoices([]);
+              saveStoredInvoices([]);
+            }
+          }
         });
 
         unsubCustomers = subscribeFirestoreCustomers((liveCustomers) => {
-          setCustomers(liveCustomers);
-          saveStoredCustomers(liveCustomers);
+          if (liveCustomers && liveCustomers.length > 0) {
+            setCustomers(liveCustomers);
+            saveStoredCustomers(liveCustomers);
+          } else {
+            const local = loadStoredCustomers();
+            if (local.length > 0) {
+              console.log('[Firestore] Mengunggah master konsumen lokal ke Firebase Cloud...');
+              batchUpdateCustomersInFirestore(local).catch((e) => console.warn('Sync local customers error:', e));
+            } else {
+              setCustomers([]);
+              saveStoredCustomers([]);
+            }
+          }
         });
 
         unsubSettings = subscribeFirestoreSettings((liveSettings) => {
@@ -165,40 +188,36 @@ export default function App() {
   };
 
   // Import Invoices from Excel Handler
-  const handleImportSuccess = (importedInvoices: Invoice[], newCustomers: CustomerMaster[]) => {
+  const handleImportSuccess = async (importedInvoices: Invoice[], newCustomers: CustomerMaster[]) => {
     const updatedInvoices = [...importedInvoices, ...invoices];
     setInvoices(updatedInvoices);
     saveStoredInvoices(updatedInvoices);
-    batchUpdateInvoicesInFirestore(updatedInvoices).catch((err) => console.warn('Firestore import sync:', err));
+    await batchUpdateInvoicesInFirestore(updatedInvoices).catch((err) => console.warn('Firestore import sync:', err));
 
     if (newCustomers.length > 0) {
       const updatedCustomers = [...newCustomers, ...customers];
       setCustomers(updatedCustomers);
       saveStoredCustomers(updatedCustomers);
-      newCustomers.forEach((c) => {
-        saveCustomerToFirestore(c).catch((err) => console.warn('Firestore new cust import:', err));
-      });
+      await batchUpdateCustomersInFirestore(updatedCustomers).catch((err) => console.warn('Firestore new cust import:', err));
     }
 
     showToast(
-      `Berhasil mengimpor ${importedInvoices.length} faktur dari Excel! ${
+      `Berhasil mengimpor ${importedInvoices.length} faktur dari Excel ke Firebase Cloud & lokal! ${
         newCustomers.length > 0 ? `(${newCustomers.length} konsumen baru didaftarkan)` : ''
       }`
     );
   };
 
   // Import Master Customers from Excel Handler
-  const handleImportCustomersSuccess = (importedCustomers: CustomerMaster[]) => {
+  const handleImportCustomersSuccess = async (importedCustomers: CustomerMaster[]) => {
     const updatedCustomers = [...importedCustomers, ...customers];
     setCustomers(updatedCustomers);
     saveStoredCustomers(updatedCustomers);
 
-    // Sync each imported customer directly to Firestore Cloud in real-time
-    importedCustomers.forEach((cust) => {
-      saveCustomerToFirestore(cust).catch((err) =>
-        console.warn('Firestore customer import sync error:', err)
-      );
-    });
+    // Sync imported customers in efficient batch to Firestore Cloud
+    await batchUpdateCustomersInFirestore(updatedCustomers).catch((err) =>
+      console.warn('Firestore customer import sync error:', err)
+    );
 
     showToast(
       `Berhasil mengimpor ${importedCustomers.length} data konsumen ke Master Data & Firebase Cloud!`
@@ -206,7 +225,7 @@ export default function App() {
   };
 
   // Invoice Handlers
-  const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id' | 'createdAt'>, invoiceId?: string) => {
+  const handleSaveInvoice = async (invoiceData: Omit<Invoice, 'id' | 'createdAt'>, invoiceId?: string) => {
     // Check if customer exists in Master Data; if not, automatically add them!
     const existingCust = customers.find(
       (c) => c.phone.trim() === invoiceData.customerPhone.trim() || c.name.toLowerCase() === invoiceData.customerName.toLowerCase()
@@ -227,7 +246,7 @@ export default function App() {
       const updatedCustomers = [...customers, newCust];
       setCustomers(updatedCustomers);
       saveStoredCustomers(updatedCustomers);
-      saveCustomerToFirestore(newCust).catch((err) => console.warn('Firestore customer sync:', err));
+      await saveCustomerToFirestore(newCust).catch((err) => console.warn('Firestore customer sync:', err));
     }
 
     if (invoiceId) {
@@ -243,9 +262,9 @@ export default function App() {
       setInvoices(updated);
       saveStoredInvoices(updated);
       if (savedInvoice) {
-        saveInvoiceToFirestore(savedInvoice).catch((err) => console.warn('Firestore invoice update:', err));
+        await saveInvoiceToFirestore(savedInvoice).catch((err) => console.warn('Firestore invoice update:', err));
       }
-      showToast(`Faktur ${invoiceData.invoiceNumber} berhasil disimpan ke Firebase.`);
+      showToast(`Faktur ${invoiceData.invoiceNumber} berhasil disimpan ke Firebase Cloud.`);
     } else {
       // Add new
       const newInvoice: Invoice = {
@@ -256,20 +275,20 @@ export default function App() {
       const updated = [newInvoice, ...invoices];
       setInvoices(updated);
       saveStoredInvoices(updated);
-      saveInvoiceToFirestore(newInvoice).catch((err) => console.warn('Firestore invoice add:', err));
-      showToast(`Faktur ${newInvoice.invoiceNumber} (${invoiceData.customerName}) tersimpan ke Firebase.`);
+      await saveInvoiceToFirestore(newInvoice).catch((err) => console.warn('Firestore invoice add:', err));
+      showToast(`Faktur ${newInvoice.invoiceNumber} (${invoiceData.customerName}) tersimpan ke Firebase Cloud.`);
     }
   };
 
-  const handleDeleteInvoice = (invoiceId: string) => {
+  const handleDeleteInvoice = async (invoiceId: string) => {
     const updated = invoices.filter((inv) => inv.id !== invoiceId);
     setInvoices(updated);
     saveStoredInvoices(updated);
-    deleteInvoiceFromFirestore(invoiceId).catch((err) => console.warn('Firestore invoice delete:', err));
-    showToast('Faktur berhasil dihapus dari Firebase.');
+    await deleteInvoiceFromFirestore(invoiceId).catch((err) => console.warn('Firestore invoice delete:', err));
+    showToast('Faktur berhasil dihapus dari Firebase Cloud.');
   };
 
-  const handleUpdateStatus = (invoiceId: string, newStatus: ClaimStatus) => {
+  const handleUpdateStatus = async (invoiceId: string, newStatus: ClaimStatus) => {
     let updatedInv: Invoice | undefined;
     const updated = invoices.map((inv) => {
       if (inv.id === invoiceId) {
@@ -285,13 +304,13 @@ export default function App() {
     setInvoices(updated);
     saveStoredInvoices(updated);
     if (updatedInv) {
-      saveInvoiceToFirestore(updatedInv).catch((err) => console.warn('Firestore status update:', err));
+      await saveInvoiceToFirestore(updatedInv).catch((err) => console.warn('Firestore status update:', err));
     }
-    showToast(`Status klaim faktur berhasil diperbarui di Firebase.`);
+    showToast(`Status klaim faktur berhasil diperbarui di Firebase Cloud.`);
   };
 
   // Master Customer Handlers
-  const handleSaveCustomer = (customerData: Omit<CustomerMaster, 'id'>, customerId?: string) => {
+  const handleSaveCustomer = async (customerData: Omit<CustomerMaster, 'id'>, customerId?: string) => {
     if (customerId) {
       let updatedTarget: CustomerMaster | undefined;
       const updated = customers.map((c) => {
@@ -304,9 +323,9 @@ export default function App() {
       setCustomers(updated);
       saveStoredCustomers(updated);
       if (updatedTarget) {
-        saveCustomerToFirestore(updatedTarget).catch((err) => console.warn('Firestore customer update:', err));
+        await saveCustomerToFirestore(updatedTarget).catch((err) => console.warn('Firestore customer update:', err));
       }
-      showToast(`Data konsumen ${customerData.name} diperbarui di Firebase.`);
+      showToast(`Data konsumen ${customerData.name} diperbarui di Firebase Cloud.`);
     } else {
       const newCust: CustomerMaster = {
         ...customerData,
@@ -315,21 +334,21 @@ export default function App() {
       const updated = [newCust, ...customers];
       setCustomers(updated);
       saveStoredCustomers(updated);
-      saveCustomerToFirestore(newCust).catch((err) => console.warn('Firestore customer add:', err));
-      showToast(`Konsumen ${newCust.name} (${newCust.customerCode}) tersimpan ke Firebase.`);
+      await saveCustomerToFirestore(newCust).catch((err) => console.warn('Firestore customer add:', err));
+      showToast(`Konsumen ${newCust.name} (${newCust.customerCode}) tersimpan ke Firebase Cloud.`);
     }
   };
 
-  const handleDeleteCustomer = (customerId: string) => {
+  const handleDeleteCustomer = async (customerId: string) => {
     const target = customers.find((c) => c.id === customerId);
     const updated = customers.filter((c) => c.id !== customerId);
     setCustomers(updated);
     saveStoredCustomers(updated);
-    deleteCustomerFromFirestore(customerId).catch((err) => console.warn('Firestore customer delete:', err));
-    showToast(`Konsumen ${target?.name || ''} berhasil dihapus dari Firebase.`);
+    await deleteCustomerFromFirestore(customerId).catch((err) => console.warn('Firestore customer delete:', err));
+    showToast(`Konsumen ${target?.name || ''} berhasil dihapus dari Firebase Cloud.`);
   };
 
-  const handleToggleCustomerStatus = (customerId: string) => {
+  const handleToggleCustomerStatus = async (customerId: string) => {
     let targetCust: CustomerMaster | undefined;
     const updated = customers.map((c) => {
       if (c.id === customerId) {
@@ -343,11 +362,11 @@ export default function App() {
     setCustomers(updated);
     saveStoredCustomers(updated);
     if (targetCust) {
-      saveCustomerToFirestore(targetCust).catch((err) => console.warn('Firestore status toggle:', err));
+      await saveCustomerToFirestore(targetCust).catch((err) => console.warn('Firestore status toggle:', err));
     }
   };
 
-  const handleQuickAddMasterCustomer = (newCustData: Omit<CustomerMaster, 'id'>) => {
+  const handleQuickAddMasterCustomer = async (newCustData: Omit<CustomerMaster, 'id'>) => {
     const newCust: CustomerMaster = {
       ...newCustData,
       id: `cust-${Date.now()}`,
@@ -355,8 +374,8 @@ export default function App() {
     const updated = [...customers, newCust];
     setCustomers(updated);
     saveStoredCustomers(updated);
-    saveCustomerToFirestore(newCust).catch((err) => console.warn('Firestore quick add:', err));
-    showToast(`Konsumen ${newCust.name} (${newCust.customerCode}) didaftarkan ke Firebase.`);
+    await saveCustomerToFirestore(newCust).catch((err) => console.warn('Firestore quick add:', err));
+    showToast(`Konsumen ${newCust.name} (${newCust.customerCode}) didaftarkan ke Firebase Cloud.`);
   };
 
   // Settings Handlers

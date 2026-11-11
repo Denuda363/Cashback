@@ -8,6 +8,7 @@ import {
   User 
 } from 'firebase/auth';
 import { 
+  initializeFirestore,
   getFirestore, 
   collection, 
   doc, 
@@ -29,11 +30,43 @@ export const FIRESTORE_DATABASE_ID = firebaseConfig.firestoreDatabaseId;
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Initialize Firestore with exact database ID
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Initialize Firestore with ignoreUndefinedProperties to prevent invalid data errors
+let dbInstance;
+try {
+  dbInstance = initializeFirestore(
+    app,
+    {
+      ignoreUndefinedProperties: true,
+    },
+    firebaseConfig.firestoreDatabaseId
+  );
+} catch {
+  dbInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+}
+export const db = dbInstance;
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);
+
+// Sanitizer function to safely strip undefined values before Firestore mutations
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => sanitizeForFirestore(item)) as unknown as T;
+  }
+  if (typeof data === 'object' && !(data instanceof Date)) {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleaned[key] = sanitizeForFirestore(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return data;
+}
 
 // Error Handling per Firestore Skill Guidelines
 export enum OperationType {
@@ -98,7 +131,6 @@ export const SYSTEM_INFO_DOC_ID = 'database_info';
 // -------------------------------------------------------------
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
-    // Attempt to read system info directly from server to verify live cloud connection
     const testDocRef = doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID);
     await getDocFromServer(testDocRef);
     console.log('Firebase Firestore connection verified successfully from server.');
@@ -108,13 +140,13 @@ export async function testFirestoreConnection(): Promise<boolean> {
       console.warn('Firebase client is offline or network connecting...');
       return false;
     }
-    // If document is not found, connection itself still succeeded
+    // If document is not found, server reached and connection is active
     return true;
   }
 }
 
 // -------------------------------------------------------------
-// Automatic Table Creation & Initialization
+// Automatic Table Creation & Data Sync
 // Ensures all required collections (invoices, customers, settings, system)
 // exist with documents in Firestore automatically.
 // -------------------------------------------------------------
@@ -144,7 +176,8 @@ export async function ensureFirestoreTablesExist(
       const settingsRef = doc(db, SETTINGS_COLLECTION, MAIN_SETTINGS_DOC_ID);
       const settingsSnap = await getDoc(settingsRef);
       if (!settingsSnap.exists()) {
-        await setDoc(settingsRef, defaultSettings);
+        const sanitized = sanitizeForFirestore(defaultSettings);
+        await setDoc(settingsRef, sanitized);
         seededTables.push('settings');
         console.log('✓ Tabel settings berhasil dibuat dan diinisialisasi.');
       } else {
@@ -155,21 +188,35 @@ export async function ensureFirestoreTablesExist(
     }
 
     // 2. Table: customers (Master Data Konsumen)
-    // PERINGATAN: Jangan pernah mengisi ulang data sampel jika kosong agar data yang sudah dihapus tidak kembali!
     try {
       const customersSnap = await getDocs(collection(db, CUSTOMERS_COLLECTION));
       totalCustomers = customersSnap.size;
-      existingTables.push('customers');
+      // If Cloud is currently empty, but client has initial local customer data, upload it to Cloud!
+      if (totalCustomers === 0 && initialCustomers.length > 0) {
+        console.log(`[Firestore] Mengunggah ${initialCustomers.length} master konsumen ke Firebase...`);
+        await batchUpdateCustomersInFirestore(initialCustomers);
+        totalCustomers = initialCustomers.length;
+        seededTables.push('customers');
+      } else {
+        existingTables.push('customers');
+      }
     } catch (e) {
       console.warn('Check customers table error:', e);
     }
 
     // 3. Table: invoices (Rekap Faktur Transaksi)
-    // PERINGATAN: Jangan pernah mengisi ulang faktur sampel jika kosong agar faktur yang sudah dihapus tidak kembali!
     try {
       const invoicesSnap = await getDocs(collection(db, INVOICES_COLLECTION));
       totalInvoices = invoicesSnap.size;
-      existingTables.push('invoices');
+      // If Cloud is currently empty, but client has initial local invoices, upload them to Cloud!
+      if (totalInvoices === 0 && initialInvoices.length > 0) {
+        console.log(`[Firestore] Mengunggah ${initialInvoices.length} faktur ke Firebase...`);
+        await batchUpdateInvoicesInFirestore(initialInvoices);
+        totalInvoices = initialInvoices.length;
+        seededTables.push('invoices');
+      } else {
+        existingTables.push('invoices');
+      }
     } catch (e) {
       console.warn('Check invoices table error:', e);
     }
@@ -179,7 +226,7 @@ export async function ensureFirestoreTablesExist(
       const systemRef = doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID);
       const systemSnap = await getDoc(systemRef);
       if (!systemSnap.exists()) {
-        await setDoc(systemRef, {
+        await setDoc(systemRef, sanitizeForFirestore({
           appName: 'CashbackPro Rekapitulasi',
           version: '2.0',
           status: 'active',
@@ -188,7 +235,7 @@ export async function ensureFirestoreTablesExist(
           projectId: FIREBASE_PROJECT_ID,
           lastSyncAt: new Date().toISOString(),
           tables: [INVOICES_COLLECTION, CUSTOMERS_COLLECTION, SETTINGS_COLLECTION, SYSTEM_COLLECTION],
-        });
+        }));
         seededTables.push('system');
         console.log('✓ Tabel system status metadata berhasil diinisialisasi.');
       } else {
@@ -217,7 +264,6 @@ export async function ensureFirestoreTablesExist(
   }
 }
 
-// Backward compatibility alias
 export const seedFirestoreIfEmpty = ensureFirestoreTablesExist;
 
 // -------------------------------------------------------------
@@ -282,8 +328,10 @@ export function subscribeFirestoreInvoices(
 export async function saveInvoiceToFirestore(invoice: Invoice): Promise<void> {
   const path = `${INVOICES_COLLECTION}/${invoice.id}`;
   try {
+    const sanitized = sanitizeForFirestore(invoice);
     const docRef = doc(db, INVOICES_COLLECTION, invoice.id);
-    await setDoc(docRef, { ...invoice }, { merge: true });
+    await setDoc(docRef, sanitized, { merge: true });
+    console.log(`[Firestore] Faktur ${invoice.invoiceNumber || invoice.id} berhasil disimpan ke Cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -294,25 +342,27 @@ export async function deleteInvoiceFromFirestore(invoiceId: string): Promise<voi
   try {
     const docRef = doc(db, INVOICES_COLLECTION, invoiceId);
     await deleteDoc(docRef);
+    console.log(`[Firestore] Faktur ${invoiceId} berhasil dihapus dari Cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 
 export async function batchUpdateInvoicesInFirestore(invoices: Invoice[]): Promise<void> {
-  if (invoices.length === 0) return;
+  if (!invoices || invoices.length === 0) return;
   try {
-    // Process in batches of up to 400 to respect Firestore limits
     const BATCH_SIZE = 400;
     for (let i = 0; i < invoices.length; i += BATCH_SIZE) {
       const slice = invoices.slice(i, i + BATCH_SIZE);
       const batch = writeBatch(db);
       slice.forEach((inv) => {
+        const sanitized = sanitizeForFirestore(inv);
         const docRef = doc(db, INVOICES_COLLECTION, inv.id);
-        batch.set(docRef, { ...inv }, { merge: true });
+        batch.set(docRef, sanitized, { merge: true });
       });
       await batch.commit();
     }
+    console.log(`[Firestore] ${invoices.length} faktur berhasil disimpan ke Cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, INVOICES_COLLECTION);
   }
@@ -351,10 +401,32 @@ export function subscribeFirestoreCustomers(
 export async function saveCustomerToFirestore(customer: CustomerMaster): Promise<void> {
   const path = `${CUSTOMERS_COLLECTION}/${customer.id}`;
   try {
+    const sanitized = sanitizeForFirestore(customer);
     const docRef = doc(db, CUSTOMERS_COLLECTION, customer.id);
-    await setDoc(docRef, { ...customer }, { merge: true });
+    await setDoc(docRef, sanitized, { merge: true });
+    console.log(`[Firestore] Konsumen ${customer.name} berhasil disimpan ke Cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function batchUpdateCustomersInFirestore(customers: CustomerMaster[]): Promise<void> {
+  if (!customers || customers.length === 0) return;
+  try {
+    const BATCH_SIZE = 400;
+    for (let i = 0; i < customers.length; i += BATCH_SIZE) {
+      const slice = customers.slice(i, i + BATCH_SIZE);
+      const batch = writeBatch(db);
+      slice.forEach((c) => {
+        const sanitized = sanitizeForFirestore(c);
+        const docRef = doc(db, CUSTOMERS_COLLECTION, c.id);
+        batch.set(docRef, sanitized, { merge: true });
+      });
+      await batch.commit();
+    }
+    console.log(`[Firestore] ${customers.length} konsumen berhasil disimpan ke Cloud.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, CUSTOMERS_COLLECTION);
   }
 }
 
@@ -363,6 +435,7 @@ export async function deleteCustomerFromFirestore(customerId: string): Promise<v
   try {
     const docRef = doc(db, CUSTOMERS_COLLECTION, customerId);
     await deleteDoc(docRef);
+    console.log(`[Firestore] Konsumen ${customerId} berhasil dihapus dari Cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
@@ -394,8 +467,10 @@ export function subscribeFirestoreSettings(
 export async function saveSettingsToFirestore(settings: CashbackSettings): Promise<void> {
   const path = `${SETTINGS_COLLECTION}/${MAIN_SETTINGS_DOC_ID}`;
   try {
+    const sanitized = sanitizeForFirestore(settings);
     const docRef = doc(db, SETTINGS_COLLECTION, MAIN_SETTINGS_DOC_ID);
-    await setDoc(docRef, { ...settings }, { merge: true });
+    await setDoc(docRef, sanitized, { merge: true });
+    console.log('[Firestore] Pengaturan cashback berhasil disimpan ke Cloud.');
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -408,28 +483,37 @@ export async function forceSyncAllToFirestore(
   invoices: Invoice[],
   customers: CustomerMaster[],
   settings: CashbackSettings
-): Promise<void> {
+): Promise<{ invoicesCount: number; customersCount: number }> {
   // 1. Settings
   await saveSettingsToFirestore(settings);
 
   // 2. Customers
-  const custBatch = writeBatch(db);
-  customers.forEach((c) => {
-    custBatch.set(doc(db, CUSTOMERS_COLLECTION, c.id), c, { merge: true });
-  });
-  await custBatch.commit();
+  if (customers.length > 0) {
+    await batchUpdateCustomersInFirestore(customers);
+  }
 
   // 3. Invoices
-  await batchUpdateInvoicesInFirestore(invoices);
+  if (invoices.length > 0) {
+    await batchUpdateInvoicesInFirestore(invoices);
+  }
 
   // 4. System info
-  await setDoc(doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID), {
-    appName: 'CashbackPro Rekapitulasi',
-    version: '2.0',
-    status: 'active',
-    lastSyncAt: new Date().toISOString(),
-    manualSyncTriggered: true,
-  }, { merge: true });
+  const systemRef = doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID);
+  await setDoc(
+    systemRef,
+    sanitizeForFirestore({
+      appName: 'CashbackPro Rekapitulasi',
+      version: '2.0',
+      status: 'active',
+      lastSyncAt: new Date().toISOString(),
+      totalInvoicesInCloud: invoices.length,
+      totalCustomersInCloud: customers.length,
+      manualSyncTriggered: true,
+    }),
+    { merge: true }
+  );
+
+  return { invoicesCount: invoices.length, customersCount: customers.length };
 }
 
 // -------------------------------------------------------------
@@ -473,12 +557,12 @@ export async function deleteAllDataFromFirestore(): Promise<{
     const systemRef = doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID);
     await setDoc(
       systemRef,
-      {
+      sanitizeForFirestore({
         lastWipedAt: new Date().toISOString(),
         status: 'wiped',
         totalInvoices: 0,
         totalCustomers: 0,
-      },
+      }),
       { merge: true }
     );
 
@@ -503,28 +587,12 @@ export async function restoreBackupToFirestore(
 
     // 2. Restore customers
     if (customers.length > 0) {
-      const BATCH_SIZE = 400;
-      for (let i = 0; i < customers.length; i += BATCH_SIZE) {
-        const slice = customers.slice(i, i + BATCH_SIZE);
-        const batch = writeBatch(db);
-        slice.forEach((c) => {
-          batch.set(doc(db, CUSTOMERS_COLLECTION, c.id), c);
-        });
-        await batch.commit();
-      }
+      await batchUpdateCustomersInFirestore(customers);
     }
 
     // 3. Restore invoices
     if (invoices.length > 0) {
-      const BATCH_SIZE = 400;
-      for (let i = 0; i < invoices.length; i += BATCH_SIZE) {
-        const slice = invoices.slice(i, i + BATCH_SIZE);
-        const batch = writeBatch(db);
-        slice.forEach((inv) => {
-          batch.set(doc(db, INVOICES_COLLECTION, inv.id), inv);
-        });
-        await batch.commit();
-      }
+      await batchUpdateInvoicesInFirestore(invoices);
     }
 
     // 4. Restore settings if provided
@@ -535,13 +603,13 @@ export async function restoreBackupToFirestore(
     // 5. Update system metadata
     await setDoc(
       doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID),
-      {
+      sanitizeForFirestore({
         appName: 'CashbackPro Rekapitulasi',
         lastRestoredAt: new Date().toISOString(),
         totalInvoices: invoices.length,
         totalCustomers: customers.length,
         status: 'active',
-      },
+      }),
       { merge: true }
     );
   } catch (error) {
