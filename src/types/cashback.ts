@@ -44,6 +44,7 @@ export interface Invoice {
 }
 
 export interface CustomerSummary {
+  customerCode?: string;
   customerName: string;
   customerPhone: string;
   totalPurchase: number;
@@ -56,6 +57,13 @@ export interface CustomerSummary {
   tier: 'Platinum' | 'Gold' | 'Silver' | 'Bronze';
   rank?: number;
   getParcel?: boolean;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountHolder?: string;
+  eWalletType?: string;
+  eWalletNumber?: string;
+  preferredPayoutMethod?: PayoutMethod;
+  invoices?: Invoice[];
 }
 
 export interface CustomerMaster {

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
+import { aggregateCustomerSummaries } from '../utils/storage';
 
 interface Top10LeaderboardProps {
   customerSummaries: CustomerSummary[];
@@ -31,8 +32,14 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
   const [periodFilter, setPeriodFilter] = useState<'all' | 'this_month' | 'last_month'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter invoices based on period if selected, then recalculate rankings
+  // Filter invoices based on period if selected, then recalculate rankings with the same aggregate function
   const rankedData = useMemo(() => {
+    if (periodFilter === 'all') {
+      const list = [...customerSummaries];
+      list.sort((a, b) => b.totalCashback - a.totalCashback);
+      return list.map((item, idx) => ({ ...item, rank: idx + 1 }));
+    }
+
     let filteredInvoices = invoices;
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -53,48 +60,10 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
       });
     }
 
-    // Re-aggregate if period filter is applied
-    const map = new Map<string, CustomerSummary>();
-    for (const inv of filteredInvoices) {
-      const key = (inv.customerPhone?.trim() || inv.customerName.trim()).toLowerCase();
-      const cur = map.get(key);
-      if (cur) {
-        cur.totalPurchase += inv.purchaseAmount;
-        cur.totalCashback += inv.cashbackAmount;
-        cur.invoiceCount += 1;
-        if (inv.claimStatus === 'disbursed') cur.disbursedCashback += inv.cashbackAmount;
-        if (inv.claimStatus === 'ready') cur.readyCashback += inv.cashbackAmount;
-        if (inv.claimStatus === 'pending') cur.pendingCashback += inv.cashbackAmount;
-        if (new Date(inv.date) > new Date(cur.lastPurchaseDate)) {
-          cur.lastPurchaseDate = inv.date;
-        }
-      } else {
-        map.set(key, {
-          customerName: inv.customerName,
-          customerPhone: inv.customerPhone,
-          totalPurchase: inv.purchaseAmount,
-          totalCashback: inv.cashbackAmount,
-          disbursedCashback: inv.claimStatus === 'disbursed' ? inv.cashbackAmount : 0,
-          readyCashback: inv.claimStatus === 'ready' ? inv.cashbackAmount : 0,
-          pendingCashback: inv.claimStatus === 'pending' ? inv.cashbackAmount : 0,
-          invoiceCount: 1,
-          lastPurchaseDate: inv.date,
-          tier: 'Bronze',
-        });
-      }
-    }
-
-    const list = Array.from(map.values()).map((c) => {
-      let tier: 'Platinum' | 'Gold' | 'Silver' | 'Bronze' = 'Bronze';
-      if (c.totalCashback >= 1000000 || c.totalPurchase >= 15000000) tier = 'Platinum';
-      else if (c.totalCashback >= 500000 || c.totalPurchase >= 7500000) tier = 'Gold';
-      else if (c.totalCashback >= 200000 || c.totalPurchase >= 3000000) tier = 'Silver';
-      return { ...c, tier };
-    });
-
-    list.sort((a, b) => b.totalCashback - a.totalCashback);
-    return list.map((item, idx) => ({ ...item, rank: idx + 1 }));
-  }, [invoices, periodFilter]);
+    const aggregated = aggregateCustomerSummaries(filteredInvoices);
+    aggregated.sort((a, b) => b.totalCashback - a.totalCashback);
+    return aggregated.map((item, idx) => ({ ...item, rank: idx + 1 }));
+  }, [invoices, customerSummaries, periodFilter]);
 
   // Top 10 with search
   const top10 = useMemo(() => {

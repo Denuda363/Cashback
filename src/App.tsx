@@ -172,8 +172,8 @@ export default function App() {
 
   // Aggregated summaries & ranking based on active date range
   const customerSummaries = useMemo(() => {
-    return aggregateCustomerSummaries(dateFilteredInvoices, settings.minSpendForParcel || 5000000);
-  }, [dateFilteredInvoices, settings.minSpendForParcel]);
+    return aggregateCustomerSummaries(dateFilteredInvoices, settings.minSpendForParcel || 5000000, customers);
+  }, [dateFilteredInvoices, settings.minSpendForParcel, customers]);
 
   const totalCashbackSum = useMemo(() => {
     return dateFilteredInvoices.reduce((sum, inv) => sum + inv.cashbackAmount, 0);
@@ -606,9 +606,11 @@ export default function App() {
         {/* Tab 4: Rekap Konsumen Aggregated */}
         {activeTab === 'customers' && (
           <CustomerSummaryView
+            invoices={dateFilteredInvoices}
             customerSummaries={customerSummaries}
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
             onExportExcel={handleExportExcel}
+            storeName={settings.storeName}
           />
         )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -49,6 +49,12 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'cashback_desc'>('date_desc');
   const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
+
+  useEffect(() => {
+    if (initialCustomerFilter !== undefined) {
+      setSearch(initialCustomerFilter);
+    }
+  }, [initialCustomerFilter]);
 
   // Categories list
   const categories = useMemo(() => {

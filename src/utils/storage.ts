@@ -188,10 +188,41 @@ export function wipeAllLocalData(): void {
 }
 
 /**
- * Aggregates invoices by customer to generate summaries and rankings.
+ * Normalizes phone numbers for accurate customer matching.
  */
-export function aggregateCustomerSummaries(invoices: Invoice[], minSpendForParcel = 5000000): CustomerSummary[] {
+export function normalizePhone(phone?: string): string {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('62')) return '0' + digits.slice(2);
+  return digits;
+}
+
+/**
+ * Aggregates invoices by customer to generate summaries and rankings.
+ * Matches against master customers when available to link customer codes and payment profiles.
+ */
+export function aggregateCustomerSummaries(
+  invoices: Invoice[],
+  minSpendForParcel = 5000000,
+  masterCustomers: CustomerMaster[] = []
+): CustomerSummary[] {
+  // Pre-index master customers by normalized phone and by clean name
+  const masterByPhone = new Map<string, CustomerMaster>();
+  const masterByName = new Map<string, CustomerMaster>();
+
+  for (const mc of masterCustomers) {
+    const norm = normalizePhone(mc.phone);
+    if (norm.length >= 7) {
+      masterByPhone.set(norm, mc);
+    }
+    const cleanName = mc.name.trim().toLowerCase();
+    if (cleanName) {
+      masterByName.set(cleanName, mc);
+    }
+  }
+
   const map = new Map<string, {
+    customerCode?: string;
     customerName: string;
     customerPhone: string;
     totalPurchase: number;
@@ -201,51 +232,94 @@ export function aggregateCustomerSummaries(invoices: Invoice[], minSpendForParce
     readyCashback: number;
     invoiceCount: number;
     dates: string[];
+    invoices: Invoice[];
     hasParcelExplicit?: boolean;
+    bankName?: string;
+    bankAccountNumber?: string;
+    bankAccountHolder?: string;
+    eWalletType?: string;
+    eWalletNumber?: string;
+    preferredPayoutMethod?: any;
   }>();
 
   for (const inv of invoices) {
-    const key = (inv.customerPhone?.trim() || inv.customerName.trim()).toLowerCase();
+    const invPhone = (inv.customerPhone || '').trim();
+    const rawName = (inv.customerName || '').trim();
+    const cleanName = rawName.toLowerCase();
+    const normPhone = normalizePhone(invPhone);
+
+    // Grouping is based directly on the customer name from Rekap Faktur.
+    // Each distinct customer (e.g. Dr Santi, Dr Sany) is kept completely separate.
+    let key = '';
+    if (cleanName) {
+      key = `name:${cleanName}`;
+    } else if (normPhone.length >= 7) {
+      key = `phone:${normPhone}`;
+    } else {
+      key = `inv:${inv.id}`;
+    }
+
+    // Enrich with master customer profile if name matches
+    const master = cleanName
+      ? masterByName.get(cleanName)
+      : (normPhone.length >= 7 ? masterByPhone.get(normPhone) : undefined);
+
+    const purchase = Number(inv.purchaseAmount) || 0;
+    const cashback = Math.round(Number(inv.cashbackAmount) || 0);
     const existing = map.get(key);
 
     if (existing) {
-      existing.totalPurchase += inv.purchaseAmount;
-      existing.totalCashback += inv.cashbackAmount;
+      existing.totalPurchase += purchase;
+      existing.totalCashback += cashback;
       existing.invoiceCount += 1;
-      existing.dates.push(inv.date);
-      if (inv.getParcel !== undefined) {
-        existing.hasParcelExplicit = existing.hasParcelExplicit || inv.getParcel;
+      existing.invoices.push(inv);
+      if (inv.date) existing.dates.push(inv.date);
+      if (inv.getParcel === true) {
+        existing.hasParcelExplicit = true;
       }
 
       if (inv.claimStatus === 'disbursed') {
-        existing.disbursedCashback += inv.cashbackAmount;
+        existing.disbursedCashback += cashback;
       } else if (inv.claimStatus === 'ready') {
-        existing.readyCashback += inv.cashbackAmount;
+        existing.readyCashback += cashback;
       } else {
-        existing.pendingCashback += inv.cashbackAmount;
+        existing.pendingCashback += cashback;
+      }
+
+      // If existing had blank phone or less complete name, adopt better values
+      if (!existing.customerPhone && invPhone) {
+        existing.customerPhone = invPhone;
       }
     } else {
       map.set(key, {
-        customerName: inv.customerName,
-        customerPhone: inv.customerPhone,
-        totalPurchase: inv.purchaseAmount,
-        totalCashback: inv.cashbackAmount,
-        disbursedCashback: inv.claimStatus === 'disbursed' ? inv.cashbackAmount : 0,
-        readyCashback: inv.claimStatus === 'ready' ? inv.cashbackAmount : 0,
-        pendingCashback: inv.claimStatus === 'pending' ? inv.cashbackAmount : 0,
+        customerCode: master?.customerCode,
+        customerName: rawName || master?.name || 'Tanpa Nama',
+        customerPhone: invPhone || master?.phone || '',
+        totalPurchase: purchase,
+        totalCashback: cashback,
+        disbursedCashback: inv.claimStatus === 'disbursed' ? cashback : 0,
+        readyCashback: inv.claimStatus === 'ready' ? cashback : 0,
+        pendingCashback: (inv.claimStatus === 'pending' || !inv.claimStatus) ? cashback : 0,
         invoiceCount: 1,
-        dates: [inv.date],
-        hasParcelExplicit: inv.getParcel,
+        dates: inv.date ? [inv.date] : [],
+        invoices: [inv],
+        hasParcelExplicit: inv.getParcel === true,
+        bankName: master?.bankName,
+        bankAccountNumber: master?.bankAccountNumber,
+        bankAccountHolder: master?.bankAccountHolder,
+        eWalletType: master?.eWalletType,
+        eWalletNumber: master?.eWalletNumber,
+        preferredPayoutMethod: master?.preferredPayoutMethod || inv.payoutMethod,
       });
     }
   }
 
   const result: CustomerSummary[] = Array.from(map.values()).map((c) => {
-    // Sort dates desc
-    c.dates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    const lastDate = c.dates[0] || '';
+    // Sort dates desc to pick last purchase
+    c.dates.sort((a, b) => b.localeCompare(a));
+    const lastDate = c.dates[0] || '-';
 
-    // Determine loyalty tier based on total cashback/spend
+    // Determine loyalty tier
     let tier: 'Platinum' | 'Gold' | 'Silver' | 'Bronze' = 'Bronze';
     if (c.totalCashback >= 1000000 || c.totalPurchase >= 15000000) {
       tier = 'Platinum';
@@ -255,27 +329,43 @@ export function aggregateCustomerSummaries(invoices: Invoice[], minSpendForParce
       tier = 'Silver';
     }
 
-    const getParcel = c.hasParcelExplicit !== undefined
-      ? c.hasParcelExplicit
-      : (c.totalPurchase >= minSpendForParcel);
+    // Accurate Parcel Qualification:
+    // If total accumulated purchase >= minSpendForParcel (e.g. 5,000,000) OR marked explicit
+    const getParcel = c.totalPurchase >= minSpendForParcel || Boolean(c.hasParcelExplicit);
+
+    // Sort itemized invoices newest to oldest
+    const sortedInvoices = [...c.invoices].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     return {
+      customerCode: c.customerCode,
       customerName: c.customerName,
       customerPhone: c.customerPhone,
-      totalPurchase: c.totalPurchase,
-      totalCashback: c.totalCashback,
-      disbursedCashback: c.disbursedCashback,
-      pendingCashback: c.pendingCashback,
-      readyCashback: c.readyCashback,
+      totalPurchase: Math.round(c.totalPurchase),
+      totalCashback: Math.round(c.totalCashback),
+      disbursedCashback: Math.round(c.disbursedCashback),
+      pendingCashback: Math.round(c.pendingCashback),
+      readyCashback: Math.round(c.readyCashback),
       invoiceCount: c.invoiceCount,
       lastPurchaseDate: lastDate,
       tier,
       getParcel,
+      bankName: c.bankName,
+      bankAccountNumber: c.bankAccountNumber,
+      bankAccountHolder: c.bankAccountHolder,
+      eWalletType: c.eWalletType,
+      eWalletNumber: c.eWalletNumber,
+      preferredPayoutMethod: c.preferredPayoutMethod,
+      invoices: sortedInvoices,
     };
   });
 
-  // Sort by highest total cashback descending
-  result.sort((a, b) => b.totalCashback - a.totalCashback);
+  // Sort by highest total cashback descending, tie-breaker totalPurchase desc
+  result.sort((a, b) => {
+    if (b.totalCashback !== a.totalCashback) {
+      return b.totalCashback - a.totalCashback;
+    }
+    return b.totalPurchase - a.totalPurchase;
+  });
 
   // Assign ranks
   return result.map((item, index) => ({
