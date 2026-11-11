@@ -19,6 +19,11 @@
         "claimStatus": { "type": "string", "enum": ["pending", "ready", "disbursed"] },
         "payoutMethod": { "type": "string", "enum": ["transfer_bank", "e_wallet", "potongan_belanja", "tunai"] },
         "disbursedDate": { "type": "string" },
+        "disbursedAt": { "type": "string" },
+        "recipientName": { "type": "string" },
+        "disbursementProofPhoto": { "type": "string" },
+        "disbursementSignature": { "type": "string" },
+        "disbursementNotes": { "type": "string" },
         "getParcel": { "type": "boolean" },
         "notes": { "type": "string" },
         "createdAt": { "type": "string" }
@@ -62,7 +67,27 @@
         "claimValidityDays": { "type": "number" },
         "storeName": { "type": "string" },
         "currency": { "type": "string" },
-        "minSpendForParcel": { "type": "number" }
+        "minSpendForParcel": { "type": "number" },
+        "excludedCustomerNames": { "type": "array", "items": { "type": "string" } },
+        "companyProfile": {
+          "type": "object",
+          "properties": {
+            "companyName": { "type": "string" },
+            "tagline": { "type": "string" },
+            "address": { "type": "string" },
+            "city": { "type": "string" },
+            "phone": { "type": "string" },
+            "email": { "type": "string" },
+            "website": { "type": "string" },
+            "taxNumber": { "type": "string" },
+            "picName": { "type": "string" },
+            "picTitle": { "type": "string" },
+            "bankName": { "type": "string" },
+            "bankAccountNumber": { "type": "string" },
+            "bankAccountHolder": { "type": "string" },
+            "footerNotes": { "type": "string" }
+          }
+        }
       },
       "required": ["mode", "flatPercentage", "minPurchaseAmount", "rounding", "claimValidityDays", "storeName", "currency"]
     },

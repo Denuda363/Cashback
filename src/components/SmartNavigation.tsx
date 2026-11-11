@@ -20,6 +20,7 @@ import {
   Wallet,
   Cloud,
   Upload,
+  CheckCircle2,
 } from 'lucide-react';
 import { ActiveTab, NavPosition } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
@@ -65,6 +66,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
     { id: 'dashboard', label: 'Dashboard Analitik', icon: <BarChart3 className="w-4 h-4" />, description: 'Ringkasan & tren omset' },
     { id: 'top10', label: '10 Besar Tertinggi', icon: <Trophy className="w-4 h-4" />, description: 'Podium reward konsumen' },
     { id: 'invoices', label: 'Rekap Faktur', icon: <FileSpreadsheet className="w-4 h-4" />, badge: totalInvoicesCount, description: 'Riwayat data pembelian' },
+    { id: 'payout_records', label: 'Penerimaan Cashback', icon: <CheckCircle2 className="w-4 h-4" />, description: 'Rekap serah terima & bukti' },
     { id: 'customers', label: 'Rekap Konsumen', icon: <Users className="w-4 h-4" />, description: 'Akumulasi saldo per orang' },
     { id: 'master_customers', label: 'Master Konsumen', icon: <Contact className="w-4 h-4" />, badge: totalMasterCustomersCount, description: 'Database pelanggan & bank' },
     { id: 'settings', label: 'Pengaturan %', icon: <SettingsIcon className="w-4 h-4" />, description: 'Aturan persen cashback' },

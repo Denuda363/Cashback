@@ -294,7 +294,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     const calculatedCashback = Math.round((cust.totalPurchase || 0) * (activePercentage / 100));
 
                     return (
-                      <tr key={cust.customerPhone || cust.customerName} className="hover:bg-slate-50/70">
+                      <tr key={cust.customerCode || `${cust.customerName}_${idx}`} className="hover:bg-slate-50/70">
                         <td className="py-2.5 px-3 text-center border-r border-slate-200 font-mono text-slate-700">
                           {rowNumber}
                         </td>

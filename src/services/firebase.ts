@@ -517,6 +517,29 @@ export async function forceSyncAllToFirestore(
 }
 
 // -------------------------------------------------------------
+// Reset / Delete All Invoices from Firestore (Faktur Only)
+// -------------------------------------------------------------
+export async function deleteAllInvoicesFromFirestore(): Promise<number> {
+  try {
+    let deletedCount = 0;
+    const invSnap = await getDocs(collection(db, INVOICES_COLLECTION));
+    deletedCount = invSnap.size;
+    if (!invSnap.empty) {
+      const BATCH_SIZE = 400;
+      const docs = invSnap.docs;
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        docs.slice(i, i + BATCH_SIZE).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+    return deletedCount;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, INVOICES_COLLECTION);
+  }
+}
+
+// -------------------------------------------------------------
 // Total Wipe: Permanently delete all invoices and customers from Firestore
 // -------------------------------------------------------------
 export async function deleteAllDataFromFirestore(): Promise<{

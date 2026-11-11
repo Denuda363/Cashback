@@ -445,7 +445,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
           <div className="space-y-3">
             {top3Customers.map((cust, idx) => (
               <div
-                key={cust.customerPhone || cust.customerName}
+                key={cust.customerCode || `${cust.customerName}_${idx}`}
                 className="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex items-center gap-3">

@@ -390,8 +390,8 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
               <p className="text-sm font-semibold text-slate-600">Tidak ada konsumen ditemukan</p>
             </div>
           ) : (
-            top10.map((cust) => (
-              <div key={cust.customerPhone || cust.customerName} className="p-3.5 space-y-2.5">
+            top10.map((cust, idx) => (
+              <div key={cust.customerCode || `${cust.customerName}_${idx}`} className="p-3.5 space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5">
                     <span
@@ -488,13 +488,13 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
                   </td>
                 </tr>
               ) : (
-                top10.map((cust) => {
+                top10.map((cust, idx) => {
                   const percentOfTop = maxCashback > 0 ? (cust.totalCashback / maxCashback) * 100 : 0;
                   const isTop3 = (cust.rank ?? 99) <= 3;
 
                   return (
                     <tr 
-                      key={cust.customerPhone || cust.customerName}
+                      key={cust.customerCode || `${cust.customerName}_${idx}`}
                       className="hover:bg-slate-50/80 transition-colors"
                     >
                       {/* Rank badge */}

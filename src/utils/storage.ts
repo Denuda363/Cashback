@@ -204,7 +204,8 @@ export function normalizePhone(phone?: string): string {
 export function aggregateCustomerSummaries(
   invoices: Invoice[],
   minSpendForParcel = 5000000,
-  masterCustomers: CustomerMaster[] = []
+  masterCustomers: CustomerMaster[] = [],
+  excludedCustomerNames: string[] = []
 ): CustomerSummary[] {
   // Pre-index master customers by normalized phone and by clean name
   const masterByPhone = new Map<string, CustomerMaster>();
@@ -336,6 +337,20 @@ export function aggregateCustomerSummaries(
     // Sort itemized invoices newest to oldest
     const sortedInvoices = [...c.invoices].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
+    const cleanName = (c.customerName || '').trim().toLowerCase();
+    const isExcluded = excludedCustomerNames.some(
+      (ex) => (ex || '').trim().toLowerCase() === cleanName
+    );
+
+    // Extract disbursement details if any invoice was disbursed
+    const disbursedInvoices = sortedInvoices.filter((i) => i.claimStatus === 'disbursed');
+    const latestDisbursed = disbursedInvoices[0];
+    const proofPhoto = disbursedInvoices.find((i) => Boolean(i.disbursementProofPhoto))?.disbursementProofPhoto;
+    const signature = disbursedInvoices.find((i) => Boolean(i.disbursementSignature))?.disbursementSignature;
+    const recipient = disbursedInvoices.find((i) => Boolean(i.recipientName))?.recipientName || c.customerName;
+    const notes = disbursedInvoices.find((i) => Boolean(i.disbursementNotes))?.disbursementNotes;
+    const payoutMethod = latestDisbursed?.payoutMethod || c.preferredPayoutMethod || 'tunai';
+
     return {
       customerCode: c.customerCode,
       customerName: c.customerName,
@@ -356,6 +371,14 @@ export function aggregateCustomerSummaries(
       eWalletNumber: c.eWalletNumber,
       preferredPayoutMethod: c.preferredPayoutMethod,
       invoices: sortedInvoices,
+      isExcludedFromCashback: isExcluded,
+      lastDisbursedDate: latestDisbursed?.disbursedDate,
+      lastDisbursedAt: latestDisbursed?.disbursedAt,
+      recipientName: recipient,
+      disbursementProofPhoto: proofPhoto,
+      disbursementSignature: signature,
+      disbursementNotes: notes,
+      disbursementPayoutMethod: payoutMethod,
     };
   });
 

@@ -8,7 +8,8 @@ import {
   Plus, 
   Download,
   Receipt,
-  Contact
+  Contact,
+  CheckCircle2
 } from 'lucide-react';
 import { ActiveTab } from '../types/cashback';
 
@@ -33,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'dashboard', label: 'Dashboard Analitik', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'top10', label: '10 Besar Tertinggi', icon: <Trophy className="w-4 h-4" /> },
     { id: 'invoices', label: 'Rekap Faktur', icon: <FileSpreadsheet className="w-4 h-4" />, badge: totalInvoicesCount },
+    { id: 'payout_records', label: 'Penerimaan Cashback', icon: <CheckCircle2 className="w-4 h-4" /> },
     { id: 'customers', label: 'Rekap Konsumen', icon: <Users className="w-4 h-4" /> },
     { id: 'master_customers', label: 'Master Konsumen', icon: <Contact className="w-4 h-4" />, badge: totalMasterCustomersCount },
     { id: 'settings', label: 'Pengaturan %', icon: <SettingsIcon className="w-4 h-4" /> },

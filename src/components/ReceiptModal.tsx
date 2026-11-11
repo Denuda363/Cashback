@@ -98,11 +98,27 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           
           <div className="text-center pb-3 border-b border-dashed border-slate-300">
             <h3 className="font-extrabold text-base text-slate-900 tracking-tight">
-              {settings.storeName}
+              {settings.companyProfile?.companyName || settings.storeName}
             </h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Program Cashback Resmi & Transparan
-            </p>
+            {settings.companyProfile?.tagline ? (
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {settings.companyProfile.tagline}
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Program Cashback Resmi & Transparan
+              </p>
+            )}
+            {settings.companyProfile?.address && (
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {settings.companyProfile.address} {settings.companyProfile.city ? `• ${settings.companyProfile.city}` : ''}
+              </p>
+            )}
+            {settings.companyProfile?.phone && (
+              <p className="text-[10px] text-slate-400 font-mono">
+                Telp/WA: {settings.companyProfile.phone}
+              </p>
+            )}
             <div className="mt-2 inline-flex items-center gap-1 text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded font-medium">
               <ShieldCheck className="w-3 h-3 text-emerald-600" />
               <span>Perhitungan Tervalidasi Sistem</span>

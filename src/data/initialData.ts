@@ -40,6 +40,22 @@ export const DEFAULT_SETTINGS: CashbackSettings = {
   storeName: 'Mitra Niaga Utama',
   currency: 'IDR',
   minSpendForParcel: 5000000, // Rp 5.000.000 untuk berhak parcel (sesuai contoh gambar)
+  companyProfile: {
+    companyName: 'Mitra Niaga Utama',
+    tagline: 'Distributor & Retail Produk Berkualitas',
+    address: 'Jl. Jenderal Sudirman No. 88, Kawasan Niaga Terpadu',
+    city: 'Jakarta Pusat',
+    phone: '0812-3456-7890',
+    email: 'info@mitraniagautama.com',
+    website: 'www.mitraniagautama.com',
+    taxNumber: '01.234.567.8-012.000',
+    picName: 'H. Sudirman, S.E.',
+    picTitle: 'Finance & Store Manager',
+    bankName: 'BCA',
+    bankAccountNumber: '8830-1928-11',
+    bankAccountHolder: 'PT Mitra Niaga Utama',
+    footerNotes: 'Terima kasih atas kerja sama dan kemitraan setia Anda.',
+  },
 };
 
 export const INITIAL_INVOICES: Invoice[] = [

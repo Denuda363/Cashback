@@ -14,8 +14,8 @@ import {
   AppBackupData
 } from './utils/storage';
 import { exportCashbackToExcel, exportTandaTerimaFormat } from './utils/excelExport';
-import { calculateCashback } from './utils/cashbackCalculator';
-import { ActiveTab, ClaimStatus, Invoice, CashbackSettings, CustomerMaster, NavPosition } from './types/cashback';
+import { calculateCashback, formatRupiah } from './utils/cashbackCalculator';
+import { ActiveTab, ClaimStatus, Invoice, CashbackSettings, CustomerMaster, CustomerSummary, NavPosition } from './types/cashback';
 import { SmartNavigation } from './components/SmartNavigation';
 import { DashboardAnalytics } from './components/DashboardAnalytics';
 import { Top10Leaderboard } from './components/Top10Leaderboard';
@@ -32,6 +32,8 @@ import { ImportExcelModal } from './components/ImportExcelModal';
 import { ImportCustomerModal } from './components/ImportCustomerModal';
 import { UserGuideModal } from './components/UserGuideModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { DisbursementModal, CustomerDisbursementData } from './components/DisbursementModal';
+import { CashbackDisbursementRecords } from './components/CashbackDisbursementRecords';
 import { CheckCircle2, FileSpreadsheet, Upload, BookOpen } from 'lucide-react';
 import {
   testFirestoreConnection,
@@ -48,6 +50,7 @@ import {
   batchUpdateInvoicesInFirestore,
   batchUpdateCustomersInFirestore,
   deleteAllDataFromFirestore,
+  deleteAllInvoicesFromFirestore,
   restoreBackupToFirestore,
   FIRESTORE_DATABASE_ID,
   FIREBASE_PROJECT_ID,
@@ -145,6 +148,8 @@ export default function App() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImportCustomerModalOpen, setIsImportCustomerModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [disbursingInvoice, setDisbursingInvoice] = useState<Invoice | null>(null);
+  const [disbursingCustomer, setDisbursingCustomer] = useState<CustomerSummary | null>(null);
 
   // Cross-tab filters & Global Date Range Filter
   const [customerFilterForInvoices, setCustomerFilterForInvoices] = useState<string>('');
@@ -172,8 +177,13 @@ export default function App() {
 
   // Aggregated summaries & ranking based on active date range
   const customerSummaries = useMemo(() => {
-    return aggregateCustomerSummaries(dateFilteredInvoices, settings.minSpendForParcel || 5000000, customers);
-  }, [dateFilteredInvoices, settings.minSpendForParcel, customers]);
+    return aggregateCustomerSummaries(
+      dateFilteredInvoices,
+      settings.minSpendForParcel || 5000000,
+      customers,
+      settings.excludedCustomerNames || []
+    );
+  }, [dateFilteredInvoices, settings.minSpendForParcel, customers, settings.excludedCustomerNames]);
 
   const totalCashbackSum = useMemo(() => {
     return dateFilteredInvoices.reduce((sum, inv) => sum + inv.cashbackAmount, 0);
@@ -307,6 +317,142 @@ export default function App() {
       await saveInvoiceToFirestore(updatedInv).catch((err) => console.warn('Firestore status update:', err));
     }
     showToast(`Status klaim faktur berhasil diperbarui di Firebase Cloud.`);
+  };
+
+  // Reset entire invoice transactions collection (Faktur Reset)
+  const handleResetAllInvoices = async () => {
+    setIsSyncingWithCloud(true);
+    try {
+      const deletedCount = await deleteAllInvoicesFromFirestore();
+      saveStoredInvoices([]);
+      setInvoices([]);
+      showToast(`Seluruh data faktur (${deletedCount} transaksi) berhasil di-reset dan dibersihkan dari Firebase Cloud!`);
+    } catch (err: any) {
+      console.error('Reset invoices error:', err);
+      showToast('Gagal mereset faktur: ' + (err?.message || 'Error'));
+    } finally {
+      setIsSyncingWithCloud(false);
+    }
+  };
+
+  // Confirm cashback disbursement with photo proof & digital signature
+  const handleConfirmDisbursement = async (
+    invoiceId: string,
+    data: {
+      disbursedDate: string;
+      disbursedAt: string;
+      payoutMethod: any;
+      recipientName: string;
+      disbursementProofPhoto?: string;
+      disbursementSignature?: string;
+      disbursementNotes?: string;
+    }
+  ) => {
+    const inv = invoices.find((i) => i.id === invoiceId);
+    if (!inv) return;
+    const updatedInv: Invoice = {
+      ...inv,
+      claimStatus: 'disbursed',
+      disbursedDate: data.disbursedDate,
+      disbursedAt: data.disbursedAt,
+      payoutMethod: data.payoutMethod,
+      recipientName: data.recipientName,
+      disbursementProofPhoto: data.disbursementProofPhoto,
+      disbursementSignature: data.disbursementSignature,
+      disbursementNotes: data.disbursementNotes,
+    };
+    await handleSaveInvoice(updatedInv, invoiceId);
+    showToast(`Penerimaan cashback faktur ${inv.invoiceNumber} (${inv.customerName}) tersimpan ke Cloud!`);
+  };
+
+  // Confirm cashback disbursement per customer (mencairkan seluruh hak cashback konsumen)
+  const handleConfirmCustomerDisbursement = async (
+    customerName: string,
+    data: CustomerDisbursementData
+  ) => {
+    setIsSyncingWithCloud(true);
+    try {
+      const clean = customerName.trim().toLowerCase();
+      // Update all invoices for this customer to disbursed status
+      const updatedInvoices = invoices.map((inv) => {
+        if ((inv.customerName || '').trim().toLowerCase() === clean) {
+          return {
+            ...inv,
+            claimStatus: 'disbursed' as const,
+            disbursedDate: data.disbursedDate,
+            disbursedAt: data.disbursedAt,
+            payoutMethod: data.payoutMethod,
+            recipientName: data.recipientName,
+            disbursementProofPhoto: data.disbursementProofPhoto,
+            disbursementSignature: data.disbursementSignature,
+            disbursementNotes: data.disbursementNotes,
+          };
+        }
+        return inv;
+      });
+
+      setInvoices(updatedInvoices);
+      saveStoredInvoices(updatedInvoices);
+      await batchUpdateInvoicesInFirestore(updatedInvoices);
+      showToast(
+        `Pencairan cashback konsumen ${customerName} sebesar ${formatRupiah(data.totalCashbackPaid)} berhasil dicatat & disimpan ke Cloud!`
+      );
+    } catch (err: any) {
+      console.error('Customer disbursement sync error:', err);
+      showToast('Gagal mencatat pencairan: ' + (err?.message || 'Error'));
+    } finally {
+      setIsSyncingWithCloud(false);
+    }
+  };
+
+  // Revert customer disbursement (batalkan status pencairan konsumen)
+  const handleRevertCustomerDisbursement = async (customerName: string) => {
+    setIsSyncingWithCloud(true);
+    try {
+      const clean = customerName.trim().toLowerCase();
+      const updatedInvoices = invoices.map((inv) => {
+        if ((inv.customerName || '').trim().toLowerCase() === clean && inv.claimStatus === 'disbursed') {
+          return {
+            ...inv,
+            claimStatus: 'ready' as const,
+            disbursedDate: undefined,
+            disbursedAt: undefined,
+            disbursementProofPhoto: undefined,
+            disbursementSignature: undefined,
+            disbursementNotes: undefined,
+          };
+        }
+        return inv;
+      });
+
+      setInvoices(updatedInvoices);
+      saveStoredInvoices(updatedInvoices);
+      await batchUpdateInvoicesInFirestore(updatedInvoices);
+      showToast(`Status pencairan untuk ${customerName} berhasil dibatalkan.`);
+    } catch (err: any) {
+      showToast('Gagal membatalkan pencairan: ' + (err?.message || 'Error'));
+    } finally {
+      setIsSyncingWithCloud(false);
+    }
+  };
+
+  // Toggle disqualify/exclude customer from receiving cashback
+  const handleToggleExcludeCustomer = async (customerName: string) => {
+    const clean = customerName.trim().toLowerCase();
+    const currentList = settings.excludedCustomerNames || [];
+    const exists = currentList.some((n) => n.trim().toLowerCase() === clean);
+    const nextList = exists
+      ? currentList.filter((n) => n.trim().toLowerCase() !== clean)
+      : [...currentList, customerName.trim()];
+    const nextSettings: CashbackSettings = { ...settings, excludedCustomerNames: nextList };
+    setSettings(nextSettings);
+    saveStoredSettings(nextSettings);
+    await saveSettingsToFirestore(nextSettings).catch((err) => console.warn('Sync excluded settings:', err));
+    showToast(
+      exists
+        ? `Hak cashback untuk ${customerName} berhasil dipulihkan.`
+        : `Konsumen ${customerName} dicoret dari daftar penerima cashback.`
+    );
   };
 
   // Master Customer Handlers
@@ -598,8 +744,33 @@ export default function App() {
             onUpdateStatus={handleUpdateStatus}
             onExportExcel={handleExportExcel}
             onOpenImportExcel={() => setIsImportModalOpen(true)}
+            onResetAllInvoices={handleResetAllInvoices}
+            onOpenDisbursementModal={(inv) => {
+              const matchedCust = customerSummaries.find(
+                (c) => c.customerName.toLowerCase() === inv.customerName.toLowerCase()
+              );
+              if (matchedCust) {
+                setDisbursingCustomer(matchedCust);
+              } else {
+                setDisbursingInvoice(inv);
+              }
+            }}
             initialCustomerFilter={customerFilterForInvoices}
             onClearCustomerFilter={() => setCustomerFilterForInvoices('')}
+          />
+        )}
+
+        {/* Tab 3.5: Rekap Penerimaan Cashback (Disbursement Records & Proofs Per Konsumen) */}
+        {activeTab === 'payout_records' && (
+          <CashbackDisbursementRecords
+            customerSummaries={customerSummaries}
+            invoices={dateFilteredInvoices}
+            onOpenCustomerDisbursement={(cust) => setDisbursingCustomer(cust)}
+            onRevertCustomerDisbursement={handleRevertCustomerDisbursement}
+            onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
+            onExportExcel={handleExportExcel}
+            companyProfile={settings.companyProfile}
+            storeName={settings.companyProfile?.companyName || settings.storeName}
           />
         )}
 
@@ -608,6 +779,9 @@ export default function App() {
           <CustomerSummaryView
             invoices={dateFilteredInvoices}
             customerSummaries={customerSummaries}
+            excludedCustomerNames={settings.excludedCustomerNames || []}
+            onToggleExcludeCustomer={handleToggleExcludeCustomer}
+            onOpenCustomerDisbursement={(cust) => setDisbursingCustomer(cust)}
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
             onExportExcel={handleExportExcel}
             storeName={settings.storeName}
@@ -773,6 +947,21 @@ export default function App() {
         onSaveSettings={handleSaveSettings}
         onSuccessToast={showToast}
       />
+
+      {/* Cashback Disbursement Modal with Photo & E-Signature (Per Konsumen) */}
+      {(disbursingCustomer || disbursingInvoice) && (
+        <DisbursementModal
+          isOpen={Boolean(disbursingCustomer || disbursingInvoice)}
+          onClose={() => {
+            setDisbursingCustomer(null);
+            setDisbursingInvoice(null);
+          }}
+          customer={disbursingCustomer}
+          invoice={disbursingInvoice}
+          onConfirmCustomerDisbursement={handleConfirmCustomerDisbursement}
+          onConfirmInvoiceDisbursement={handleConfirmDisbursement}
+        />
+      )}
 
       {/* Real-time Connectivity Indicator */}
       <OfflineIndicator />

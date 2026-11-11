@@ -21,15 +21,22 @@ import {
   X,
   CreditCard,
   FileSpreadsheet,
-  ArrowRight
+  ArrowRight,
+  UserX,
+  UserCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
 import { aggregateCustomerSummaries } from '../utils/storage';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface CustomerSummaryViewProps {
   customerSummaries: CustomerSummary[];
   invoices?: Invoice[];
+  excludedCustomerNames?: string[];
+  onToggleExcludeCustomer?: (customerName: string) => void;
+  onOpenCustomerDisbursement?: (customer: CustomerSummary) => void;
   onSelectCustomerForInvoices: (customerName: string) => void;
   onExportExcel: () => void;
   storeName?: string;
@@ -38,6 +45,9 @@ interface CustomerSummaryViewProps {
 export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   customerSummaries,
   invoices = [],
+  excludedCustomerNames = [],
+  onToggleExcludeCustomer,
+  onOpenCustomerDisbursement,
   onSelectCustomerForInvoices,
   onExportExcel,
   storeName = 'CashbackPro',
@@ -45,6 +55,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState<'all' | 'Platinum' | 'Gold' | 'Silver' | 'Bronze'>('all');
   const [parcelFilter, setParcelFilter] = useState<'all' | 'parcel' | 'non_parcel'>('all');
+  const [eligibilityFilter, setEligibilityFilter] = useState<'all' | 'active' | 'excluded'>('all');
   const [sortBy, setSortBy] = useState<
     'rank_asc' | 'purchase_desc' | 'cashback_desc' | 'invoices_desc' | 'name_asc'
   >('rank_asc');
@@ -56,9 +67,17 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   // Modal state for customer detail breakdown
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerSummary | null>(null);
 
+  // Modal confirmation for excluding a customer
+  const [customerToExclude, setCustomerToExclude] = useState<string | null>(null);
+
   // Copy feedback state
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
+
+  // Set of lowercase clean excluded customer names
+  const excludedSet = useMemo(() => {
+    return new Set(excludedCustomerNames.map((n) => (n || '').trim().toLowerCase()));
+  }, [excludedCustomerNames]);
 
   // Group invoices directly by customer name as reference
   const invoicesByCustomerName = useMemo(() => {
@@ -73,33 +92,32 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
     return map;
   }, [invoices]);
 
-  // Ensure each summary has its attached invoices from Rekap Faktur
+  // Ensure each summary has its attached invoices and updated exclusion flag
   const resolvedSummaries = useMemo(() => {
-    if (customerSummaries.length > 0) {
-      return customerSummaries.map((c) => {
-        const nameKey = (c.customerName || '').trim().toLowerCase();
-        const matchedInvoices = c.invoices && c.invoices.length > 0
-          ? c.invoices
-          : (invoicesByCustomerName.get(nameKey) || []);
-        
-        return {
-          ...c,
-          invoices: matchedInvoices,
-        };
-      });
-    }
+    const baseList = customerSummaries.length > 0 
+      ? customerSummaries 
+      : aggregateCustomerSummaries(invoices, 5000000, [], excludedCustomerNames);
 
-    // Fallback: If customerSummaries was empty but invoices exists, aggregate directly
-    if (invoices.length > 0) {
-      return aggregateCustomerSummaries(invoices);
-    }
+    return baseList.map((c) => {
+      const nameKey = (c.customerName || '').trim().toLowerCase();
+      const matchedInvoices = c.invoices && c.invoices.length > 0
+        ? c.invoices
+        : (invoicesByCustomerName.get(nameKey) || []);
+      
+      const isExcluded = excludedSet.has(nameKey) || Boolean(c.isExcludedFromCashback);
 
-    return [];
-  }, [customerSummaries, invoices, invoicesByCustomerName]);
+      return {
+        ...c,
+        invoices: matchedInvoices,
+        isExcludedFromCashback: isExcluded,
+      };
+    });
+  }, [customerSummaries, invoices, invoicesByCustomerName, excludedSet, excludedCustomerNames]);
 
   // Filter and sort the per-customer data
   const filtered = useMemo(() => {
     let list = resolvedSummaries.filter((c) => {
+      // 1. Search
       if (search.trim()) {
         const q = search.toLowerCase().trim();
         const matchName = c.customerName.toLowerCase().includes(q);
@@ -112,10 +130,20 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
         }
       }
 
+      // 2. Eligibility filter (Coret / Aktif)
+      if (eligibilityFilter === 'active' && c.isExcludedFromCashback) {
+        return false;
+      }
+      if (eligibilityFilter === 'excluded' && !c.isExcludedFromCashback) {
+        return false;
+      }
+
+      // 3. Tier
       if (tierFilter !== 'all' && c.tier !== tierFilter) {
         return false;
       }
 
+      // 4. Parcel
       if (parcelFilter === 'parcel' && !c.getParcel) {
         return false;
       }
@@ -146,10 +174,16 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
     });
 
     return list;
-  }, [resolvedSummaries, search, tierFilter, parcelFilter, sortBy]);
+  }, [resolvedSummaries, search, eligibilityFilter, tierFilter, parcelFilter, sortBy]);
 
-  // Helper key for customer identification
-  const getCustomerKey = (c: CustomerSummary) => c.customerCode || c.customerName.toLowerCase() || c.customerPhone;
+  // Helper key for customer identification (unique per consumer)
+  const getCustomerKey = (c: CustomerSummary, idx?: number) => {
+    if (c.customerCode) return `code:${c.customerCode}`;
+    const cleanName = (c.customerName || '').trim().toLowerCase();
+    if (cleanName) return `name:${cleanName}`;
+    if (c.customerPhone) return `phone:${c.customerPhone}_${idx ?? 0}`;
+    return `idx:${idx ?? 0}`;
+  };
 
   // Toggle expand for a customer
   const toggleExpand = (key: string) => {
@@ -169,19 +203,20 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
     if (expandedKeys.size >= filtered.length && filtered.length > 0) {
       setExpandedKeys(new Set());
     } else {
-      const allKeys = new Set(filtered.map(getCustomerKey));
+      const allKeys = new Set(filtered.map((c, i) => getCustomerKey(c, i)));
       setExpandedKeys(allKeys);
     }
   };
 
-  // Build clean text recap for a single customer (matching user's exact format)
+  // Build clean text recap for a single customer
   const generateSingleCustomerText = (cust: CustomerSummary, idx?: number): string => {
     const num = idx !== undefined ? `${idx + 1}. ` : '';
     const ratio = cust.totalPurchase > 0 ? ((cust.totalCashback / cust.totalPurchase) * 100).toFixed(1) : '0';
+    const statusNote = cust.isExcludedFromCashback ? ' [DICORET - HAK CASHBACK DIBATALKAN]' : '';
     
-    let text = `${num}${cust.customerName}\n`;
+    let text = `${num}${cust.customerName}${statusNote}\n`;
     text += `   Total Belanja : ${formatRupiah(cust.totalPurchase)}\n`;
-    text += `   Total Cashback: ${formatRupiah(cust.totalCashback)} (${ratio}%)\n`;
+    text += `   Total Cashback: ${formatRupiah(cust.totalCashback)} (${ratio}%)${cust.isExcludedFromCashback ? ' (Tidak Dicairkan)' : ''}\n`;
     text += `   Transaksi     : ${cust.invoiceCount} Faktur\n`;
 
     if (cust.invoices && cust.invoices.length > 0) {
@@ -197,7 +232,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   // Copy single customer text
   const handleCopyCustomer = (cust: CustomerSummary, idx: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const key = getCustomerKey(cust);
+    const key = getCustomerKey(cust, idx);
     const text = generateSingleCustomerText(cust, idx);
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
@@ -214,9 +249,10 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
 
     filtered.forEach((cust, idx) => {
       const ratio = cust.totalPurchase > 0 ? ((cust.totalCashback / cust.totalPurchase) * 100).toFixed(1) : '0';
-      text += `${idx + 1}. ${cust.customerName}\n`;
+      const statusNote = cust.isExcludedFromCashback ? ' [DICORET DARI PENERIMA CASHBACK]' : '';
+      text += `${idx + 1}. ${cust.customerName}${statusNote}\n`;
       text += `   Total Belanja : ${formatRupiah(cust.totalPurchase)}\n`;
-      text += `   Total Cashback: ${formatRupiah(cust.totalCashback)} (${ratio}%)\n`;
+      text += `   Total Cashback: ${formatRupiah(cust.totalCashback)} (${ratio}%)${cust.isExcludedFromCashback ? ' (Hak Dicoret)' : ''}\n`;
       text += `   Transaksi     : ${cust.invoiceCount} Faktur\n\n`;
     });
 
@@ -259,6 +295,10 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
     return filtered.reduce((sum, c) => sum + c.invoiceCount, 0);
   }, [filtered]);
 
+  const excludedCount = useMemo(() => {
+    return resolvedSummaries.filter((c) => c.isExcludedFromCashback).length;
+  }, [resolvedSummaries]);
+
   return (
     <div className="space-y-4">
       
@@ -278,9 +318,14 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
               <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full">
                 {filtered.length} Konsumen Terdata
               </span>
+              {excludedCount > 0 && (
+                <span className="text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <UserX className="w-3 h-3 text-rose-600" /> {excludedCount} Dicoret
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Data akumulasi Total Belanja, Total Cashback, dan Jumlah Transaksi per tiap konsumen, diambil langsung dari <strong>Rekap Faktur</strong> sebagai acuan.
+              Data akumulasi per tiap konsumen dari <strong>Rekap Faktur</strong>. Anda dapat mengatur siapa saja konsumen yang <strong>dicoret</strong> dari hak penerimaan cashback.
             </p>
           </div>
 
@@ -333,7 +378,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
               )}
             </button>
 
-            {/* Salin Rekap Teks Sesuai Format Contoh User */}
+            {/* Salin Rekap Teks */}
             <button
               onClick={handleCopyAllRecap}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors"
@@ -366,18 +411,31 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
         </div>
 
         {/* Filter & Search Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
           
           {/* Search */}
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Cari nama konsumen (Dr Santi, Dr Sany...)"
+              placeholder="Cari nama konsumen..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
             />
+          </div>
+
+          {/* Eligibility Filter (Coret / Aktif) */}
+          <div>
+            <select
+              value={eligibilityFilter}
+              onChange={(e) => setEligibilityFilter(e.target.value as any)}
+              className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-semibold"
+            >
+              <option value="all">Semua Status Hak Cashback</option>
+              <option value="active">Penerima Aktif (Belum Dicoret)</option>
+              <option value="excluded">Konsumen yang Dicoret ({excludedCount})</option>
+            </select>
           </div>
 
           {/* Sort By */}
@@ -418,7 +476,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
             >
               <option value="all">Semua Status Parcel</option>
-              <option value="parcel">🎁 Khusus Penerima Parcel (≥ Rp 5 Jt)</option>
+              <option value="parcel">🎁 Khusus Penerima Parcel</option>
               <option value="non_parcel">Belum Berhak Parcel</option>
             </select>
           </div>
@@ -427,30 +485,35 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
 
       </div>
 
-      {/* Main List: Per-Customer Cards (Directly matching user's requested specification) */}
+      {/* Main List: Per-Customer Cards */}
       {viewMode === 'cards' && (
         <div className="space-y-3">
           {filtered.length === 0 ? (
             <div className="p-10 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
               <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-700">Tidak ada data konsumen yang sesuai.</p>
+              <p className="text-sm font-bold text-slate-700">Tidak ada data konsumen yang sesuai filter.</p>
               <p className="text-xs text-slate-400 mt-1">
-                Pastikan sudah ada faktur transaksi di menu <strong>Rekap Faktur</strong> dengan nama konsumen yang sesuai.
+                Periksa kata kunci pencarian atau sesuaikan filter status hak cashback.
               </p>
             </div>
           ) : (
             filtered.map((cust, idx) => {
-              const key = getCustomerKey(cust);
+              const key = getCustomerKey(cust, idx);
               const isExpanded = expandedKeys.has(key);
               const isCopied = copiedKey === key;
               const ratio = cust.totalPurchase > 0 ? ((cust.totalCashback / cust.totalPurchase) * 100).toFixed(1) : '0';
               const hasInvoices = Boolean(cust.invoices && cust.invoices.length > 0);
               const unclaimed = Math.max(0, cust.totalCashback - cust.disbursedCashback);
+              const isExcluded = Boolean(cust.isExcludedFromCashback);
 
               return (
                 <div 
                   key={key}
-                  className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden transition-all hover:border-slate-300"
+                  className={`bg-white rounded-xl border shadow-2xs overflow-hidden transition-all ${
+                    isExcluded 
+                      ? 'border-rose-200 bg-rose-50/15' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
                 >
                   {/* Customer Card Content */}
                   <div className="p-4 sm:p-5">
@@ -459,14 +522,25 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       
                       <div className="flex items-start gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-slate-900 text-white font-mono font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                        <span className={`w-8 h-8 rounded-lg font-mono font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs mt-0.5 ${
+                          isExcluded ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'
+                        }`}>
                           {idx + 1}
                         </span>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                            <h2 className={`text-base sm:text-lg font-black tracking-tight ${
+                              isExcluded ? 'line-through text-slate-400' : 'text-slate-900'
+                            }`}>
                               {cust.customerName}
                             </h2>
+
+                            {isExcluded && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 shadow-2xs">
+                                <UserX className="w-3 h-3 text-rose-600" /> Dicoret dari Penerima
+                              </span>
+                            )}
+
                             {cust.customerCode && (
                               <span className="text-[11px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
                                 {cust.customerCode}
@@ -501,7 +575,33 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                      <div className="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
+                        
+                        {/* Coret / Pulihkan Toggle Button */}
+                        {onToggleExcludeCustomer && (
+                          isExcluded ? (
+                            <button
+                              type="button"
+                              onClick={() => onToggleExcludeCustomer(cust.customerName)}
+                              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors"
+                              title="Pulihkan hak cashback konsumen ini"
+                            >
+                              <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Pulihkan Konsumen</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setCustomerToExclude(cust.customerName)}
+                              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
+                              title="Coret konsumen ini dari daftar penerima cashback"
+                            >
+                              <UserX className="w-3.5 h-3.5 text-rose-600" />
+                              <span>Coret dari Penerima</span>
+                            </button>
+                          )
+                        )}
+
                         <button
                           onClick={() => toggleExpand(key)}
                           className={`flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
@@ -539,6 +639,17 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                         >
                           <Receipt className="w-4 h-4" />
                         </button>
+
+                        {onOpenCustomerDisbursement && !isExcluded && unclaimed > 0 && (
+                          <button
+                            onClick={() => onOpenCustomerDisbursement(cust)}
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs transition-colors shrink-0"
+                            title={`Cairkan cashback ${formatRupiah(unclaimed)} untuk ${cust.customerName}`}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Cairkan ({formatRupiah(unclaimed)})</span>
+                          </button>
+                        )}
                       </div>
 
                     </div>
@@ -558,18 +669,33 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                         </div>
 
                         {/* 2. Total Cashback */}
-                        <div className="flex sm:flex-col justify-between sm:justify-start items-center sm:items-start p-2 bg-white rounded-lg border border-emerald-100">
+                        <div className={`flex sm:flex-col justify-between sm:justify-start items-center sm:items-start p-2 bg-white rounded-lg border ${
+                          isExcluded ? 'border-rose-200' : 'border-emerald-100'
+                        }`}>
                           <div className="flex items-center gap-1.5 font-sans">
-                            <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">
+                            <span className={`text-[11px] font-bold uppercase tracking-wider ${
+                              isExcluded ? 'text-rose-700' : 'text-emerald-800'
+                            }`}>
                               Total Cashback
                             </span>
-                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                              isExcluded ? 'bg-rose-100 text-rose-800' : 'bg-emerald-50 text-emerald-700'
+                            }`}>
                               {ratio}%
                             </span>
                           </div>
-                          <span className="text-base sm:text-lg font-black text-emerald-700 mt-0.5">
-                            {formatRupiah(cust.totalCashback)}
-                          </span>
+                          <div className="mt-0.5">
+                            <span className={`text-base sm:text-lg font-black ${
+                              isExcluded ? 'line-through text-slate-400' : 'text-emerald-700'
+                            }`}>
+                              {formatRupiah(cust.totalCashback)}
+                            </span>
+                            {isExcluded && (
+                              <span className="text-[10px] text-rose-600 font-bold font-sans block">
+                                (Hak Cashback Dicoret)
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* 3. Transaksi */}
@@ -592,7 +718,9 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                           </span>
                           <span aria-hidden="true">·</span>
                           <span>
-                            Sisa Belum Cair: <strong className={unclaimed > 0 ? 'text-amber-700' : 'text-emerald-600'}>{formatRupiah(unclaimed)}</strong>
+                            Sisa Belum Cair: <strong className={unclaimed > 0 ? (isExcluded ? 'text-slate-500 line-through' : 'text-amber-700') : 'text-emerald-600'}>
+                              {formatRupiah(unclaimed)}
+                            </strong>
                           </span>
                         </div>
 
@@ -637,8 +765,8 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-mono text-xs">
-                              {cust.invoices!.map((inv) => (
-                                <tr key={inv.id || inv.invoiceNumber} className="hover:bg-slate-50/80 transition-colors">
+                              {cust.invoices!.map((inv, invIdx) => (
+                                <tr key={inv.id || `${inv.invoiceNumber}_${invIdx}`} className="hover:bg-slate-50/80 transition-colors">
                                   <td className="py-2 px-3 font-bold font-sans text-slate-900">
                                     {inv.invoiceNumber}
                                   </td>
@@ -717,7 +845,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                   <th className="py-3 px-3.5">Nama Konsumen</th>
                   <th className="py-3 px-3.5 text-right font-black text-slate-900">Total Belanja</th>
                   <th className="py-3 px-3.5 text-right font-black text-emerald-800">Total Cashback</th>
-                  <th className="py-3 px-3 text-center">Rasio %</th>
+                  <th className="py-3 px-3 text-center">Status Hak</th>
                   <th className="py-3 px-3 text-center">Transaksi</th>
                   <th className="py-3 px-3 text-center">Parcel</th>
                   <th className="py-3 px-3.5 text-right">Sudah Cair</th>
@@ -736,20 +864,22 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                   </tr>
                 ) : (
                   filtered.map((cust, idx) => {
-                    const key = getCustomerKey(cust);
+                    const key = getCustomerKey(cust, idx);
                     const isExpanded = expandedKeys.has(key);
                     const unclaimed = Math.max(0, cust.totalCashback - cust.disbursedCashback);
-                    const ratio = cust.totalPurchase > 0 ? ((cust.totalCashback / cust.totalPurchase) * 100).toFixed(1) : '0';
+                    const isExcluded = Boolean(cust.isExcludedFromCashback);
 
                     return (
                       <React.Fragment key={key}>
-                        <tr className="hover:bg-slate-50/70 transition-colors">
+                        <tr className={`hover:bg-slate-50/70 transition-colors ${isExcluded ? 'bg-rose-50/20' : ''}`}>
                           <td className="py-3 px-3 text-center font-mono font-bold text-slate-600">
                             {idx + 1}
                           </td>
                           <td className="py-3 px-3.5 font-bold text-slate-900 text-sm">
                             <div className="flex items-center gap-1.5">
-                              <span>{cust.customerName}</span>
+                              <span className={isExcluded ? 'line-through text-slate-400' : ''}>
+                                {cust.customerName}
+                              </span>
                               {cust.customerCode && (
                                 <span className="text-[10px] font-mono font-semibold text-slate-500 bg-slate-100 px-1 py-0.2 rounded">
                                   {cust.customerCode}
@@ -763,11 +893,21 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                           <td className="py-3 px-3.5 text-right font-mono tabular-nums text-slate-900 font-black text-sm">
                             {formatRupiah(cust.totalPurchase)}
                           </td>
-                          <td className="py-3 px-3.5 text-right font-mono tabular-nums font-black text-emerald-700 text-sm">
-                            {formatRupiah(cust.totalCashback)}
+                          <td className="py-3 px-3.5 text-right font-mono tabular-nums font-black text-sm">
+                            <span className={isExcluded ? 'line-through text-slate-400' : 'text-emerald-700'}>
+                              {formatRupiah(cust.totalCashback)}
+                            </span>
                           </td>
-                          <td className="py-3 px-3 text-center font-mono text-slate-600 font-semibold text-xs">
-                            {ratio}%
+                          <td className="py-3 px-3 text-center">
+                            {isExcluded ? (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200">
+                                Dicoret
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Berhak
+                              </span>
+                            )}
                           </td>
                           <td className="py-3 px-3 text-center font-mono text-slate-800 font-bold">
                             {cust.invoiceCount} Faktur
@@ -786,7 +926,9 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                           </td>
                           <td className="py-3 px-3.5 text-right font-mono tabular-nums font-bold">
                             {unclaimed > 0 ? (
-                              <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                              <span className={`px-2 py-0.5 rounded border text-xs ${
+                                isExcluded ? 'text-slate-500 bg-slate-100 border-slate-200 line-through' : 'text-amber-700 bg-amber-50 border-amber-200'
+                              }`}>
                                 {formatRupiah(unclaimed)}
                               </span>
                             ) : (
@@ -804,6 +946,25 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                           </td>
                           <td className="py-3 px-3.5 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1">
+                              {onToggleExcludeCustomer && (
+                                isExcluded ? (
+                                  <button
+                                    onClick={() => onToggleExcludeCustomer(cust.customerName)}
+                                    title="Pulihkan hak cashback"
+                                    className="p-1.5 text-emerald-800 hover:bg-emerald-100 bg-emerald-50 rounded-lg transition-colors border border-emerald-300"
+                                  >
+                                    <UserCheck className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => setCustomerToExclude(cust.customerName)}
+                                    title="Coret konsumen dari penerima cashback"
+                                    className="p-1.5 text-rose-700 hover:bg-rose-100 bg-rose-50 rounded-lg transition-colors border border-rose-200"
+                                  >
+                                    <UserX className="w-3.5 h-3.5" />
+                                  </button>
+                                )
+                              )}
                               <button
                                 onClick={(e) => handleCopyCustomer(cust, idx, e)}
                                 title="Salin data teks"
@@ -849,8 +1010,8 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-slate-100 text-[11px]">
-                                    {cust.invoices.map((inv) => (
-                                      <tr key={inv.id || inv.invoiceNumber}>
+                                    {cust.invoices.map((inv, invIdx) => (
+                                      <tr key={inv.id || `${inv.invoiceNumber}_${invIdx}`}>
                                         <td className="py-1 px-2 font-bold font-sans text-slate-900">{inv.invoiceNumber}</td>
                                         <td className="py-1 px-2 text-slate-600">{inv.date}</td>
                                         <td className="py-1 px-2 font-sans text-slate-700">{inv.category || '-'}</td>
@@ -878,6 +1039,23 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog to Disqualify / Strike-through Customer */}
+      <ConfirmDialog
+        isOpen={customerToExclude !== null}
+        title="Coret Konsumen dari Penerima Cashback?"
+        message={`Apakah Anda yakin ingin mencoret "${customerToExclude}" dari daftar konsumen yang berhak menerima cashback? Hak cashback konsumen ini akan dinonaktifkan dari daftar penerima.`}
+        confirmLabel="Ya, Coret Konsumen"
+        cancelLabel="Batal"
+        isDestructive={true}
+        onConfirm={() => {
+          if (customerToExclude && onToggleExcludeCustomer) {
+            onToggleExcludeCustomer(customerToExclude);
+          }
+          setCustomerToExclude(null);
+        }}
+        onCancel={() => setCustomerToExclude(null)}
+      />
 
     </div>
   );
