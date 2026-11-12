@@ -9,6 +9,8 @@ import {
   CheckCircle2, 
   Clock, 
   Gift, 
+  Coins,
+  Sparkles,
   Building2, 
   TrendingUp, 
   Copy, 
@@ -24,21 +26,26 @@ import {
   ArrowRight,
   UserX,
   UserCheck,
-  AlertTriangle
+  AlertTriangle,
+  Printer
 } from 'lucide-react';
-import { CustomerSummary, Invoice } from '../types/cashback';
-import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
+import { CustomerSummary, Invoice, CustomerBenefitType, CompanyProfile } from '../types/cashback';
+import { formatRupiah, formatNumber, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
 import { aggregateCustomerSummaries } from '../utils/storage';
 import { ConfirmDialog } from './ConfirmDialog';
+import { OfficialReceiptModal } from './OfficialReceiptModal';
 
 interface CustomerSummaryViewProps {
   customerSummaries: CustomerSummary[];
   invoices?: Invoice[];
   excludedCustomerNames?: string[];
+  benefitOverrides?: Record<string, CustomerBenefitType>;
+  onSetCustomerBenefit?: (customerName: string, benefitType: CustomerBenefitType) => void;
   onToggleExcludeCustomer?: (customerName: string) => void;
   onOpenCustomerDisbursement?: (customer: CustomerSummary) => void;
   onSelectCustomerForInvoices: (customerName: string) => void;
   onExportExcel: () => void;
+  companyProfile?: CompanyProfile;
   storeName?: string;
 }
 
@@ -46,16 +53,21 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   customerSummaries,
   invoices = [],
   excludedCustomerNames = [],
+  benefitOverrides = {},
+  onSetCustomerBenefit,
   onToggleExcludeCustomer,
   onOpenCustomerDisbursement,
   onSelectCustomerForInvoices,
   onExportExcel,
+  companyProfile,
   storeName = 'CashbackPro',
 }) => {
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState<'all' | 'Platinum' | 'Gold' | 'Silver' | 'Bronze'>('all');
   const [parcelFilter, setParcelFilter] = useState<'all' | 'parcel' | 'non_parcel'>('all');
+  const [benefitFilter, setBenefitFilter] = useState<'all' | CustomerBenefitType>('all');
   const [eligibilityFilter, setEligibilityFilter] = useState<'all' | 'active' | 'excluded'>('all');
+  const [viewingReceiptCustomer, setViewingReceiptCustomer] = useState<CustomerSummary | null>(null);
   const [sortBy, setSortBy] = useState<
     'rank_asc' | 'purchase_desc' | 'cashback_desc' | 'invoices_desc' | 'name_asc'
   >('rank_asc');
@@ -96,7 +108,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   const resolvedSummaries = useMemo(() => {
     const baseList = customerSummaries.length > 0 
       ? customerSummaries 
-      : aggregateCustomerSummaries(invoices, 5000000, [], excludedCustomerNames);
+      : aggregateCustomerSummaries(invoices, 5000000, [], excludedCustomerNames, benefitOverrides);
 
     return baseList.map((c) => {
       const nameKey = (c.customerName || '').trim().toLowerCase();
@@ -105,14 +117,21 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
         : (invoicesByCustomerName.get(nameKey) || []);
       
       const isExcluded = excludedSet.has(nameKey) || Boolean(c.isExcludedFromCashback);
+      const manualBenefit = benefitOverrides ? benefitOverrides[nameKey] : undefined;
+      const benefitType: CustomerBenefitType = manualBenefit || c.benefitType || (c.getParcel ? 'cashback_parcel' : 'cashback_only');
+      const getParcel = manualBenefit 
+        ? (manualBenefit === 'cashback_parcel' || manualBenefit === 'parcel_only')
+        : (c.getParcel ?? false);
 
       return {
         ...c,
         invoices: matchedInvoices,
         isExcludedFromCashback: isExcluded,
+        benefitType,
+        getParcel,
       };
     });
-  }, [customerSummaries, invoices, invoicesByCustomerName, excludedSet, excludedCustomerNames]);
+  }, [customerSummaries, invoices, invoicesByCustomerName, excludedSet, excludedCustomerNames, benefitOverrides]);
 
   // Filter and sort the per-customer data
   const filtered = useMemo(() => {
@@ -138,12 +157,17 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
         return false;
       }
 
-      // 3. Tier
+      // 3. Benefit Package Filter (Cashback + Parsel / Cashback / Parcel)
+      if (benefitFilter !== 'all' && c.benefitType !== benefitFilter) {
+        return false;
+      }
+
+      // 4. Tier
       if (tierFilter !== 'all' && c.tier !== tierFilter) {
         return false;
       }
 
-      // 4. Parcel
+      // 5. Parcel
       if (parcelFilter === 'parcel' && !c.getParcel) {
         return false;
       }
@@ -174,7 +198,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
     });
 
     return list;
-  }, [resolvedSummaries, search, eligibilityFilter, tierFilter, parcelFilter, sortBy]);
+  }, [resolvedSummaries, search, eligibilityFilter, benefitFilter, tierFilter, parcelFilter, sortBy]);
 
   // Helper key for customer identification (unique per consumer)
   const getCustomerKey = (c: CustomerSummary, idx?: number) => {
@@ -411,7 +435,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
         </div>
 
         {/* Filter & Search Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
           
           {/* Search */}
           <div className="relative">
@@ -423,6 +447,20 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
             />
+          </div>
+
+          {/* Benefit Filter (Cashback + Parsel / Cashback / Parcel) */}
+          <div>
+            <select
+              value={benefitFilter}
+              onChange={(e) => setBenefitFilter(e.target.value as any)}
+              className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-semibold text-purple-900"
+            >
+              <option value="all">Semua Paket Diterima</option>
+              <option value="cashback_parcel">🎁💰 Cashback + Parsel</option>
+              <option value="cashback_only">💰 Hanya Cashback</option>
+              <option value="parcel_only">🎁 Hanya Parsel</option>
+            </select>
           </div>
 
           {/* Eligibility Filter (Coret / Aktif) */}
@@ -559,11 +597,20 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                             >
                               {cust.tier}
                             </span>
-                            {cust.getParcel && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-2xs">
-                                <Gift className="w-3 h-3 text-amber-600" /> Hadiah Parcel
-                              </span>
-                            )}
+                            
+                            {/* Benefit Package Badge */}
+                            {(() => {
+                              const bClasses = getBenefitBadgeClasses(cust.benefitType);
+                              return (
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 shadow-2xs ${bClasses.bg} ${bClasses.border}`}
+                                  title="Paket yang Diterima Konsumen"
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full ${bClasses.dot}`} />
+                                  {getBenefitLabel(cust.benefitType)}
+                                </span>
+                              );
+                            })()}
                           </div>
 
                           <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mt-0.5">
@@ -571,12 +618,70 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                             <span aria-hidden="true">·</span>
                             <span>Terakhir: {cust.lastPurchaseDate}</span>
                           </div>
+
+                          {/* Quick Benefit Package Setting */}
+                          {onSetCustomerBenefit && !isExcluded && (
+                            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">
+                                Atur Hak Diterima:
+                              </span>
+                              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => onSetCustomerBenefit(cust.customerName, 'cashback_parcel')}
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                                    cust.benefitType === 'cashback_parcel'
+                                      ? 'bg-purple-700 text-white shadow-2xs'
+                                      : 'text-slate-600 hover:text-slate-900'
+                                  }`}
+                                  title="Konsumen berhak menerima Cashback Tunai DAN Hadiah Parsel"
+                                >
+                                  🎁💰 Cashback + Parsel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onSetCustomerBenefit(cust.customerName, 'cashback_only')}
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                                    cust.benefitType === 'cashback_only'
+                                      ? 'bg-emerald-700 text-white shadow-2xs'
+                                      : 'text-slate-600 hover:text-slate-900'
+                                  }`}
+                                  title="Konsumen HANYA menerima Cashback Tunai (Tanpa Parsel)"
+                                >
+                                  💰 Cashback Saja
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onSetCustomerBenefit(cust.customerName, 'parcel_only')}
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                                    cust.benefitType === 'parcel_only'
+                                      ? 'bg-amber-700 text-white shadow-2xs'
+                                      : 'text-slate-600 hover:text-slate-900'
+                                  }`}
+                                  title="Konsumen HANYA menerima Hadiah Parsel (Tanpa Cashback Tunai)"
+                                >
+                                  🎁 Parsel Saja
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
                       {/* Action Buttons */}
                       <div className="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
                         
+                        {/* Official Receipt Print Button */}
+                        <button
+                          type="button"
+                          onClick={() => setViewingReceiptCustomer(cust)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors shadow-2xs"
+                          title="Cetak Tanda Terima Resmi Serah Terima Cashback & Parsel (PDF/Print)"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Tanda Terima Resmi</span>
+                        </button>
+
                         {/* Coret / Pulihkan Toggle Button */}
                         {onToggleExcludeCustomer && (
                           isExcluded ? (
@@ -845,9 +950,9 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                   <th className="py-3 px-3.5">Nama Konsumen</th>
                   <th className="py-3 px-3.5 text-right font-black text-slate-900">Total Belanja</th>
                   <th className="py-3 px-3.5 text-right font-black text-emerald-800">Total Cashback</th>
+                  <th className="py-3 px-3.5 text-center">Paket Diterima</th>
                   <th className="py-3 px-3 text-center">Status Hak</th>
                   <th className="py-3 px-3 text-center">Transaksi</th>
-                  <th className="py-3 px-3 text-center">Parcel</th>
                   <th className="py-3 px-3.5 text-right">Sudah Cair</th>
                   <th className="py-3 px-3.5 text-right">Sisa Belum Cair</th>
                   <th className="py-3 px-3 text-center">Faktur</th>
@@ -898,6 +1003,33 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                               {formatRupiah(cust.totalCashback)}
                             </span>
                           </td>
+                          
+                          {/* Paket Diterima (Dropdown / Badge) */}
+                          <td className="py-3 px-3 text-center">
+                            {onSetCustomerBenefit && !isExcluded ? (
+                              <select
+                                value={cust.benefitType || 'cashback_only'}
+                                onChange={(e) => onSetCustomerBenefit(cust.customerName, e.target.value as CustomerBenefitType)}
+                                className="text-[11px] font-bold py-1 px-2 rounded-lg border border-slate-200 bg-slate-50 hover:border-slate-300 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-slate-900 cursor-pointer shadow-2xs"
+                                title="Atur apakah konsumen ini dapat Cashback + Parsel, Cashback, atau Parcel"
+                              >
+                                <option value="cashback_parcel">🎁💰 Cashback + Parsel</option>
+                                <option value="cashback_only">💰 Cashback</option>
+                                <option value="parcel_only">🎁 Parcel</option>
+                              </select>
+                            ) : (
+                              (() => {
+                                const bClasses = getBenefitBadgeClasses(cust.benefitType);
+                                return (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs ${bClasses.bg} ${bClasses.border}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${bClasses.dot}`} />
+                                    {getBenefitLabel(cust.benefitType)}
+                                  </span>
+                                );
+                              })()
+                            )}
+                          </td>
+
                           <td className="py-3 px-3 text-center">
                             {isExcluded ? (
                               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200">
@@ -911,15 +1043,6 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                           </td>
                           <td className="py-3 px-3 text-center font-mono text-slate-800 font-bold">
                             {cust.invoiceCount} Faktur
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            {cust.getParcel ? (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                                🎁 Ya
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-slate-400">-</span>
-                            )}
                           </td>
                           <td className="py-3 px-3.5 text-right font-mono tabular-nums text-slate-600">
                             {formatRupiah(cust.disbursedCashback)}
@@ -946,6 +1069,16 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                           </td>
                           <td className="py-3 px-3.5 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1">
+                              
+                              {/* Official Receipt Button */}
+                              <button
+                                onClick={() => setViewingReceiptCustomer(cust)}
+                                title="Cetak Tanda Terima Resmi Serah Terima (PDF/Print)"
+                                className="p-1.5 text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 shadow-2xs"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+
                               {onToggleExcludeCustomer && (
                                 isExcluded ? (
                                   <button
@@ -1056,6 +1189,16 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
         }}
         onCancel={() => setCustomerToExclude(null)}
       />
+
+      {/* Official Handover Receipt Modal */}
+      {viewingReceiptCustomer && (
+        <OfficialReceiptModal
+          customer={viewingReceiptCustomer}
+          onClose={() => setViewingReceiptCustomer(null)}
+          companyProfile={companyProfile}
+          storeName={storeName}
+        />
+      )}
 
     </div>
   );

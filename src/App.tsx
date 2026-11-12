@@ -14,8 +14,8 @@ import {
   AppBackupData
 } from './utils/storage';
 import { exportCashbackToExcel, exportTandaTerimaFormat } from './utils/excelExport';
-import { calculateCashback, formatRupiah } from './utils/cashbackCalculator';
-import { ActiveTab, ClaimStatus, Invoice, CashbackSettings, CustomerMaster, CustomerSummary, NavPosition } from './types/cashback';
+import { calculateCashback, formatRupiah, getBenefitLabel } from './utils/cashbackCalculator';
+import { ActiveTab, ClaimStatus, Invoice, CashbackSettings, CustomerMaster, CustomerSummary, NavPosition, CustomerBenefitType } from './types/cashback';
 import { SmartNavigation } from './components/SmartNavigation';
 import { DashboardAnalytics } from './components/DashboardAnalytics';
 import { Top10Leaderboard } from './components/Top10Leaderboard';
@@ -181,9 +181,10 @@ export default function App() {
       dateFilteredInvoices,
       settings.minSpendForParcel || 5000000,
       customers,
-      settings.excludedCustomerNames || []
+      settings.excludedCustomerNames || [],
+      settings.customerBenefitOverrides || {}
     );
-  }, [dateFilteredInvoices, settings.minSpendForParcel, customers, settings.excludedCustomerNames]);
+  }, [dateFilteredInvoices, settings.minSpendForParcel, customers, settings.excludedCustomerNames, settings.customerBenefitOverrides]);
 
   const totalCashbackSum = useMemo(() => {
     return dateFilteredInvoices.reduce((sum, inv) => sum + inv.cashbackAmount, 0);
@@ -453,6 +454,19 @@ export default function App() {
         ? `Hak cashback untuk ${customerName} berhasil dipulihkan.`
         : `Konsumen ${customerName} dicoret dari daftar penerima cashback.`
     );
+  };
+
+  // Set customer benefit package (Cashback + Parsel, Cashback Saja, or Parcel Saja)
+  const handleSetCustomerBenefit = async (customerName: string, benefitType: CustomerBenefitType) => {
+    const clean = customerName.trim().toLowerCase();
+    if (!clean) return;
+    const currentOverrides = { ...(settings.customerBenefitOverrides || {}) };
+    currentOverrides[clean] = benefitType;
+    const nextSettings: CashbackSettings = { ...settings, customerBenefitOverrides: currentOverrides };
+    setSettings(nextSettings);
+    saveStoredSettings(nextSettings);
+    await saveSettingsToFirestore(nextSettings).catch((err) => console.warn('Sync benefit settings:', err));
+    showToast(`Paket untuk ${customerName} berhasil diatur ke: "${getBenefitLabel(benefitType)}"`);
   };
 
   // Master Customer Handlers
@@ -780,11 +794,14 @@ export default function App() {
             invoices={dateFilteredInvoices}
             customerSummaries={customerSummaries}
             excludedCustomerNames={settings.excludedCustomerNames || []}
+            benefitOverrides={settings.customerBenefitOverrides || {}}
+            onSetCustomerBenefit={handleSetCustomerBenefit}
             onToggleExcludeCustomer={handleToggleExcludeCustomer}
             onOpenCustomerDisbursement={(cust) => setDisbursingCustomer(cust)}
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
             onExportExcel={handleExportExcel}
-            storeName={settings.storeName}
+            companyProfile={settings.companyProfile}
+            storeName={settings.companyProfile?.companyName || settings.storeName}
           />
         )}
 

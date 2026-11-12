@@ -10,7 +10,8 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Trophy,
-  Plus
+  Plus,
+  Gift
 } from 'lucide-react';
 import { CashbackSettings, CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
@@ -67,6 +68,25 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
       avgCashbackPerCustomer,
     };
   }, [invoices, customerSummaries]);
+
+  // Breakdown by customer benefit packages (Cashback + Parsel, Cashback Saja, Parcel Saja)
+  const benefitStats = useMemo(() => {
+    let cashbackParcelCount = 0;
+    let cashbackOnlyCount = 0;
+    let parcelOnlyCount = 0;
+
+    for (const c of customerSummaries) {
+      if (c.benefitType === 'cashback_parcel') cashbackParcelCount++;
+      else if (c.benefitType === 'parcel_only') parcelOnlyCount++;
+      else cashbackOnlyCount++;
+    }
+
+    return {
+      cashbackParcelCount,
+      cashbackOnlyCount,
+      parcelOnlyCount,
+    };
+  }, [customerSummaries]);
 
   // Breakdown by category
   const categoryStats = useMemo(() => {
@@ -276,6 +296,107 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
           </div>
         </div>
 
+      </div>
+
+      {/* Customer Benefit Packages Distribution Banner */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div>
+            <h2 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <Gift className="w-4 h-4 text-purple-600" />
+              <span>Rekap Paket yang Diterima Konsumen</span>
+            </h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Total {customerSummaries.length} konsumen dikelompokkan berdasarkan hak penerimaan reward
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigateToTab('customers')}
+            className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 self-start sm:self-auto"
+          >
+            <span>Atur Per Konsumen</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+          
+          {/* 1. Cashback + Parsel */}
+          <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-200/80 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-base shadow-2xs">
+                🎁
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-purple-900 block">
+                  Cashback + Parsel
+                </span>
+                <span className="text-[10px] text-purple-700">
+                  Uang tunai & bingkisan parsel
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-lg font-black text-purple-900 font-mono">
+                {benefitStats.cashbackParcelCount}
+              </span>
+              <span className="text-[10px] text-purple-600 font-medium block">
+                Konsumen
+              </span>
+            </div>
+          </div>
+
+          {/* 2. Hanya Cashback */}
+          <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/80 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-2xs">
+                💰
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-emerald-900 block">
+                  Hanya Cashback
+                </span>
+                <span className="text-[10px] text-emerald-700">
+                  Uang tunai / transfer bank
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-lg font-black text-emerald-900 font-mono">
+                {benefitStats.cashbackOnlyCount}
+              </span>
+              <span className="text-[10px] text-emerald-600 font-medium block">
+                Konsumen
+              </span>
+            </div>
+          </div>
+
+          {/* 3. Hanya Parsel */}
+          <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-base shadow-2xs">
+                📦
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-amber-900 block">
+                  Hanya Parsel
+                </span>
+                <span className="text-[10px] text-amber-700">
+                  Bingkisan hadiah apresiasi
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-lg font-black text-amber-900 font-mono">
+                {benefitStats.parcelOnlyCount}
+              </span>
+              <span className="text-[10px] text-amber-600 font-medium block">
+                Konsumen
+              </span>
+            </div>
+          </div>
+
+        </div>
       </div>
 
       {/* Middle Grid: Trend Chart & Claim Status Progress */}

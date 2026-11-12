@@ -312,13 +312,45 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                         }`}>
                           {isParcel ? 'Ya' : 'Tidak'}
                         </td>
-                        {/* Staggered signature columns - Rata Kiri sesuai instruksi */}
-                        <td className="py-2.5 px-3 border-r border-slate-200 w-16 text-left text-slate-700 font-mono">
-                          {idx % 2 === 0 ? rowNumber : ''}
-                        </td>
-                        <td className="py-2.5 px-3 w-16 text-left text-slate-700 font-mono">
-                          {idx % 2 !== 0 ? rowNumber : ''}
-                        </td>
+                        {/* Staggered signature columns */}
+                        {(() => {
+                          const isDisbursed =
+                            (cust.disbursedCashback || 0) > 0 ||
+                            Boolean(cust.lastDisbursedDate) ||
+                            Boolean(cust.invoices && cust.invoices.some((i) => i.claimStatus === 'disbursed'));
+                          const signature =
+                            cust.disbursementSignature ||
+                            cust.invoices?.find((i) => Boolean(i.disbursementSignature))?.disbursementSignature;
+
+                          const renderSigContent = () => {
+                            if (!isDisbursed) return rowNumber;
+                            if (signature) {
+                              return (
+                                <img
+                                  src={signature}
+                                  alt="TTD"
+                                  className="h-6 max-h-6 max-w-full object-contain filter contrast-125 inline-block"
+                                />
+                              );
+                            }
+                            return (
+                              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
+                                ✓ Cair
+                              </span>
+                            );
+                          };
+
+                          return (
+                            <>
+                              <td className="py-2.5 px-2 border-r border-slate-200 w-24 text-center text-slate-700 font-mono">
+                                {idx % 2 === 0 ? renderSigContent() : ''}
+                              </td>
+                              <td className="py-2.5 px-2 w-24 text-center text-slate-700 font-mono">
+                                {idx % 2 !== 0 ? renderSigContent() : ''}
+                              </td>
+                            </>
+                          );
+                        })()}
                       </tr>
                     );
                   })}
@@ -327,7 +359,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
 
             <p className="text-[11px] text-slate-500 italic">
-              * Kolom tanda tangan dibuat berjarak 2 kolom selang-seling agar rapi dan mudah ditandatangani oleh konsumen saat serah terima cashback/parcel.
+              * Pada hasil export Excel, kolom tanda tangan otomatis disisipkan gambar tanda tangan elektronik penerima bagi konsumen yang sudah menerima cashback. Untuk yang belum menerima, nomor urut tetap tersedia untuk tanda tangan fisik.
             </p>
           </div>
 

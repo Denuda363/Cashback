@@ -109,3 +109,52 @@ export function formatRupiah(value: number): string {
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat('id-ID').format(value || 0);
 }
+
+import { CustomerBenefitType } from '../types/cashback';
+
+export function getBenefitLabel(type?: CustomerBenefitType): string {
+  if (type === 'cashback_parcel') return 'Cashback + Parsel';
+  if (type === 'parcel_only') return 'Parcel';
+  return 'Cashback';
+}
+
+export function getBenefitBadgeClasses(type?: CustomerBenefitType): {
+  bg: string;
+  text: string;
+  border: string;
+  dot: string;
+} {
+  if (type === 'cashback_parcel') {
+    return {
+      bg: 'bg-purple-50 text-purple-800',
+      text: 'text-purple-800',
+      border: 'border-purple-200',
+      dot: 'bg-purple-500',
+    };
+  }
+  if (type === 'parcel_only') {
+    return {
+      bg: 'bg-amber-50 text-amber-800',
+      text: 'text-amber-800',
+      border: 'border-amber-200',
+      dot: 'bg-amber-500',
+    };
+  }
+  return {
+    bg: 'bg-emerald-50 text-emerald-800',
+    text: 'text-emerald-800',
+    border: 'border-emerald-200',
+    dot: 'bg-emerald-500',
+  };
+}
+
+export function resolveBenefitType(
+  totalCashback: number,
+  getParcel: boolean,
+  manualOverride?: CustomerBenefitType
+): CustomerBenefitType {
+  if (manualOverride) return manualOverride;
+  if (totalCashback > 0 && getParcel) return 'cashback_parcel';
+  if (getParcel && totalCashback <= 0) return 'parcel_only';
+  return 'cashback_only';
+}

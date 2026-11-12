@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS } from '../data/initialData';
-import { CashbackSettings, CustomerMaster, CustomerSummary, Invoice, NavPosition } from '../types/cashback';
+import { CashbackSettings, CustomerMaster, CustomerSummary, Invoice, NavPosition, CustomerBenefitType } from '../types/cashback';
 
 const INVOICES_KEY = 'cashback_app_invoices_v2';
 const SETTINGS_KEY = 'cashback_app_settings_v2';
@@ -205,7 +205,8 @@ export function aggregateCustomerSummaries(
   invoices: Invoice[],
   minSpendForParcel = 5000000,
   masterCustomers: CustomerMaster[] = [],
-  excludedCustomerNames: string[] = []
+  excludedCustomerNames: string[] = [],
+  benefitOverrides: Record<string, CustomerBenefitType> = {}
 ): CustomerSummary[] {
   // Pre-index master customers by normalized phone and by clean name
   const masterByPhone = new Map<string, CustomerMaster>();
@@ -330,20 +331,56 @@ export function aggregateCustomerSummaries(
       tier = 'Silver';
     }
 
-    // Accurate Parcel Qualification:
-    // If total accumulated purchase >= minSpendForParcel (e.g. 5,000,000) OR marked explicit
-    const getParcel = c.totalPurchase >= minSpendForParcel || Boolean(c.hasParcelExplicit);
-
-    // Sort itemized invoices newest to oldest
-    const sortedInvoices = [...c.invoices].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-
     const cleanName = (c.customerName || '').trim().toLowerCase();
     const isExcluded = excludedCustomerNames.some(
       (ex) => (ex || '').trim().toLowerCase() === cleanName
     );
 
+    // Natural parcel qualification:
+    // If total accumulated purchase >= minSpendForParcel (e.g. 5,000,000) OR marked explicit in invoice
+    const naturalParcel = c.totalPurchase >= minSpendForParcel || Boolean(c.hasParcelExplicit);
+
+    // Check customer-specific benefit override:
+    const manualBenefit = benefitOverrides[cleanName];
+
+    let benefitType: CustomerBenefitType;
+    let getParcel: boolean;
+
+    if (manualBenefit) {
+      benefitType = manualBenefit;
+      if (manualBenefit === 'cashback_parcel') {
+        getParcel = true;
+      } else if (manualBenefit === 'parcel_only') {
+        getParcel = true;
+      } else {
+        // cashback_only
+        getParcel = false;
+      }
+    } else {
+      if (c.totalCashback > 0 && naturalParcel) {
+        benefitType = 'cashback_parcel';
+        getParcel = true;
+      } else if (naturalParcel && c.totalCashback <= 0) {
+        benefitType = 'parcel_only';
+        getParcel = true;
+      } else {
+        benefitType = 'cashback_only';
+        getParcel = false;
+      }
+    }
+
+    // Sort itemized invoices newest to oldest
+    const sortedInvoices = [...c.invoices].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    // Attach benefitType and parcel to each individual invoice
+    const enrichedInvoices = sortedInvoices.map((inv) => ({
+      ...inv,
+      benefitType,
+      getParcel,
+    }));
+
     // Extract disbursement details if any invoice was disbursed
-    const disbursedInvoices = sortedInvoices.filter((i) => i.claimStatus === 'disbursed');
+    const disbursedInvoices = enrichedInvoices.filter((i) => i.claimStatus === 'disbursed');
     const latestDisbursed = disbursedInvoices[0];
     const proofPhoto = disbursedInvoices.find((i) => Boolean(i.disbursementProofPhoto))?.disbursementProofPhoto;
     const signature = disbursedInvoices.find((i) => Boolean(i.disbursementSignature))?.disbursementSignature;
@@ -364,13 +401,14 @@ export function aggregateCustomerSummaries(
       lastPurchaseDate: lastDate,
       tier,
       getParcel,
+      benefitType,
       bankName: c.bankName,
       bankAccountNumber: c.bankAccountNumber,
       bankAccountHolder: c.bankAccountHolder,
       eWalletType: c.eWalletType,
       eWalletNumber: c.eWalletNumber,
       preferredPayoutMethod: c.preferredPayoutMethod,
-      invoices: sortedInvoices,
+      invoices: enrichedInvoices,
       isExcludedFromCashback: isExcluded,
       lastDisbursedDate: latestDisbursed?.disbursedDate,
       lastDisbursedAt: latestDisbursed?.disbursedAt,

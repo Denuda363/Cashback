@@ -17,7 +17,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { ClaimStatus, Invoice, PayoutMethod } from '../types/cashback';
-import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
+import { formatRupiah, formatNumber, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface InvoiceListProps {
@@ -313,7 +313,19 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
               {/* Header: Customer Name & Status */}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-slate-900 truncate">{inv.customerName}</h3>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="text-sm font-bold text-slate-900 truncate">{inv.customerName}</h3>
+                    {(() => {
+                      const bType = inv.benefitType || (inv.cashbackAmount > 0 ? 'cashback_parcel' : 'parcel_only');
+                      const bClasses = getBenefitBadgeClasses(bType);
+                      return (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full border inline-flex items-center gap-1 ${bClasses.bg} ${bClasses.border}`}>
+                          <span className={`w-1 h-1 rounded-full ${bClasses.dot}`} />
+                          {getBenefitLabel(bType)}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
                     <span className="font-semibold text-slate-700">{inv.invoiceNumber}</span>
                     <span>·</span>
@@ -393,6 +405,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                 <th className="py-3 px-4">No. Faktur</th>
                 <th className="py-3 px-4">Tanggal</th>
                 <th className="py-3 px-4">Konsumen</th>
+                <th className="py-3 px-3 text-center">Paket Diterima</th>
                 <th className="py-3 px-4">Keterangan Barang</th>
                 <th className="py-3 px-4 text-right">Nilai Belanja</th>
                 <th className="py-3 px-4 text-center">% Rate</th>
@@ -404,7 +417,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
+                  <td colSpan={10} className="py-12 text-center text-slate-400">
                     <p className="text-sm font-semibold text-slate-600">Tidak ada faktur ditemukan</p>
                     <p className="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau filter status Anda.</p>
                   </td>
@@ -429,6 +442,20 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                       <div className="text-[11px] text-slate-500 font-mono tabular-nums">
                         {inv.customerPhone}
                       </div>
+                    </td>
+
+                    {/* Benefit Package */}
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                      {(() => {
+                        const bType = inv.benefitType || (inv.cashbackAmount > 0 ? 'cashback_parcel' : 'parcel_only');
+                        const bClasses = getBenefitBadgeClasses(bType);
+                        return (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs ${bClasses.bg} ${bClasses.border}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${bClasses.dot}`} />
+                            {getBenefitLabel(bType)}
+                          </span>
+                        );
+                      })()}
                     </td>
 
                     {/* Description */}

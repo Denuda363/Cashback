@@ -13,7 +13,7 @@ import {
   Gift
 } from 'lucide-react';
 import { CustomerSummary, Invoice } from '../types/cashback';
-import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
+import { formatRupiah, formatNumber, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
 import { aggregateCustomerSummaries } from '../utils/storage';
 
 interface Top10LeaderboardProps {
@@ -414,11 +414,15 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1">
-                    {cust.getParcel && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-0.5">
-                        <Gift className="w-2.5 h-2.5" /> Parcel
-                      </span>
-                    )}
+                    {(() => {
+                      const bClasses = getBenefitBadgeClasses(cust.benefitType);
+                      return (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border flex items-center gap-1 ${bClasses.bg} ${bClasses.border}`}>
+                          <span className={`w-1 h-1 rounded-full ${bClasses.dot}`} />
+                          {getBenefitLabel(cust.benefitType)}
+                        </span>
+                      );
+                    })()}
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
                       {cust.tier}
                     </span>
@@ -473,7 +477,7 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
                 <th className="py-3 px-4">Konsumen</th>
                 <th className="py-3 px-4 text-right">Total Belanja</th>
                 <th className="py-3 px-4 text-right">Total Cashback</th>
-                <th className="py-3 px-4 text-center">Parcel</th>
+                <th className="py-3 px-4 text-center">Paket Diterima</th>
                 <th className="py-3 px-4">Kontribusi Relatif</th>
                 <th className="py-3 px-4 text-center">Jml Faktur</th>
                 <th className="py-3 px-4 text-center">Tier</th>
@@ -534,18 +538,17 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
                         {formatRupiah(cust.totalCashback)}
                       </td>
 
-                      {/* Parcel Qualification */}
-                      <td className="py-3.5 px-4 text-center">
-                        {cust.getParcel ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                            <Gift className="w-3 h-3 text-amber-600" />
-                            Ya
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-medium text-slate-400">
-                            Tidak
-                          </span>
-                        )}
+                      {/* Paket Diterima (Benefit Package) */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        {(() => {
+                          const bClasses = getBenefitBadgeClasses(cust.benefitType);
+                          return (
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-2xs ${bClasses.bg} ${bClasses.border}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${bClasses.dot}`} />
+                              {getBenefitLabel(cust.benefitType)}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Relative Contribution Bar */}

@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { CashbackSettings, CustomerMaster, CustomerSummary, Invoice, ClaimStatus, PayoutMethod } from '../types/cashback';
+import { getBenefitLabel } from './cashbackCalculator';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Menunggu Klaim',
@@ -72,6 +73,24 @@ const RUPIAH_NUM_FMT = '"Rp"#,##0';
 const PERCENT_NUM_FMT = '0.0%';
 
 /**
+ * Extracts pure base64 data and image extension from a data URL or raw base64 string
+ */
+export function extractBase64Image(dataUrl?: string): { base64: string; extension: 'png' | 'jpeg' } | null {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const trimmed = dataUrl.trim();
+  const match = trimmed.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/i);
+  if (match) {
+    const ext = match[1].toLowerCase() === 'jpg' ? 'jpeg' : (match[1].toLowerCase() as 'png' | 'jpeg');
+    return { base64: match[2], extension: ext };
+  }
+  // If it's already raw base64 string without data:image prefix
+  if (trimmed.length > 50 && !trimmed.startsWith('http') && !trimmed.startsWith('data:')) {
+    return { base64: trimmed, extension: 'png' };
+  }
+  return null;
+}
+
+/**
  * Creates the exact Excel sheet matching the user's uploaded image:
  * Headers:
  * Col A: No (Rata Tengah)
@@ -79,27 +98,29 @@ const PERCENT_NUM_FMT = '0.0%';
  * Col C: Total Pembelanjaan (Rata Kanan, Format Angka Rupiah)
  * Col D: Carshback (Rata Kanan, Format Angka Rupiah, Rumus: Total Belanja x Persentase Cashback)
  * Col E: Parcel (Rata Tengah, 'Ya' / 'Tidak')
- * Col F & G: Tanda tangan (Merged F1:G1, Rata Tengah, angka berselang-seling)
+ * Col F & G: Tanda tangan (Merged F1:G1, Rata Tengah, angka berselang-seling atau gambar tanda tangan penerima)
  */
 export function populateTandaTerimaSheet(
   ws: ExcelJS.Worksheet,
   customerSummaries: CustomerSummary[],
-  settings: CashbackSettings
+  settings: CashbackSettings,
+  wb?: ExcelJS.Workbook
 ): void {
   const minSpendParcel = settings.minSpendForParcel || 5000000;
+  const targetWorkbook = wb || ws.workbook;
 
   // Set grid lines visible
   ws.views = [{ showGridLines: true }];
 
-  // Column definitions & widths
+  // Column definitions & widths (increased to 18 for F & G to give ample room for digital signatures)
   ws.columns = [
     { width: 8 },  // A: No
     { width: 26 }, // B: Nama Konsumen
     { width: 22 }, // C: Total Pembelanjaan
     { width: 20 }, // D: Carshback
-    { width: 12 }, // E: Parcel
-    { width: 15 }, // F: Tanda tangan (Ganjil)
-    { width: 15 }, // G: Tanda tangan (Genap)
+    { width: 20 }, // E: Paket Diterima
+    { width: 18 }, // F: Tanda tangan (Ganjil)
+    { width: 18 }, // G: Tanda tangan (Genap)
   ];
 
   // 1. Header row matching exact image format
@@ -108,7 +129,7 @@ export function populateTandaTerimaSheet(
     'Nama Konsumen',
     'Total Pembelanjaan',
     'Carshback',
-    'Parcel',
+    'Paket Diterima',
     'Tanda tangan',
     '',
   ]);
@@ -130,16 +151,46 @@ export function populateTandaTerimaSheet(
   customerSummaries.forEach((cust, idx) => {
     const rowNum = idx + 2; // Row in sheet (1-based, row 1 is header)
     const seqNo = idx + 1;
+    const isOdd = idx % 2 === 0;
 
-    // Staggered signature columns F and G
-    const sigF = idx % 2 === 0 ? seqNo : '';
-    const sigG = idx % 2 !== 0 ? seqNo : '';
+    // Check disbursement status
+    const isDisbursed =
+      (cust.disbursedCashback || 0) > 0 ||
+      Boolean(cust.lastDisbursedDate) ||
+      Boolean(cust.invoices && cust.invoices.some((i) => i.claimStatus === 'disbursed'));
 
-    // Parcel determination: 'Ya' or 'Tidak'
+    // Look for recipient digital signature in summary or related invoices
+    const rawSignature =
+      cust.disbursementSignature ||
+      cust.invoices?.find((i) => Boolean(i.disbursementSignature))?.disbursementSignature;
+    const signatureImage = extractBase64Image(rawSignature);
+
+    // Signature column text:
+    // - If disbursed and has signature image: cell text is empty (image will be placed on top)
+    // - If disbursed but no signature image: show sequence number with [✓ Cair]
+    // - If undisbursed: show sequence number staggered in F or G for physical signature
+    let sigF: string | number = '';
+    let sigG: string | number = '';
+
+    if (!isDisbursed) {
+      if (isOdd) sigF = seqNo;
+      else sigG = seqNo;
+    } else {
+      if (!signatureImage) {
+        const textLabel = `${seqNo}. [✓ Cair]`;
+        if (isOdd) sigF = textLabel;
+        else sigG = textLabel;
+      } else {
+        sigF = '';
+        sigG = '';
+      }
+    }
+
+    // Package received determination (Cashback + Parsel, Cashback, Parcel)
     const isParcel = cust.getParcel !== undefined
       ? cust.getParcel
       : (cust.totalPurchase >= minSpendParcel);
-    const parcelText = isParcel ? 'Ya' : 'Tidak';
+    const parcelText = cust.benefitType ? getBenefitLabel(cust.benefitType) : (isParcel ? 'Cashback + Parsel' : 'Cashback');
 
     // Percentage calculation for the formula (in flat mode, strictly use settings.flatPercentage)
     const pct = settings.mode === 'flat'
@@ -163,7 +214,8 @@ export function populateTandaTerimaSheet(
       sigF,
       sigG,
     ]);
-    row.height = 30; // Generous height for physical signatures
+    // Generous height (36) to give perfect proportions for embedded signature images and signatures
+    row.height = 36;
 
     // Alignments & Number formats
     // Col A: No -> Rata Tengah
@@ -200,15 +252,37 @@ export function populateTandaTerimaSheet(
 
     // Col F: Tanda tangan ganjil -> Rata Kiri
     const cellF = row.getCell(6);
-    cellF.alignment = { horizontal: 'left', vertical: 'middle' };
+    cellF.alignment = { horizontal: isDisbursed && signatureImage ? 'center' : 'left', vertical: 'middle' };
     cellF.font = dataFont;
     cellF.border = thinBorder;
 
     // Col G: Tanda tangan genap -> Rata Kiri
     const cellG = row.getCell(7);
-    cellG.alignment = { horizontal: 'left', vertical: 'middle' };
+    cellG.alignment = { horizontal: isDisbursed && signatureImage ? 'center' : 'left', vertical: 'middle' };
     cellG.font = dataFont;
     cellG.border = thinBorder;
+
+    // If customer has disbursed and has electronic digital signature, embed the signature image into the cell!
+    if (isDisbursed && signatureImage && targetWorkbook) {
+      try {
+        const imageId = targetWorkbook.addImage({
+          base64: signatureImage.base64,
+          extension: signatureImage.extension,
+        });
+
+        // 0-indexed column: Col F is 5, Col G is 6
+        const col0 = isOdd ? 5 : 6;
+        const row0 = rowNum - 1; // 0-indexed row
+
+        ws.addImage(imageId, {
+          tl: { col: col0 + 0.08, row: row0 + 0.08 } as any,
+          br: { col: col0 + 0.92, row: row0 + 0.92 } as any,
+          editAs: 'oneCell',
+        });
+      } catch (err) {
+        console.error(`Failed to embed signature image for ${cust.customerName}:`, err);
+      }
+    }
   });
 
   // 3. Summary / Total Row at the bottom
@@ -260,7 +334,7 @@ export async function exportTandaTerimaFormat(
   wb.created = new Date();
 
   const ws = wb.addWorksheet('Rekap Tanda Tangan');
-  populateTandaTerimaSheet(ws, customerSummaries, settings);
+  populateTandaTerimaSheet(ws, customerSummaries, settings, wb);
 
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
@@ -293,7 +367,7 @@ export async function exportCashbackToExcel(
   // Sheet 1: Format Tanda Terima & Parcel (Exact format from user's image)
   // -------------------------------------------------------------
   const wsTandaTerima = wb.addWorksheet('Format Tanda Terima');
-  populateTandaTerimaSheet(wsTandaTerima, customerSummaries, settings);
+  populateTandaTerimaSheet(wsTandaTerima, customerSummaries, settings, wb);
 
   // -------------------------------------------------------------
   // Sheet 2: Rekap Rincian Faktur
@@ -318,6 +392,7 @@ export async function exportCashbackToExcel(
     { width: 20 }, // M: Metode Pencairan
     { width: 14 }, // N: Tgl Pencairan
     { width: 28 }, // O: Catatan
+    { width: 22 }, // P: Tanda Tangan Penerima
   ];
 
   const invHeader = wsInvoices.addRow([
@@ -336,10 +411,11 @@ export async function exportCashbackToExcel(
     'Metode Pencairan',
     'Tgl Pencairan',
     'Catatan',
+    'Tanda Tangan Penerima',
   ]);
   invHeader.height = 26;
 
-  for (let c = 1; c <= 15; c++) {
+  for (let c = 1; c <= 16; c++) {
     const cell = invHeader.getCell(c);
     cell.fill = headerFill;
     cell.font = headerFont;
@@ -357,6 +433,14 @@ export async function exportCashbackToExcel(
     // Formula: Total Belanja (Col H) * Persentase Cashback (Col I)
     const formulaString = `ROUND(H${r}*I${r}, 0)`;
 
+    const isInvDisbursed = inv.claimStatus === 'disbursed';
+    const invSigImage = extractBase64Image(inv.disbursementSignature);
+
+    let sigText = '-';
+    if (isInvDisbursed) {
+      sigText = invSigImage ? '' : (inv.recipientName ? `[✓ ${inv.recipientName}]` : '[✓ Dicairkan]');
+    }
+
     const row = wsInvoices.addRow([
       idx + 1,
       inv.invoiceNumber,
@@ -373,19 +457,20 @@ export async function exportCashbackToExcel(
       PAYOUT_LABELS[inv.payoutMethod] || inv.payoutMethod,
       inv.disbursedDate || '-',
       inv.notes || '-',
+      sigText,
     ]);
-    row.height = 22;
+    row.height = isInvDisbursed && invSigImage ? 36 : 22;
 
     // Apply alignments & formats
-    // Rata Tengah: No (1), No Faktur (2), Tanggal (3), Telepon (5), % Cashback (9), Parcel (11), Status (12), Metode (13), Tgl Cair (14)
+    // Rata Tengah: No (1), No Faktur (2), Tanggal (3), Telepon (5), % Cashback (9), Parcel (11), Status (12), Metode (13), Tgl Cair (14), TTD (16)
     // Rata Kiri: Nama (4), Kategori (6), Deskripsi (7), Catatan (15)
     // Rata Kanan: Nilai Belanja (8), Nilai Cashback (10)
-    for (let c = 1; c <= 15; c++) {
+    for (let c = 1; c <= 16; c++) {
       const cell = row.getCell(c);
       cell.font = dataFont;
       cell.border = thinBorder;
 
-      if ([1, 2, 3, 5, 11, 12, 13, 14].includes(c)) {
+      if ([1, 2, 3, 5, 11, 12, 13, 14, 16].includes(c)) {
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
       } else if ([4, 6, 7, 15].includes(c)) {
         cell.alignment = { horizontal: 'left', vertical: 'middle' };
@@ -398,6 +483,26 @@ export async function exportCashbackToExcel(
       } else if (c === 10) {
         cell.alignment = { horizontal: 'right', vertical: 'middle' };
         cell.numFmt = RUPIAH_NUM_FMT;
+      }
+    }
+
+    // Embed digital signature into Column P if disbursed with electronic signature
+    if (isInvDisbursed && invSigImage) {
+      try {
+        const imageId = wb.addImage({
+          base64: invSigImage.base64,
+          extension: invSigImage.extension,
+        });
+        const row0 = r - 1; // 0-indexed row
+        const col0 = 15; // 0-indexed column P is 15
+
+        wsInvoices.addImage(imageId, {
+          tl: { col: col0 + 0.08, row: row0 + 0.08 } as any,
+          br: { col: col0 + 0.92, row: row0 + 0.92 } as any,
+          editAs: 'oneCell',
+        });
+      } catch (err) {
+        console.error(`Failed to embed signature for invoice ${inv.invoiceNumber}:`, err);
       }
     }
   });
@@ -422,12 +527,13 @@ export async function exportCashbackToExcel(
       '',
       '',
       '',
+      '',
     ]);
     totalRow.height = 26;
 
     wsInvoices.mergeCells(`A${invTotalRowNum}:G${invTotalRowNum}`);
 
-    for (let c = 1; c <= 15; c++) {
+    for (let c = 1; c <= 16; c++) {
       const cell = totalRow.getCell(c);
       cell.fill = totalFill;
       cell.font = totalFont;
@@ -447,7 +553,7 @@ export async function exportCashbackToExcel(
     }
 
     // AutoFilter for structured table look
-    wsInvoices.autoFilter = `A1:O${lastInvRow}`;
+    wsInvoices.autoFilter = `A1:P${lastInvRow}`;
   }
 
   // -------------------------------------------------------------
@@ -470,6 +576,8 @@ export async function exportCashbackToExcel(
     { width: 22 }, // J: Sudah Dicairkan (Rp)
     { width: 22 }, // K: Sisa Belum Cair (Rp) - RUMUS
     { width: 16 }, // L: Belanja Terakhir
+    { width: 18 }, // M: Status Penerimaan
+    { width: 22 }, // N: Tanda Tangan Penerima
   ];
 
   const custHeader = wsCustomers.addRow([
@@ -485,10 +593,12 @@ export async function exportCashbackToExcel(
     'Sudah Dicairkan (Rp)',
     'Sisa Belum Cair (Rp)',
     'Belanja Terakhir',
+    'Status Penerimaan',
+    'Tanda Tangan Penerima',
   ]);
   custHeader.height = 26;
 
-  for (let c = 1; c <= 12; c++) {
+  for (let c = 1; c <= 14; c++) {
     const cell = custHeader.getCell(c);
     cell.fill = headerFill;
     cell.font = headerFont;
@@ -511,6 +621,27 @@ export async function exportCashbackToExcel(
     // Formula for Sisa: Total Cashback (Col H) - Sudah Dicairkan (Col J)
     const formulaSisa = `H${r}-J${r}`;
 
+    const isCustDisbursed =
+      (cust.disbursedCashback || 0) > 0 ||
+      Boolean(cust.lastDisbursedDate) ||
+      Boolean(cust.invoices && cust.invoices.some((i) => i.claimStatus === 'disbursed'));
+
+    const rawCustSig =
+      cust.disbursementSignature ||
+      cust.invoices?.find((i) => Boolean(i.disbursementSignature))?.disbursementSignature;
+    const custSigImage = extractBase64Image(rawCustSig);
+
+    let statusPenerimaan = 'Belum Menerima';
+    if (isCustDisbursed) {
+      const sisa = (cust.totalCashback || 0) - (cust.disbursedCashback || 0);
+      statusPenerimaan = sisa <= 0 && cust.totalCashback > 0 ? 'Sudah Menerima (Lunas)' : 'Sudah Menerima (Sebagian)';
+    }
+
+    let custSigText = '-';
+    if (isCustDisbursed) {
+      custSigText = custSigImage ? '' : (cust.recipientName ? `[✓ ${cust.recipientName}]` : '[✓ Sudah Terima]');
+    }
+
     const row = wsCustomers.addRow([
       idx + 1,
       cust.customerName,
@@ -524,15 +655,17 @@ export async function exportCashbackToExcel(
       cust.disbursedCashback,
       { formula: formulaSisa, result: cust.totalCashback - cust.disbursedCashback },
       cust.lastPurchaseDate,
+      statusPenerimaan,
+      custSigText,
     ]);
-    row.height = 22;
+    row.height = isCustDisbursed && custSigImage ? 36 : 22;
 
-    for (let c = 1; c <= 12; c++) {
+    for (let c = 1; c <= 14; c++) {
       const cell = row.getCell(c);
       cell.font = dataFont;
       cell.border = thinBorder;
 
-      if ([1, 3, 4, 5, 9, 12].includes(c)) {
+      if ([1, 3, 4, 5, 9, 12, 13, 14].includes(c)) {
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
       } else if (c === 2) {
         cell.alignment = { horizontal: 'left', vertical: 'middle' };
@@ -542,6 +675,26 @@ export async function exportCashbackToExcel(
       } else if ([6, 8, 10, 11].includes(c)) {
         cell.alignment = { horizontal: 'right', vertical: 'middle' };
         cell.numFmt = RUPIAH_NUM_FMT;
+      }
+    }
+
+    // Embed digital signature into Column N if disbursed with electronic signature
+    if (isCustDisbursed && custSigImage) {
+      try {
+        const imageId = wb.addImage({
+          base64: custSigImage.base64,
+          extension: custSigImage.extension,
+        });
+        const row0 = r - 1; // 0-indexed row
+        const col0 = 13; // 0-indexed column N is 13
+
+        wsCustomers.addImage(imageId, {
+          tl: { col: col0 + 0.08, row: row0 + 0.08 } as any,
+          br: { col: col0 + 0.92, row: row0 + 0.92 } as any,
+          editAs: 'oneCell',
+        });
+      } catch (err) {
+        console.error(`Failed to embed customer signature for ${cust.customerName}:`, err);
       }
     }
   });
@@ -562,12 +715,14 @@ export async function exportCashbackToExcel(
       { formula: `SUM(J2:J${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + c.disbursedCashback, 0) },
       { formula: `SUM(K2:K${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + (c.totalCashback - c.disbursedCashback), 0) },
       '',
+      '',
+      '',
     ]);
     totalRow.height = 26;
 
     wsCustomers.mergeCells(`A${custTotalRowNum}:D${custTotalRowNum}`);
 
-    for (let c = 1; c <= 12; c++) {
+    for (let c = 1; c <= 14; c++) {
       const cell = totalRow.getCell(c);
       cell.fill = totalFill;
       cell.font = totalFont;
@@ -575,7 +730,7 @@ export async function exportCashbackToExcel(
 
       if (c <= 4) {
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      } else if (c === 5 || c === 9 || c === 12) {
+      } else if (c === 5 || c === 9 || c === 12 || c === 13 || c === 14) {
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
       } else if (c === 7) {
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -586,7 +741,7 @@ export async function exportCashbackToExcel(
       }
     }
 
-    wsCustomers.autoFilter = `A1:L${lastCustRow}`;
+    wsCustomers.autoFilter = `A1:N${lastCustRow}`;
   }
 
   // -------------------------------------------------------------

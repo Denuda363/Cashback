@@ -2,6 +2,8 @@ export type ClaimStatus = 'pending' | 'ready' | 'disbursed';
 
 export type PayoutMethod = 'transfer_bank' | 'e_wallet' | 'potongan_belanja' | 'tunai';
 
+export type CustomerBenefitType = 'cashback_parcel' | 'cashback_only' | 'parcel_only';
+
 export interface TierRule {
   id: string;
   minSpend: number;
@@ -39,6 +41,7 @@ export interface CashbackSettings {
   currency: string;
   minSpendForParcel?: number; // e.g. 5000000
   excludedCustomerNames?: string[]; // Names of customers disqualified/excluded from receiving cashback
+  customerBenefitOverrides?: Record<string, CustomerBenefitType>; // Manual configuration of benefit per customer (clean lowercase name -> benefit)
   companyProfile?: CompanyProfile; // Profil identitas perusahaan / toko
 }
 
@@ -64,6 +67,7 @@ export interface Invoice {
   disbursementNotes?: string;
   notes?: string;
   getParcel?: boolean;
+  benefitType?: CustomerBenefitType; // 'cashback_parcel' | 'cashback_only' | 'parcel_only'
   createdAt: string;
 }
 
@@ -81,6 +85,7 @@ export interface CustomerSummary {
   tier: 'Platinum' | 'Gold' | 'Silver' | 'Bronze';
   rank?: number;
   getParcel?: boolean;
+  benefitType?: CustomerBenefitType; // 'cashback_parcel' | 'cashback_only' | 'parcel_only'
   bankName?: string;
   bankAccountNumber?: string;
   bankAccountHolder?: string;

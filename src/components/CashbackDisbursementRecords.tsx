@@ -24,11 +24,15 @@ import {
   RotateCcw,
   Check,
   AlertTriangle,
-  Layers
+  Layers,
+  Sparkles,
+  Gift,
+  Coins
 } from 'lucide-react';
 import { CustomerSummary, Invoice, PayoutMethod, CompanyProfile } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
+import { OfficialReceiptModal } from './OfficialReceiptModal';
 
 interface CashbackDisbursementRecordsProps {
   customerSummaries: CustomerSummary[];
@@ -427,23 +431,40 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
 
                         {/* Status Hak & Penerimaan */}
                         <td className="py-3 px-3">
-                          {cust.isExcludedFromCashback ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
-                              <AlertTriangle className="w-3 h-3" /> Dicoret dari Penerima
-                            </span>
-                          ) : isFullyDisbursed ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Sudah Menerima (Lunas)
-                            </span>
-                          ) : isPartial ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
-                              <Clock className="w-3 h-3 text-blue-600" /> Sebagian Dicairkan
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                              <Clock className="w-3 h-3 text-amber-600" /> Belum Menerima
-                            </span>
-                          )}
+                          <div className="flex flex-col items-start gap-1">
+                            {/* Paket Yang Diterima */}
+                            {cust.benefitType === 'cashback_parcel' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300 shadow-2xs">
+                                <Sparkles className="w-3 h-3 text-purple-600" /> Cashback + Parsel
+                              </span>
+                            ) : cust.benefitType === 'parcel_only' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                                <Gift className="w-3 h-3 text-amber-600" /> Parcel
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-2xs">
+                                <Coins className="w-3 h-3 text-emerald-600" /> Cashback
+                              </span>
+                            )}
+
+                            {cust.isExcludedFromCashback ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                                <AlertTriangle className="w-3 h-3" /> Dicoret dari Penerima
+                              </span>
+                            ) : isFullyDisbursed ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Sudah Menerima
+                              </span>
+                            ) : isPartial ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                <Clock className="w-3 h-3 text-blue-600" /> Sebagian Dicairkan
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                <Clock className="w-3 h-3 text-amber-600" /> Belum Menerima
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Total Belanja */}
@@ -661,226 +682,12 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
       </div>
 
       {/* Official Customer Handover Receipt Modal (Tanda Terima Serah Terima Cashback) */}
-      {viewingReceiptCustomer && (
-        <div className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
-            
-            {/* Modal Header Bar */}
-            <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-emerald-400" />
-                <span className="font-bold text-sm">
-                  Tanda Terima Resmi Serah Terima Cashback
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-colors"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Cetak / PDF</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewingReceiptCustomer(null)}
-                  className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Printable Receipt Paper */}
-            <div className="p-6 overflow-y-auto flex-1 text-xs space-y-4 print:p-0">
-              
-              {/* Company Header (Profil Perusahaan) */}
-              <div className="pb-4 border-b-2 border-slate-800 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-black text-slate-900 tracking-tight">
-                    {companyProfile?.companyName || storeName}
-                  </h2>
-                  {companyProfile?.tagline && (
-                    <p className="text-xs text-slate-500 font-medium">
-                      {companyProfile.tagline}
-                    </p>
-                  )}
-                  {companyProfile?.address && (
-                    <p className="text-[11px] text-slate-600 mt-1">
-                      {companyProfile.address} {companyProfile.city ? `, ${companyProfile.city}` : ''}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-0.5">
-                    {companyProfile?.phone && <span>Telp/WA: {companyProfile.phone}</span>}
-                    {companyProfile?.email && <span>Email: {companyProfile.email}</span>}
-                    {companyProfile?.taxNumber && <span>NPWP: {companyProfile.taxNumber}</span>}
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Dokumen Resmi
-                  </div>
-                  <div className="text-sm font-black text-slate-900 font-mono mt-0.5">
-                    TT-CB-{viewingReceiptCustomer.customerCode || 'REC'}-{viewingReceiptCustomer.lastDisbursedDate?.replace(/-/g, '') || '2026'}
-                  </div>
-                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                    Tanggal: {viewingReceiptCustomer.lastDisbursedDate || new Date().toISOString().split('T')[0]}
-                  </div>
-                </div>
-              </div>
-
-              {/* Title */}
-              <div className="text-center py-1">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 underline">
-                  TANDA TERIMA PENYERAHAN DANA CASHBACK
-                </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Bukti sah penerimaan dana apresiasi belanja / reward konsumen
-                </p>
-              </div>
-
-              {/* Customer Details Grid */}
-              <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Nama Konsumen</span>
-                  <span className="font-bold text-slate-900 text-sm">{viewingReceiptCustomer.customerName}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Nomor HP / WhatsApp</span>
-                  <span className="font-mono text-slate-800">{viewingReceiptCustomer.customerPhone || '-'}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Nama Penerima Dana</span>
-                  <span className="font-semibold text-slate-800">{viewingReceiptCustomer.recipientName || viewingReceiptCustomer.customerName}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Metode Penyerahan</span>
-                  <span className="font-semibold text-slate-800">{methodLabel(viewingReceiptCustomer.disbursementPayoutMethod)}</span>
-                </div>
-              </div>
-
-              {/* Invoices Breakdown Table */}
-              <div className="space-y-1.5">
-                <span className="font-bold text-slate-800 text-[11px] block">
-                  Rincian Transaksi Faktur Pembelian yang Dicairkan:
-                </span>
-                <table className="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
-                  <thead className="bg-slate-100 text-slate-700 font-bold text-[10px] uppercase">
-                    <tr>
-                      <th className="py-1.5 px-3">No. Faktur</th>
-                      <th className="py-1.5 px-3">Tanggal Transaksi</th>
-                      <th className="py-1.5 px-3 text-right">Nilai Pembelian</th>
-                      <th className="py-1.5 px-3 text-right">Cashback</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {viewingReceiptCustomer.invoices?.map((inv) => (
-                      <tr key={inv.id}>
-                        <td className="py-1.5 px-3 font-mono font-semibold">{inv.invoiceNumber}</td>
-                        <td className="py-1.5 px-3 font-mono">{inv.date}</td>
-                        <td className="py-1.5 px-3 text-right font-mono">{formatRupiah(inv.purchaseAmount)}</td>
-                        <td className="py-1.5 px-3 text-right font-mono font-bold text-emerald-700">{formatRupiah(inv.cashbackAmount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-slate-50 font-bold border-t border-slate-200">
-                    <tr>
-                      <td colSpan={2} className="py-2 px-3 text-slate-700">Total Akumulasi Pembelian</td>
-                      <td className="py-2 px-3 text-right font-mono">{formatRupiah(viewingReceiptCustomer.totalPurchase)}</td>
-                      <td className="py-2 px-3 text-right font-mono text-emerald-800">{formatRupiah(viewingReceiptCustomer.disbursedCashback || viewingReceiptCustomer.totalCashback)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              {/* Total Payout Big Banner & Terbilang */}
-              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                  Total Dana Cashback yang Telah Diserahkan
-                </span>
-                <div className="text-xl sm:text-2xl font-black font-mono text-emerald-800">
-                  {formatRupiah(viewingReceiptCustomer.disbursedCashback || viewingReceiptCustomer.totalCashback)}
-                </div>
-                <div className="text-xs italic text-slate-600 font-serif">
-                  Terbilang: #{terbilang(viewingReceiptCustomer.disbursedCashback || viewingReceiptCustomer.totalCashback)} Rupiah#
-                </div>
-              </div>
-
-              {/* Signatures & Photo Handover Box */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-                
-                {/* Photo Proof */}
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
-                    Foto Bukti Serah Terima:
-                  </span>
-                  {viewingReceiptCustomer.disbursementProofPhoto ? (
-                    <img
-                      src={viewingReceiptCustomer.disbursementProofPhoto}
-                      alt="Bukti Serah Terima"
-                      className="w-full h-28 object-cover rounded-xl border border-slate-200"
-                    />
-                  ) : (
-                    <div className="w-full h-28 rounded-xl border border-dashed border-slate-200 flex items-center justify-center text-slate-400 text-[10px] italic">
-                      Tidak dilampirkan foto
-                    </div>
-                  )}
-                </div>
-
-                {/* Receiver Signature */}
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
-                    Tanda Tangan Penerima:
-                  </span>
-                  <div className="w-full h-28 bg-white border border-slate-200 rounded-xl flex items-center justify-center p-1">
-                    {viewingReceiptCustomer.disbursementSignature ? (
-                      <img
-                        src={viewingReceiptCustomer.disbursementSignature}
-                        alt="Tanda Tangan Penerima"
-                        className="max-h-full max-w-full object-contain"
-                      />
-                    ) : (
-                      <span className="text-slate-400 text-[10px] italic">Belum ada TTD</span>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-center text-slate-600 font-bold block mt-1">
-                    ({viewingReceiptCustomer.recipientName || viewingReceiptCustomer.customerName})
-                  </span>
-                </div>
-
-                {/* PIC / Company Signature */}
-                <div className="col-span-2 sm:col-span-1">
-                  <span className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
-                    Kasir / Keuangan Perusahaan:
-                  </span>
-                  <div className="w-full h-28 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center justify-center p-2 text-center">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-600 mb-1" />
-                    <span className="text-[10px] font-bold text-slate-800">
-                      TERVERIFIKASI SISTEM
-                    </span>
-                    <span className="text-[9px] text-slate-400 font-mono">
-                      {viewingReceiptCustomer.lastDisbursedDate}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-center text-slate-600 font-bold block mt-1">
-                    ({companyProfile?.picName || 'Bagian Keuangan Toko'})
-                  </span>
-                </div>
-
-              </div>
-
-              {/* Footer Note */}
-              <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 text-center italic">
-                {companyProfile?.footerNotes || 'Tanda terima ini diterbitkan otomatis oleh sistem sebagai bukti sah penyerahan dana reward cashback.'}
-              </div>
-
-            </div>
-
-          </div>
-        </div>
-      )}
+      <OfficialReceiptModal
+        customer={viewingReceiptCustomer}
+        onClose={() => setViewingReceiptCustomer(null)}
+        companyProfile={companyProfile}
+        storeName={storeName}
+      />
 
       {/* Confirm Revert Disbursement Dialog */}
       <ConfirmDialog
