@@ -389,6 +389,68 @@ export default function App() {
     showToast(`Paket faktur ${invoice.invoiceNumber} diubah menjadi: "${getBenefitLabel(nextBenefit)}"`);
   };
 
+  // Bulk update benefit package across filtered/all invoices from Rekap Faktur
+  const handleBulkUpdateInvoiceBenefit = async (
+    invoiceIds: string[],
+    nextBenefit: CustomerBenefitType
+  ) => {
+    if (!invoiceIds || invoiceIds.length === 0) return;
+    const idSet = new Set(invoiceIds);
+    const affectedCustomerNames = new Set<string>();
+    const changedInvoices: Invoice[] = [];
+
+    const updated = invoices.map((inv) => {
+      if (!idSet.has(inv.id)) return inv;
+      const cleanName = (inv.customerName || '').trim().toLowerCase();
+      if (cleanName) affectedCustomerNames.add(cleanName);
+
+      const calc = calculateCashback(inv.purchaseAmount, settings);
+      const updatedInv: Invoice = {
+        ...inv,
+        benefitType: nextBenefit,
+        getParcel: nextBenefit !== 'cashback_only',
+        cashbackPercentage: nextBenefit === 'parcel_only' ? 0 : calc.effectivePercentage,
+        cashbackAmount: nextBenefit === 'parcel_only' ? 0 : calc.cashbackAmount,
+      };
+      changedInvoices.push(updatedInv);
+      return updatedInv;
+    });
+
+    if (changedInvoices.length === 0) return;
+
+    setInvoices(updated);
+    saveStoredInvoices(updated);
+    await batchUpdateInvoicesInFirestore(changedInvoices).catch((err) =>
+      console.warn('Firestore bulk benefit update:', err)
+    );
+
+    // Sync/clear conflicting customer-level benefit overrides for affected customers
+    const currentOverrides = settings.customerBenefitOverrides || {};
+    let overridesChanged = false;
+    const nextOverrides = { ...currentOverrides };
+    for (const cleanName of affectedCustomerNames) {
+      if (nextOverrides[cleanName] && nextOverrides[cleanName] !== nextBenefit) {
+        delete nextOverrides[cleanName];
+        overridesChanged = true;
+      }
+    }
+    if (overridesChanged) {
+      const nextSettings: CashbackSettings = {
+        ...settings,
+        customerBenefitOverrides: nextOverrides,
+      };
+      setSettings(nextSettings);
+      saveStoredSettings(nextSettings);
+      await saveSettingsToFirestore(nextSettings).catch((err) =>
+        console.warn('Sync bulk override cleanup:', err)
+      );
+    }
+
+    showToast(
+      `Paket untuk ${changedInvoices.length} faktur berhasil diatur menjadi: "${getBenefitLabel(nextBenefit)}"`
+    );
+  };
+
   const handleDeleteInvoice = async (invoiceId: string) => {
     const updated = invoices.filter((inv) => inv.id !== invoiceId);
     setInvoices(updated);
@@ -866,6 +928,7 @@ export default function App() {
             onViewReceipt={(inv) => setReceiptInvoice(inv)}
             onUpdateStatus={handleUpdateStatus}
             onUpdateInvoiceBenefit={handleUpdateInvoiceBenefit}
+            onBulkUpdateInvoiceBenefit={handleBulkUpdateInvoiceBenefit}
             onExportExcel={handleExportExcel}
             onOpenImportExcel={() => setIsImportModalOpen(true)}
             onResetAllInvoices={handleResetAllInvoices}

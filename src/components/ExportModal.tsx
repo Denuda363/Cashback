@@ -43,15 +43,42 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(5);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const effectiveRowsPerPage = rowsPerPage === 'all' ? Math.max(1, customerSummaries.length) : rowsPerPage;
-  const totalPages = rowsPerPage === 'all' ? 1 : Math.max(1, Math.ceil(customerSummaries.length / effectiveRowsPerPage));
+  const { eligibleCustomers, excludedCount, eligibleInvoices } = useMemo(() => {
+    const excludedSet = new Set<string>();
+    (settings.excludedCustomerNames || []).forEach((name) => {
+      const clean = (name || '').trim().toLowerCase();
+      if (clean) excludedSet.add(clean);
+    });
+    customerSummaries.forEach((c) => {
+      if (c.isExcludedFromCashback) {
+        const clean = (c.customerName || '').trim().toLowerCase();
+        if (clean) excludedSet.add(clean);
+      }
+    });
+
+    const filteredCustomers = customerSummaries.filter(
+      (c) => !c.isExcludedFromCashback && !excludedSet.has((c.customerName || '').trim().toLowerCase())
+    );
+    const filteredInvoices = invoices.filter(
+      (inv) => !excludedSet.has((inv.customerName || '').trim().toLowerCase())
+    );
+
+    return {
+      eligibleCustomers: filteredCustomers,
+      excludedCount: customerSummaries.length - filteredCustomers.length,
+      eligibleInvoices: filteredInvoices,
+    };
+  }, [customerSummaries, invoices, settings.excludedCustomerNames]);
+
+  const effectiveRowsPerPage = rowsPerPage === 'all' ? Math.max(1, eligibleCustomers.length) : rowsPerPage;
+  const totalPages = rowsPerPage === 'all' ? 1 : Math.max(1, Math.ceil(eligibleCustomers.length / effectiveRowsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
   const samplePreview = useMemo(() => {
-    if (rowsPerPage === 'all') return customerSummaries;
+    if (rowsPerPage === 'all') return eligibleCustomers;
     const start = (safeCurrentPage - 1) * effectiveRowsPerPage;
-    return customerSummaries.slice(start, start + effectiveRowsPerPage);
-  }, [customerSummaries, rowsPerPage, safeCurrentPage, effectiveRowsPerPage]);
+    return eligibleCustomers.slice(start, start + effectiveRowsPerPage);
+  }, [eligibleCustomers, rowsPerPage, safeCurrentPage, effectiveRowsPerPage]);
 
   if (!isOpen) return null;
 
@@ -63,6 +90,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const handleDownload = async () => {
+    if (eligibleCustomers.length === 0) return;
     setIsExporting(true);
     try {
       if (onSaveSettings && (settings.minSpendForParcel !== parcelThreshold || settings.flatPercentage !== activePercentage)) {
@@ -70,10 +98,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       }
 
       if (exportType === 'receipt_image') {
-        await exportTandaTerimaFormat(customerSummaries, currentSettings);
+        await exportTandaTerimaFormat(eligibleCustomers, currentSettings);
         onSuccessToast(`File Excel Format Tanda Terima & Parcel (${activePercentage}% Cashback) berhasil diunduh!`);
       } else {
-        await exportCashbackToExcel(invoices, customerSummaries, currentSettings, 'Rekap_Cashback_Konsumen', masterCustomers);
+        await exportCashbackToExcel(eligibleInvoices, eligibleCustomers, currentSettings, 'Rekap_Cashback_Konsumen', masterCustomers);
         onSuccessToast(`File Excel Komprehensif (${activePercentage}% Cashback) berhasil diunduh!`);
       }
       onClose();
@@ -268,14 +296,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
           {/* Visual Preview Box */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                 <PenTool className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Pratinjau Format Lembar Excel ({samplePreview.length} dari {customerSummaries.length} Konsumen):</span>
+                <span>Pratinjau Format Lembar Excel ({samplePreview.length} dari {eligibleCustomers.length} Konsumen):</span>
               </span>
-              <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-mono">
-                Rumus: =ROUND(C2*{activePercentage}%, 0)
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {excludedCount > 0 && (
+                  <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                    {excludedCount} konsumen dicoret dikecualikan dari export
+                  </span>
+                )}
+                <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-mono">
+                  Rumus: =ROUND(C2*{activePercentage}%, 0)
+                </span>
+              </div>
             </div>
 
             <div className="border border-slate-300 rounded-xl overflow-x-auto shadow-xs bg-white">
@@ -295,7 +330,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {samplePreview.map((cust, idx) => {
+                  {samplePreview.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 px-4 text-center text-xs text-slate-500">
+                        Tidak ada konsumen yang memenuhi syarat export (semua konsumen dicoret atau belum ada data).
+                      </td>
+                    </tr>
+                  ) : samplePreview.map((cust, idx) => {
                     const globalIdx = rowsPerPage === 'all' ? idx : (safeCurrentPage - 1) * effectiveRowsPerPage + idx;
                     const rowNumber = globalIdx + 1;
                     const isParcel = cust.getParcel !== undefined 
@@ -371,7 +412,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
 
             <PaginationBar
-              totalItems={customerSummaries.length}
+              totalItems={eligibleCustomers.length}
               rowsPerPage={rowsPerPage}
               currentPage={safeCurrentPage}
               onChangeRowsPerPage={(val) => {
@@ -389,9 +430,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </div>
 
           {/* Action Button */}
-          <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
+          <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
             <span className="text-[11px] text-slate-500">
-              Total {customerSummaries.length} konsumen siap diekspor
+              Total {eligibleCustomers.length} konsumen siap diekspor
+              {excludedCount > 0 ? ` (${excludedCount} dicoret tidak disertakan)` : ''}
             </span>
 
             <div className="flex items-center gap-2">
@@ -407,7 +449,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <button
                 type="button"
                 onClick={handleDownload}
-                disabled={isExporting}
+                disabled={isExporting || eligibleCustomers.length === 0}
                 className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
               >
                 {isExporting ? (

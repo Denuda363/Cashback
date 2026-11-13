@@ -100,6 +100,27 @@ export function extractBase64Image(dataUrl?: string): { base64: string; extensio
  * Col E: Parcel (Rata Tengah, 'Ya' / 'Tidak')
  * Col F & G: Tanda tangan (Merged F1:G1, Rata Tengah, angka berselang-seling atau gambar tanda tangan penerima)
  */
+/**
+ * Builds a normalized lowercase set of customer names excluded ("dicoret") from cashback.
+ */
+function buildExcludedCustomerSet(
+  customerSummaries: CustomerSummary[],
+  settings?: CashbackSettings
+): Set<string> {
+  const excluded = new Set<string>();
+  (settings?.excludedCustomerNames || []).forEach((name) => {
+    const clean = (name || '').trim().toLowerCase();
+    if (clean) excluded.add(clean);
+  });
+  customerSummaries.forEach((c) => {
+    if (c.isExcludedFromCashback) {
+      const clean = (c.customerName || '').trim().toLowerCase();
+      if (clean) excluded.add(clean);
+    }
+  });
+  return excluded;
+}
+
 export function populateTandaTerimaSheet(
   ws: ExcelJS.Worksheet,
   customerSummaries: CustomerSummary[],
@@ -108,6 +129,10 @@ export function populateTandaTerimaSheet(
 ): void {
   const minSpendParcel = settings.minSpendForParcel || 5000000;
   const targetWorkbook = wb || ws.workbook;
+  const excludedSet = buildExcludedCustomerSet(customerSummaries, settings);
+  const exportSummaries = customerSummaries.filter(
+    (c) => !c.isExcludedFromCashback && !excludedSet.has((c.customerName || '').trim().toLowerCase())
+  );
 
   // Set grid lines visible
   ws.views = [{ showGridLines: true }];
@@ -148,7 +173,7 @@ export function populateTandaTerimaSheet(
   ws.mergeCells('F1:G1');
 
   // 2. Data rows
-  customerSummaries.forEach((cust, idx) => {
+  exportSummaries.forEach((cust, idx) => {
     const rowNum = idx + 2; // Row in sheet (1-based, row 1 is header)
     const seqNo = idx + 1;
     const isOdd = idx % 2 === 0;
@@ -286,18 +311,30 @@ export function populateTandaTerimaSheet(
   });
 
   // 3. Summary / Total Row at the bottom
-  const lastDataRow = customerSummaries.length + 1;
+  const lastDataRow = exportSummaries.length + 1;
   const totalRowNum = lastDataRow + 1;
 
-  if (customerSummaries.length > 0) {
+  if (exportSummaries.length > 0) {
+    const totalCashbackResult = exportSummaries.reduce((s, c) => {
+      const pct = settings.mode === 'flat'
+        ? settings.flatPercentage
+        : (c.totalPurchase > 0
+            ? Number(((c.totalCashback / c.totalPurchase) * 100).toFixed(2))
+            : (settings.flatPercentage || 2));
+      const expected = settings.mode === 'flat'
+        ? Math.round((c.totalPurchase || 0) * (pct / 100))
+        : (c.totalCashback || 0);
+      return s + expected;
+    }, 0);
+
     const totalRow = ws.addRow([
       'TOTAL KESELURUHAN',
       '',
-      { formula: `SUM(C2:C${lastDataRow})`, result: customerSummaries.reduce((s, c) => s + c.totalPurchase, 0) },
-      { formula: `SUM(D2:D${lastDataRow})`, result: customerSummaries.reduce((s, c) => s + c.totalCashback, 0) },
+      { formula: `SUM(C2:C${lastDataRow})`, result: exportSummaries.reduce((s, c) => s + c.totalPurchase, 0) },
+      { formula: `SUM(D2:D${lastDataRow})`, result: totalCashbackResult },
       {
         formula: `(COUNTIF(E2:E${lastDataRow},"*Parsel*")+COUNTIF(E2:E${lastDataRow},"*Parcel*"))&" Penerima"`,
-        result: `${customerSummaries.filter((c) => c.getParcel || c.benefitType === 'cashback_parcel' || c.benefitType === 'parcel_only').length} Penerima`,
+        result: `${exportSummaries.filter((c) => c.getParcel || c.benefitType === 'cashback_parcel' || c.benefitType === 'parcel_only').length} Penerima`,
       },
       '',
       '',
@@ -366,11 +403,22 @@ export async function exportCashbackToExcel(
   wb.creator = settings.storeName || 'CashbackPro';
   wb.created = new Date();
 
+  const excludedSet = buildExcludedCustomerSet(customerSummaries, settings);
+  const eligibleSummaries = customerSummaries.filter(
+    (c) => !c.isExcludedFromCashback && !excludedSet.has((c.customerName || '').trim().toLowerCase())
+  );
+  const eligibleInvoices = invoices.filter(
+    (inv) => !excludedSet.has((inv.customerName || '').trim().toLowerCase())
+  );
+  const eligibleMasterCustomers = masterCustomers?.filter(
+    (mc) => !excludedSet.has((mc.name || '').trim().toLowerCase())
+  );
+
   // -------------------------------------------------------------
   // Sheet 1: Format Tanda Terima & Parcel (Exact format from user's image)
   // -------------------------------------------------------------
   const wsTandaTerima = wb.addWorksheet('Format Tanda Terima');
-  populateTandaTerimaSheet(wsTandaTerima, customerSummaries, settings, wb);
+  populateTandaTerimaSheet(wsTandaTerima, eligibleSummaries, settings, wb);
 
   // -------------------------------------------------------------
   // Sheet 2: Rekap Rincian Faktur
@@ -380,7 +428,7 @@ export async function exportCashbackToExcel(
   });
 
   const benefitMap = new Map<string, string>();
-  customerSummaries.forEach((cs) => {
+  eligibleSummaries.forEach((cs) => {
     const label = cs.benefitType ? getBenefitLabel(cs.benefitType) : (cs.getParcel ? 'Cashback + Parsel' : 'Cashback');
     benefitMap.set((cs.customerName || '').trim().toLowerCase(), label);
   });
@@ -433,7 +481,7 @@ export async function exportCashbackToExcel(
   }
 
   // Populate Invoices Data
-  invoices.forEach((inv, idx) => {
+  eligibleInvoices.forEach((inv, idx) => {
     const r = idx + 2;
     const isParcel = inv.getParcel !== undefined
       ? inv.getParcel
@@ -520,8 +568,8 @@ export async function exportCashbackToExcel(
   });
 
   // Total Row for Invoices
-  if (invoices.length > 0) {
-    const lastInvRow = invoices.length + 1;
+  if (eligibleInvoices.length > 0) {
+    const lastInvRow = eligibleInvoices.length + 1;
     const invTotalRowNum = lastInvRow + 1;
     const totalRow = wsInvoices.addRow([
       'TOTAL KESELURUHAN',
@@ -531,10 +579,10 @@ export async function exportCashbackToExcel(
       '',
       '',
       '',
-      { formula: `SUM(H2:H${lastInvRow})`, result: invoices.reduce((s, i) => s + i.purchaseAmount, 0) },
-      { formula: `AVERAGE(I2:I${lastInvRow})`, result: invoices.length > 0 ? (invoices.reduce((s, i) => s + i.cashbackPercentage, 0) / invoices.length) / 100 : 0 },
-      { formula: `SUM(J2:J${lastInvRow})`, result: invoices.reduce((s, i) => s + i.cashbackAmount, 0) },
-      { formula: `(COUNTIF(K2:K${lastInvRow},"*Parsel*")+COUNTIF(K2:K${lastInvRow},"*Parcel*"))&" Penerima"`, result: `${invoices.filter(i => i.getParcel).length} Penerima` },
+      { formula: `SUM(H2:H${lastInvRow})`, result: eligibleInvoices.reduce((s, i) => s + i.purchaseAmount, 0) },
+      { formula: `AVERAGE(I2:I${lastInvRow})`, result: eligibleInvoices.length > 0 ? (eligibleInvoices.reduce((s, i) => s + i.cashbackPercentage, 0) / eligibleInvoices.length) / 100 : 0 },
+      { formula: `SUM(J2:J${lastInvRow})`, result: eligibleInvoices.reduce((s, i) => s + i.cashbackAmount, 0) },
+      { formula: `(COUNTIF(K2:K${lastInvRow},"*Parsel*")+COUNTIF(K2:K${lastInvRow},"*Parcel*"))&" Penerima"`, result: `${eligibleInvoices.filter(i => i.getParcel).length} Penerima` },
       '',
       '',
       '',
@@ -618,7 +666,7 @@ export async function exportCashbackToExcel(
     cell.border = thinBorder;
   }
 
-  customerSummaries.forEach((cust, idx) => {
+  eligibleSummaries.forEach((cust, idx) => {
     const r = idx + 2;
     const isParcel = cust.getParcel !== undefined
       ? cust.getParcel
@@ -711,21 +759,21 @@ export async function exportCashbackToExcel(
     }
   });
 
-  if (customerSummaries.length > 0) {
-    const lastCustRow = customerSummaries.length + 1;
+  if (eligibleSummaries.length > 0) {
+    const lastCustRow = eligibleSummaries.length + 1;
     const custTotalRowNum = lastCustRow + 1;
     const totalRow = wsCustomers.addRow([
       'TOTAL KESELURUHAN',
       '',
       '',
       '',
-      { formula: `SUM(E2:E${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + c.invoiceCount, 0) },
-      { formula: `SUM(F2:F${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + c.totalPurchase, 0) },
+      { formula: `SUM(E2:E${lastCustRow})`, result: eligibleSummaries.reduce((s, c) => s + c.invoiceCount, 0) },
+      { formula: `SUM(F2:F${lastCustRow})`, result: eligibleSummaries.reduce((s, c) => s + c.totalPurchase, 0) },
       { formula: `AVERAGE(G2:G${lastCustRow})`, result: 0.02 },
-      { formula: `SUM(H2:H${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + c.totalCashback, 0) },
-      { formula: `(COUNTIF(I2:I${lastCustRow},"*Parsel*")+COUNTIF(I2:I${lastCustRow},"*Parcel*"))&" Penerima"`, result: `${customerSummaries.filter(c => c.getParcel || c.benefitType === 'cashback_parcel' || c.benefitType === 'parcel_only').length} Penerima` },
-      { formula: `SUM(J2:J${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + c.disbursedCashback, 0) },
-      { formula: `SUM(K2:K${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + (c.totalCashback - c.disbursedCashback), 0) },
+      { formula: `SUM(H2:H${lastCustRow})`, result: eligibleSummaries.reduce((s, c) => s + c.totalCashback, 0) },
+      { formula: `(COUNTIF(I2:I${lastCustRow},"*Parsel*")+COUNTIF(I2:I${lastCustRow},"*Parcel*"))&" Penerima"`, result: `${eligibleSummaries.filter(c => c.getParcel || c.benefitType === 'cashback_parcel' || c.benefitType === 'parcel_only').length} Penerima` },
+      { formula: `SUM(J2:J${lastCustRow})`, result: eligibleSummaries.reduce((s, c) => s + c.disbursedCashback, 0) },
+      { formula: `SUM(K2:K${lastCustRow})`, result: eligibleSummaries.reduce((s, c) => s + (c.totalCashback - c.disbursedCashback), 0) },
       '',
       '',
       '',
@@ -798,8 +846,8 @@ export async function exportCashbackToExcel(
     cell.border = thinBorder;
   }
 
-  const totalAllCashback = customerSummaries.reduce((sum, c) => sum + c.totalCashback, 0);
-  const top10List = customerSummaries.slice(0, 10);
+  const totalAllCashback = eligibleSummaries.reduce((sum, c) => sum + c.totalCashback, 0);
+  const top10List = eligibleSummaries.slice(0, 10);
 
   top10List.forEach((c, idx) => {
     const r = idx + 2;
@@ -850,7 +898,7 @@ export async function exportCashbackToExcel(
   // -------------------------------------------------------------
   // Sheet 5: Master Konsumen (Optional)
   // -------------------------------------------------------------
-  if (masterCustomers && masterCustomers.length > 0) {
+  if (eligibleMasterCustomers && eligibleMasterCustomers.length > 0) {
     const wsMaster = wb.addWorksheet('Master Konsumen', {
       views: [{ showGridLines: true }],
     });
@@ -902,7 +950,7 @@ export async function exportCashbackToExcel(
       cell.border = thinBorder;
     }
 
-    masterCustomers.forEach((mc, idx) => {
+    eligibleMasterCustomers.forEach((mc, idx) => {
       const row = wsMaster.addRow([
         idx + 1,
         mc.customerCode,
@@ -936,7 +984,7 @@ export async function exportCashbackToExcel(
       }
     });
 
-    wsMaster.autoFilter = `A1:P${masterCustomers.length + 1}`;
+    wsMaster.autoFilter = `A1:P${eligibleMasterCustomers.length + 1}`;
   }
 
   // -------------------------------------------------------------
@@ -960,13 +1008,13 @@ export async function exportCashbackToExcel(
   paramHeader.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
   paramHeader.getCell(2).border = thinBorder;
 
-  const totalOmset = invoices.reduce((sum, inv) => sum + inv.purchaseAmount, 0);
+  const totalOmset = eligibleInvoices.reduce((sum, inv) => sum + inv.purchaseAmount, 0);
 
   const paramData: [string, string | number, boolean][] = [
     ['Nama Usaha / Toko', settings.storeName, false],
     ['Tanggal Export Data', new Date().toLocaleString('id-ID'), false],
-    ['Total Faktur Tercatat', invoices.length, false],
-    ['Total Konsumen Terdaftar', customerSummaries.length, false],
+    ['Total Faktur Tercatat', eligibleInvoices.length, false],
+    ['Total Konsumen Terdaftar', eligibleSummaries.length, false],
     ['Total Omset Penjualan', totalOmset, true],
     ['Total Cashback Diberikan', totalAllCashback, true],
     ['Mode Pengaturan Cashback', settings.mode === 'flat' ? 'Persentase Flat' : 'Bertingkat (Tiered)', false],

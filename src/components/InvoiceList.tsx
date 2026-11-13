@@ -10,7 +10,10 @@ import {
   Clock, 
   AlertCircle,
   Upload,
-  RotateCcw
+  RotateCcw,
+  Sparkles,
+  Coins,
+  Gift
 } from 'lucide-react';
 import { ClaimStatus, CustomerBenefitType, Invoice, PayoutMethod } from '../types/cashback';
 import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
@@ -25,6 +28,7 @@ interface InvoiceListProps {
   onViewReceipt: (invoice: Invoice) => void;
   onUpdateStatus: (invoiceId: string, newStatus: ClaimStatus) => void;
   onUpdateInvoiceBenefit?: (invoice: Invoice, nextBenefit: CustomerBenefitType) => void;
+  onBulkUpdateInvoiceBenefit?: (invoiceIds: string[], nextBenefit: CustomerBenefitType) => void;
   onExportExcel: () => void;
   onOpenImportExcel?: () => void;
   onResetAllInvoices?: () => void;
@@ -41,6 +45,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   onViewReceipt,
   onUpdateStatus,
   onUpdateInvoiceBenefit,
+  onBulkUpdateInvoiceBenefit,
   onExportExcel,
   onOpenImportExcel,
   onResetAllInvoices,
@@ -55,6 +60,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [pendingBulkBenefit, setPendingBulkBenefit] = useState<CustomerBenefitType | null>(null);
 
   useEffect(() => {
     if (initialCustomerFilter !== undefined) {
@@ -117,6 +123,23 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
     const totalSpend = filteredInvoices.reduce((sum, inv) => sum + inv.purchaseAmount, 0);
     const totalCashback = filteredInvoices.reduce((sum, inv) => sum + inv.cashbackAmount, 0);
     return { totalSpend, totalCashback, count: filteredInvoices.length };
+  }, [filteredInvoices]);
+
+  // Detect whether all currently displayed invoices already share the same benefit package
+  const uniformBenefit = useMemo<CustomerBenefitType | null>(() => {
+    if (filteredInvoices.length === 0) return null;
+    const resolveBenefit = (inv: Invoice): CustomerBenefitType =>
+      inv.benefitType ||
+      (inv.getParcel === false
+        ? 'cashback_only'
+        : inv.cashbackAmount > 0
+          ? 'cashback_parcel'
+          : 'parcel_only');
+    const first = resolveBenefit(filteredInvoices[0]);
+    for (let i = 1; i < filteredInvoices.length; i++) {
+      if (resolveBenefit(filteredInvoices[i]) !== first) return null;
+    }
+    return first;
   }, [filteredInvoices]);
 
   const getStatusBadge = (status: ClaimStatus) => {
@@ -277,6 +300,61 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
             <span>Total Cashback: <strong className="text-emerald-700 font-bold">{formatRupiah(filteredSummary.totalCashback)}</strong></span>
           </div>
         </div>
+
+        {/* Bulk Benefit Package Setting Controls */}
+        {onBulkUpdateInvoiceBenefit && filteredInvoices.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="text-xs">
+              <span className="font-bold text-slate-800">
+                Pengaturan Paket Diterima Konsumen
+              </span>
+              <span className="text-[11px] text-slate-500 ml-1.5">
+                ({filteredInvoices.length} faktur tampil)
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPendingBulkBenefit('cashback_parcel')}
+                className={`min-h-[38px] sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  uniformBenefit === 'cashback_parcel'
+                    ? 'bg-purple-600 text-white border-purple-700 shadow-xs'
+                    : 'bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100'
+                }`}
+              >
+                <Sparkles className={`w-3.5 h-3.5 shrink-0 ${uniformBenefit === 'cashback_parcel' ? 'text-white' : 'text-purple-600'}`} />
+                <span>Semua Cashback + Parcel</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPendingBulkBenefit('cashback_only')}
+                className={`min-h-[38px] sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  uniformBenefit === 'cashback_only'
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                    : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
+                }`}
+              >
+                <Coins className={`w-3.5 h-3.5 shrink-0 ${uniformBenefit === 'cashback_only' ? 'text-white' : 'text-emerald-600'}`} />
+                <span>Semua Cashback</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPendingBulkBenefit('parcel_only')}
+                className={`min-h-[38px] sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                  uniformBenefit === 'parcel_only'
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                    : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                <Gift className={`w-3.5 h-3.5 shrink-0 ${uniformBenefit === 'parcel_only' ? 'text-white' : 'text-amber-600'}`} />
+                <span>Semua Parcel</span>
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
 
@@ -600,6 +678,32 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           if (onResetAllInvoices) onResetAllInvoices();
         }}
         onCancel={() => setIsResetConfirmOpen(false)}
+      />
+
+      {/* Bulk Benefit Package Change Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={pendingBulkBenefit !== null}
+        title="Atur Paket Diterima Konsumen?"
+        message={
+          pendingBulkBenefit === 'parcel_only'
+            ? `Ubah paket diterima menjadi "Parcel Saja" untuk ${filteredInvoices.length} faktur yang tampil? Nilai nominal cashback pada faktur tersebut akan otomatis menjadi Rp 0 karena konsumen hanya menerima parcel.`
+            : pendingBulkBenefit === 'cashback_only'
+              ? `Ubah paket diterima menjadi "Cashback Saja" (tanpa parcel) untuk ${filteredInvoices.length} faktur yang tampil? Nominal cashback akan otomatis dihitung sesuai aturan aktif.`
+              : `Ubah paket diterima menjadi "Cashback + Parsel" untuk ${filteredInvoices.length} faktur yang tampil? Nominal cashback akan otomatis dihitung sesuai aturan aktif.`
+        }
+        confirmLabel="Ya, Terapkan ke Semua"
+        cancelLabel="Batal"
+        isDestructive={false}
+        onConfirm={() => {
+          if (pendingBulkBenefit && onBulkUpdateInvoiceBenefit) {
+            onBulkUpdateInvoiceBenefit(
+              filteredInvoices.map((inv) => inv.id),
+              pendingBulkBenefit
+            );
+          }
+          setPendingBulkBenefit(null);
+        }}
+        onCancel={() => setPendingBulkBenefit(null)}
       />
     </div>
   );
