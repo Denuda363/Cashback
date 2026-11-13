@@ -62,15 +62,17 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   // Collapsible sidebar state on desktop
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number; description?: string }[] = [
-    { id: 'dashboard', label: 'Dashboard Analitik', icon: <BarChart3 className="w-4 h-4" />, description: 'Ringkasan & tren omset' },
-    { id: 'top10', label: '10 Besar Tertinggi', icon: <Trophy className="w-4 h-4" />, description: 'Podium reward konsumen' },
-    { id: 'invoices', label: 'Rekap Faktur', icon: <FileSpreadsheet className="w-4 h-4" />, badge: totalInvoicesCount, description: 'Riwayat data pembelian' },
-    { id: 'payout_records', label: 'Penerimaan Cashback', icon: <CheckCircle2 className="w-4 h-4" />, description: 'Rekap serah terima & bukti' },
-    { id: 'customers', label: 'Rekap Konsumen', icon: <Users className="w-4 h-4" />, description: 'Akumulasi saldo per orang' },
-    { id: 'master_customers', label: 'Master Konsumen', icon: <Contact className="w-4 h-4" />, badge: totalMasterCustomersCount, description: 'Database pelanggan & bank' },
-    { id: 'settings', label: 'Pengaturan %', icon: <SettingsIcon className="w-4 h-4" />, description: 'Aturan persen cashback' },
+  const navItems: { id: ActiveTab; label: string; shortLabel: string; icon: React.ReactNode; badge?: number; description?: string }[] = [
+    { id: 'dashboard', label: 'Dashboard Analitik', shortLabel: 'Dashboard', icon: <BarChart3 className="w-4 h-4" />, description: 'Ringkasan & tren omset' },
+    { id: 'top10', label: '10 Besar Tertinggi', shortLabel: 'Top 10', icon: <Trophy className="w-4 h-4" />, description: 'Podium reward konsumen' },
+    { id: 'invoices', label: 'Rekap Faktur', shortLabel: 'Faktur', icon: <FileSpreadsheet className="w-4 h-4" />, badge: totalInvoicesCount, description: 'Riwayat data pembelian' },
+    { id: 'payout_records', label: 'Penerimaan Cashback', shortLabel: 'Penerimaan', icon: <CheckCircle2 className="w-4 h-4" />, description: 'Rekap serah terima & bukti' },
+    { id: 'customers', label: 'Rekap Konsumen', shortLabel: 'Konsumen', icon: <Users className="w-4 h-4" />, description: 'Akumulasi saldo per orang' },
+    { id: 'master_customers', label: 'Master Konsumen', shortLabel: 'Master', icon: <Contact className="w-4 h-4" />, badge: totalMasterCustomersCount, description: 'Database pelanggan & bank' },
+    { id: 'settings', label: 'Pengaturan %', shortLabel: 'Atur %', icon: <SettingsIcon className="w-4 h-4" />, description: 'Aturan persen cashback' },
   ];
+
+  const activeNavItem = navItems.find((n) => n.id === activeTab);
 
   // Helper for Nav Position Switcher Widget
   const PositionSwitcher = ({ compact = false }: { compact?: boolean }) => (
@@ -146,35 +148,37 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
       <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col md:flex-row font-sans">
         
         {/* Minimalist Mobile Header when in sidebar mode */}
-        <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3.5 py-2.5 flex items-center justify-between shadow-xs print:hidden">
-          <div className="flex items-center gap-2">
+        <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 py-2 flex items-center justify-between gap-2 shadow-xs print:hidden">
+          <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="p-1.5 -ml-1 text-slate-700 hover:bg-slate-100 rounded-lg active:scale-95 transition-transform"
+              className="p-1.5 -ml-1 text-slate-700 hover:bg-slate-100 rounded-lg active:scale-95 transition-transform shrink-0"
               aria-label="Buka Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-md bg-emerald-600 flex items-center justify-center text-white font-bold shadow-xs">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="w-6 h-6 rounded-md bg-emerald-600 flex items-center justify-center text-white font-bold shadow-xs shrink-0">
                 <Receipt className="w-3.5 h-3.5" />
               </div>
-              <span className="font-bold text-slate-900 text-sm tracking-tight">CashbackPro</span>
+              <div className="min-w-0">
+                <span className="font-bold text-slate-900 text-xs tracking-tight block truncate">
+                  {activeNavItem?.shortLabel || storeName}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Minimalist Cloud Badge */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <div 
               title="Firebase Firestore Cloud Terhubung Otomatis"
-              className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-800"
+              className="flex items-center gap-1 px-1.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-800"
             >
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
               </span>
               <Cloud className="w-3 h-3 text-emerald-600 shrink-0" />
-              <span className="hidden xs:inline">Cloud</span>
             </div>
 
             <button
@@ -362,9 +366,50 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto pb-20 md:pb-0 print:pb-0">
           {children}
         </div>
+
+        {/* Minimalist Mobile Bottom Quick-Nav Bar */}
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1.5 py-1 grid grid-cols-5 gap-0.5 shadow-[0_-4px_16px_rgba(15,23,42,0.06)] print:hidden">
+          {(
+            [
+              { id: 'dashboard', label: 'Beranda', icon: <BarChart3 className="w-4 h-4" /> },
+              { id: 'invoices', label: 'Faktur', icon: <FileSpreadsheet className="w-4 h-4" /> },
+              { id: 'payout_records', label: 'Terima', icon: <CheckCircle2 className="w-4 h-4" /> },
+              { id: 'customers', label: 'Konsumen', icon: <Users className="w-4 h-4" /> },
+            ] as const
+          ).map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-colors ${
+                  isActive
+                    ? 'text-emerald-700 bg-emerald-50/90 font-bold'
+                    : 'text-slate-500 hover:text-slate-900 font-medium'
+                }`}
+              >
+                {tab.icon}
+                <span className="text-[10px] leading-none">{tab.label}</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-colors ${
+              activeTab === 'top10' || activeTab === 'master_customers' || activeTab === 'settings'
+                ? 'text-emerald-700 bg-emerald-50/90 font-bold'
+                : 'text-slate-500 hover:text-slate-900 font-medium'
+            }`}
+          >
+            <Menu className="w-4 h-4" />
+            <span className="text-[10px] leading-none">Menu</span>
+          </button>
+        </nav>
 
       </div>
     );
@@ -568,7 +613,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
 
       {/* Modern Bottom Dock (Fixed native bottom bar on mobile, floating dock on desktop) */}
       <div className="fixed bottom-0 sm:bottom-4 inset-x-0 z-50 flex justify-center pointer-events-none sm:px-3 print:hidden">
-        <div className="pointer-events-auto w-full sm:w-auto bg-white/95 sm:bg-white/95 backdrop-blur-xl border-t sm:border border-slate-200/90 shadow-2xl sm:rounded-2xl px-2 py-1.5 sm:p-1.5 flex items-center justify-around sm:justify-center gap-1 max-w-full overflow-x-auto ring-1 ring-black/5 animate-in slide-in-from-bottom-3 duration-200">
+        <div className="pointer-events-auto w-full sm:w-auto bg-white/95 backdrop-blur-xl border-t sm:border border-slate-200/90 shadow-2xl sm:rounded-2xl px-1.5 py-1.5 sm:p-1.5 flex items-center justify-start sm:justify-center gap-1 max-w-full overflow-x-auto scrollbar-none ring-1 ring-black/5 animate-in slide-in-from-bottom-3 duration-200">
           
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
@@ -576,7 +621,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`relative flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 group ${
+                className={`relative flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 group ${
                   isActive
                     ? 'bg-slate-900 text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -585,7 +630,8 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                 <span className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-900'}`}>
                   {item.icon}
                 </span>
-                <span className="text-[10px] sm:text-xs font-medium">{item.label}</span>
+                <span className="text-[10px] sm:text-xs font-medium sm:hidden">{item.shortLabel}</span>
+                <span className="hidden sm:inline text-xs font-medium">{item.label}</span>
                 {typeof item.badge === 'number' && (
                   <span
                     className={`hidden sm:inline text-[10px] px-1.5 py-0.2 rounded-full tabular-nums ${
@@ -604,7 +650,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
           {/* Center / Right CTA in Dock */}
           <button
             onClick={onOpenNewInvoice}
-            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-xl shadow-md transition-all whitespace-nowrap shrink-0"
+            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-xl shadow-md transition-all whitespace-nowrap shrink-0"
             title="Input Faktur Konsumen"
           >
             <Plus className="w-4 h-4" />

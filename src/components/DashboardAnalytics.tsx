@@ -133,24 +133,20 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   }, [customerSummaries]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       
       {/* Top Banner: Minimalist & Clean on Mobile */}
-      <div className="bg-white rounded-xl border border-slate-200 p-3.5 sm:p-5 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-start gap-2.5 sm:gap-3">
-            <div className="p-2 sm:p-2.5 rounded-lg bg-emerald-50 text-emerald-700 shrink-0 mt-0.5">
+      <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+          <div className="flex items-center sm:items-start gap-2.5 sm:gap-3">
+            <div className="p-2 sm:p-2.5 rounded-lg bg-emerald-50 text-emerald-700 shrink-0">
               <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h1 className="text-sm sm:text-lg font-bold text-slate-900">
-                  Dashboard Analitik Transparan
+                <h1 className="text-sm sm:text-lg font-bold text-slate-900 truncate">
+                  Dashboard Analitik
                 </h1>
-                <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Cloud Otomatis
-                </span>
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800">
                   {settings.mode === 'flat' ? `${settings.flatPercentage}% Flat` : 'Tiered'}
                 </span>
@@ -184,19 +180,19 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         
         {/* Card 1: Total Cashback */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 shadow-xs flex flex-col justify-between min-w-0">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <span className="text-[11px] sm:text-xs font-medium text-slate-500 truncate">Total Cashback</span>
               <div className="p-1.5 sm:p-2 rounded-md bg-emerald-50 text-emerald-700 shrink-0">
                 <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
-            <div className="mt-2 sm:mt-3">
-              <div className="text-base sm:text-2xl font-bold tracking-tight text-slate-900 font-mono tabular-nums">
+            <div className="mt-1.5 sm:mt-3">
+              <div className="text-sm sm:text-2xl font-bold tracking-tight text-slate-900 font-mono tabular-nums truncate">
                 {formatRupiah(stats.totalCashback)}
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-2">
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-2">
                 <span className="text-emerald-700 font-semibold font-mono tabular-nums">
                   {stats.effectiveRatio.toFixed(1)}%
                 </span>
@@ -204,59 +200,59 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
               </div>
             </div>
           </div>
-          <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500 font-mono tabular-nums">
-            <span>Cair: {formatRupiah(stats.disbursedCashback)}</span>
+          <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500 font-mono tabular-nums">
+            <span className="truncate">Cair: {formatRupiah(stats.disbursedCashback)}</span>
           </div>
         </div>
 
         {/* Card 2: Total Omset Pembelian */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 shadow-xs flex flex-col justify-between min-w-0">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <span className="text-[11px] sm:text-xs font-medium text-slate-500 truncate">Total Omset</span>
               <div className="p-1.5 sm:p-2 rounded-md bg-blue-50 text-blue-700 shrink-0">
                 <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
-            <div className="mt-2 sm:mt-3">
-              <div className="text-base sm:text-2xl font-bold tracking-tight text-slate-900 font-mono tabular-nums">
+            <div className="mt-1.5 sm:mt-3">
+              <div className="text-sm sm:text-2xl font-bold tracking-tight text-slate-900 font-mono tabular-nums truncate">
                 {formatRupiah(stats.totalOmset)}
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-2">
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-2">
                 <span className="font-mono tabular-nums text-slate-800 font-semibold">
                   {formatNumber(invoices.length)}
                 </span>
-                <span>Faktur dicatat</span>
+                <span className="truncate">Faktur dicatat</span>
               </div>
             </div>
           </div>
-          <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500 font-mono tabular-nums">
-            <span>Rata2: {formatRupiah(invoices.length > 0 ? stats.totalOmset / invoices.length : 0)}</span>
+          <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500 font-mono tabular-nums">
+            <span className="truncate">Rata2: {formatRupiah(invoices.length > 0 ? stats.totalOmset / invoices.length : 0)}</span>
           </div>
         </div>
 
         {/* Card 3: Konsumen Unik & Loyalitas */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 shadow-xs flex flex-col justify-between min-w-0">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <span className="text-[11px] sm:text-xs font-medium text-slate-500 truncate">Total Konsumen</span>
               <div className="p-1.5 sm:p-2 rounded-md bg-purple-50 text-purple-700 shrink-0">
                 <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
-            <div className="mt-2 sm:mt-3">
-              <div className="text-base sm:text-2xl font-bold tracking-tight text-slate-900 font-mono tabular-nums">
+            <div className="mt-1.5 sm:mt-3">
+              <div className="text-sm sm:text-2xl font-bold tracking-tight text-slate-900 font-mono tabular-nums">
                 {formatNumber(customerSummaries.length)}
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-2">
-                <span className="truncate">Rata2 reward:</span>
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-2">
+                <span className="truncate">Rata2:</span>
                 <span className="font-mono tabular-nums font-semibold text-slate-800 truncate">
                   {formatRupiah(stats.avgCashbackPerCustomer)}
                 </span>
               </div>
             </div>
           </div>
-          <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500">
+          <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500">
             <button 
               onClick={() => onNavigateToTab('top10')}
               className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-0.5"
@@ -267,27 +263,27 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
         </div>
 
         {/* Card 4: Status Klaim & Pencairan */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 shadow-xs flex flex-col justify-between min-w-0">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <span className="text-[11px] sm:text-xs font-medium text-slate-500 truncate">Pencairan Dana</span>
               <div className="p-1.5 sm:p-2 rounded-md bg-amber-50 text-amber-700 shrink-0">
                 <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
-            <div className="mt-2 sm:mt-3">
-              <div className="text-base sm:text-2xl font-bold tracking-tight text-emerald-700 font-mono tabular-nums">
+            <div className="mt-1.5 sm:mt-3">
+              <div className="text-sm sm:text-2xl font-bold tracking-tight text-emerald-700 font-mono tabular-nums truncate">
                 {formatRupiah(stats.disbursedCashback)}
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-2">
-                <span className="text-amber-700 font-semibold font-mono tabular-nums">
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-2">
+                <span className="text-amber-700 font-semibold font-mono tabular-nums truncate">
                   {formatRupiah(stats.readyCashback)}
                 </span>
-                <span className="truncate">Siap Cair</span>
+                <span className="truncate">Siap</span>
               </div>
             </div>
           </div>
-          <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500">
+          <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500">
             <span className="truncate">Pending: {formatRupiah(stats.pendingCashback)}</span>
           </div>
         </div>
@@ -295,99 +291,99 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
       </div>
 
       {/* Customer Benefit Packages Distribution Banner */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-          <div>
-            <h2 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
-              <Gift className="w-4 h-4 text-purple-600" />
-              <span>Rekap Paket yang Diterima Konsumen</span>
+      <div className="bg-white rounded-xl border border-slate-200 p-3.5 sm:p-4 shadow-2xs">
+        <div className="flex items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b border-slate-100">
+          <div className="min-w-0">
+            <h2 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5 truncate">
+              <Gift className="w-4 h-4 text-purple-600 shrink-0" />
+              <span className="truncate">Rekap Paket Konsumen</span>
             </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="hidden sm:block text-[11px] text-slate-500 mt-0.5">
               Total {customerSummaries.length} konsumen dikelompokkan berdasarkan hak penerimaan reward
             </p>
           </div>
           <button
             onClick={() => onNavigateToTab('customers')}
-            className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 self-start sm:self-auto"
+            className="text-[11px] sm:text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 shrink-0"
           >
-            <span>Atur Per Konsumen</span>
+            <span>Atur</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-2.5 sm:mt-3">
           
           {/* 1. Cashback + Parsel */}
-          <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-200/80 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-base shadow-2xs">
+          <div className="p-2.5 sm:p-3 bg-purple-50/60 rounded-xl border border-purple-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-xs sm:text-base shadow-2xs shrink-0">
                 🎁
               </div>
-              <div>
-                <span className="text-[11px] font-bold text-purple-900 block">
-                  Cashback + Parsel
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold text-purple-900 block leading-tight truncate">
+                  CB + Parsel
                 </span>
-                <span className="text-[10px] text-purple-700">
+                <span className="hidden sm:block text-[10px] text-purple-700">
                   Uang tunai & bingkisan parsel
                 </span>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-lg font-black text-purple-900 font-mono">
+            <div className="sm:text-right flex items-baseline sm:block gap-1">
+              <span className="text-base sm:text-lg font-black text-purple-900 font-mono">
                 {benefitStats.cashbackParcelCount}
               </span>
-              <span className="text-[10px] text-purple-600 font-medium block">
-                Konsumen
+              <span className="text-[9px] sm:text-[10px] text-purple-600 font-medium sm:block">
+                konsumen
               </span>
             </div>
           </div>
 
           {/* 2. Hanya Cashback */}
-          <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/80 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-2xs">
+          <div className="p-2.5 sm:p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs sm:text-base shadow-2xs shrink-0">
                 💰
               </div>
-              <div>
-                <span className="text-[11px] font-bold text-emerald-900 block">
-                  Hanya Cashback
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900 block leading-tight truncate">
+                  Cashback
                 </span>
-                <span className="text-[10px] text-emerald-700">
+                <span className="hidden sm:block text-[10px] text-emerald-700">
                   Pencairan Tunai (Cash)
                 </span>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-lg font-black text-emerald-900 font-mono">
+            <div className="sm:text-right flex items-baseline sm:block gap-1">
+              <span className="text-base sm:text-lg font-black text-emerald-900 font-mono">
                 {benefitStats.cashbackOnlyCount}
               </span>
-              <span className="text-[10px] text-emerald-600 font-medium block">
-                Konsumen
+              <span className="text-[9px] sm:text-[10px] text-emerald-600 font-medium sm:block">
+                konsumen
               </span>
             </div>
           </div>
 
           {/* 3. Hanya Parsel */}
-          <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-base shadow-2xs">
+          <div className="p-2.5 sm:p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-xs sm:text-base shadow-2xs shrink-0">
                 📦
               </div>
-              <div>
-                <span className="text-[11px] font-bold text-amber-900 block">
-                  Hanya Parsel
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold text-amber-900 block leading-tight truncate">
+                  Parsel
                 </span>
-                <span className="text-[10px] text-amber-700">
+                <span className="hidden sm:block text-[10px] text-amber-700">
                   Bingkisan hadiah apresiasi
                 </span>
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-lg font-black text-amber-900 font-mono">
+            <div className="sm:text-right flex items-baseline sm:block gap-1">
+              <span className="text-base sm:text-lg font-black text-amber-900 font-mono">
                 {benefitStats.parcelOnlyCount}
               </span>
-              <span className="text-[10px] text-amber-600 font-medium block">
-                Konsumen
+              <span className="text-[9px] sm:text-[10px] text-amber-600 font-medium sm:block">
+                konsumen
               </span>
             </div>
           </div>
@@ -396,47 +392,47 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
       </div>
 
       {/* Middle Grid: Trend Chart & Claim Status Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Trend Bar Chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between mb-4">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-3.5 sm:p-5">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Tren Akumulasi Cashback & Omset</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Perkembangan alokasi reward cashback bulanan</p>
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900">Tren Akumulasi Cashback & Omset</h2>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Perkembangan alokasi reward cashback bulanan</p>
             </div>
-            <span className="text-xs font-mono text-slate-500 tabular-nums">
+            <span className="text-[11px] sm:text-xs font-mono text-slate-500 tabular-nums shrink-0">
               {monthlyTrend.length} Periode
             </span>
           </div>
 
           {monthlyTrend.length === 0 ? (
-            <div className="h-56 flex items-center justify-center text-xs text-slate-400">
+            <div className="h-44 sm:h-56 flex items-center justify-center text-xs text-slate-400">
               Belum ada data transaksi yang tercatat.
             </div>
           ) : (
-            <div className="space-y-4 pt-2">
+            <div className="space-y-3.5 sm:space-y-4 pt-1 sm:pt-2">
               {paginatedTrend.map((m) => {
                 const percentage = Math.min(100, Math.round((m.cashback / maxMonthlyCashback) * 100));
                 return (
                   <div key={m.label} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
+                    <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-0.5 text-xs">
+                      <div className="flex items-center gap-1.5">
                         <span className="font-semibold text-slate-800">{m.label}</span>
                         <span className="text-slate-400">·</span>
-                        <span className="text-slate-500 font-mono tabular-nums">{m.count} faktur</span>
+                        <span className="text-slate-500 font-mono tabular-nums text-[11px]">{m.count} faktur</span>
                       </div>
-                      <div className="flex items-center gap-3 font-mono tabular-nums">
-                        <span className="text-slate-500 text-[11px]">
+                      <div className="flex items-center justify-between xs:justify-end gap-2.5 font-mono tabular-nums">
+                        <span className="text-slate-500 text-[10px] sm:text-[11px]">
                           Omset: {formatRupiah(m.spend)}
                         </span>
-                        <span className="font-semibold text-emerald-700">
+                        <span className="font-semibold text-emerald-700 text-xs">
                           {formatRupiah(m.cashback)}
                         </span>
                       </div>
                     </div>
                     {/* Visual bar */}
-                    <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                    <div className="w-full h-2.5 sm:h-3 bg-slate-100 rounded-full overflow-hidden flex">
                       <div 
                         className="h-full bg-emerald-600 rounded-full transition-all duration-300"
                         style={{ width: `${Math.max(5, percentage)}%` }}
@@ -556,34 +552,34 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
 
       </div>
 
-      {/* Bottom Row: Top 3 Podium Shortcut & Category Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Bottom Row: Top 3 Podium Shortcut & Grafik Pergerakan */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Top 3 Consumers Podium Mini Preview */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-amber-500" />
-              <h2 className="text-sm font-bold text-slate-900">Peringkat Teratas Konsumen</h2>
+        <div className="bg-white rounded-xl border border-slate-200 p-3.5 sm:p-5">
+          <div className="flex items-center justify-between mb-2.5 sm:mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 truncate">Peringkat Teratas</h2>
             </div>
             <button
               onClick={() => onNavigateToTab('top10')}
-              className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+              className="text-[11px] sm:text-xs font-semibold text-emerald-700 hover:text-emerald-800 shrink-0"
             >
-              Buka 10 Besar
+              10 Besar
             </button>
           </div>
-          <p className="text-xs text-slate-500 mb-4">Konsumen dengan perolehan reward tertinggi</p>
+          <p className="text-[11px] sm:text-xs text-slate-500 mb-3 sm:mb-4">Konsumen dengan perolehan reward tertinggi</p>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
             {top3Customers.map((cust, idx) => (
               <div
                 key={cust.customerCode || `${cust.customerName}_${idx}`}
-                className="flex items-center justify-between p-3 rounded-lg border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-colors"
+                className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-lg border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-colors"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
+                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-bold text-[11px] sm:text-xs shrink-0 ${
                       idx === 0
                         ? 'bg-amber-400 text-amber-950 shadow-xs'
                         : idx === 1
@@ -593,14 +589,14 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                   >
                     #{idx + 1}
                   </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">{cust.customerName}</div>
-                    <div className="text-[11px] text-slate-500 font-mono tabular-nums">
-                      {cust.invoiceCount} faktur · Belanja {formatRupiah(cust.totalPurchase)}
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-900 truncate">{cust.customerName}</div>
+                    <div className="text-[10px] sm:text-[11px] text-slate-500 font-mono tabular-nums truncate">
+                      {cust.invoiceCount} faktur · {formatRupiah(cust.totalPurchase)}
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <div className="text-xs font-bold text-emerald-700 font-mono tabular-nums">
                     {formatRupiah(cust.totalCashback)}
                   </div>
@@ -614,7 +610,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
 
           <button
             onClick={() => onNavigateToTab('top10')}
-            className="w-full mt-4 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+            className="w-full mt-3.5 sm:mt-4 py-2 text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors flex items-center justify-center gap-1.5"
           >
             <span>Lihat Papan Peringkat 10 Besar</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -625,10 +621,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
         <CashbackMovementChart
           invoices={invoices}
           customerSummaries={customerSummaries}
-          totalCashback={stats.totalCashback}
-          disbursedCashback={stats.disbursedCashback}
-          readyCashback={stats.readyCashback}
-          pendingCashback={stats.pendingCashback}
           onNavigateToTab={onNavigateToTab}
         />
 
