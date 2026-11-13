@@ -1,10 +1,158 @@
 import { DEFAULT_SETTINGS } from '../data/initialData';
-import { CashbackSettings, CustomerMaster, CustomerSummary, Invoice, NavPosition, CustomerBenefitType } from '../types/cashback';
+import { ActiveTab, CashbackSettings, CustomerMaster, CustomerSummary, Invoice, NavPosition, CustomerBenefitType } from '../types/cashback';
 
 const INVOICES_KEY = 'cashback_app_invoices_v2';
 const SETTINGS_KEY = 'cashback_app_settings_v2';
 const CUSTOMERS_KEY = 'cashback_app_customers_v1';
 const NAV_POSITION_KEY = 'cashback_app_nav_position_v1';
+const ACTIVE_TAB_KEY = 'cashback_app_active_tab_v1';
+const DISBURSEMENT_DRAFTS_KEY = 'cashback_app_disbursement_drafts_v1';
+const OPEN_DISBURSEMENT_KEY = 'cashback_app_open_disbursement_v1';
+
+const VALID_TABS: ActiveTab[] = [
+  'dashboard',
+  'top10',
+  'invoices',
+  'payout_records',
+  'customers',
+  'master_customers',
+];
+
+export function loadStoredActiveTab(): ActiveTab {
+  try {
+    const raw = localStorage.getItem(ACTIVE_TAB_KEY) as ActiveTab | null;
+    if (raw && VALID_TABS.includes(raw)) {
+      return raw;
+    }
+    return 'dashboard';
+  } catch {
+    return 'dashboard';
+  }
+}
+
+export function saveStoredActiveTab(tab: ActiveTab): void {
+  try {
+    if (VALID_TABS.includes(tab)) {
+      localStorage.setItem(ACTIVE_TAB_KEY, tab);
+    }
+  } catch (e) {
+    console.error('Failed to save active tab to localStorage', e);
+  }
+}
+
+export interface DisbursementDraft {
+  recipientName?: string;
+  disbursedDate?: string;
+  disbursementNotes?: string;
+  disbursementProofPhoto?: string | null;
+  disbursementSignature?: string;
+  isSignatureFullscreen?: boolean;
+  updatedAt: number;
+}
+
+function readAllDisbursementDrafts(): Record<string, DisbursementDraft> {
+  try {
+    const raw = localStorage.getItem(DISBURSEMENT_DRAFTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function loadDisbursementDraft(targetKey: string): DisbursementDraft | null {
+  if (!targetKey) return null;
+  const all = readAllDisbursementDrafts();
+  return all[targetKey] || null;
+}
+
+export function saveDisbursementDraft(targetKey: string, draft: DisbursementDraft): void {
+  if (!targetKey) return;
+  try {
+    const all = readAllDisbursementDrafts();
+    all[targetKey] = draft;
+    try {
+      localStorage.setItem(DISBURSEMENT_DRAFTS_KEY, JSON.stringify(all));
+    } catch {
+      // If quota exceeded (e.g. large photo), trim oldest drafts or drop photo from older entries
+      const keys = Object.keys(all).sort((a, b) => (all[a]?.updatedAt || 0) - (all[b]?.updatedAt || 0));
+      for (const oldKey of keys) {
+        if (oldKey !== targetKey) {
+          delete all[oldKey];
+          try {
+            localStorage.setItem(DISBURSEMENT_DRAFTS_KEY, JSON.stringify(all));
+            return;
+          } catch {
+            // continue trimming
+          }
+        }
+      }
+      // Last resort: keep signature without heavy photo
+      const minimal: Record<string, DisbursementDraft> = {
+        [targetKey]: {
+          ...draft,
+          disbursementProofPhoto: null,
+        },
+      };
+      localStorage.setItem(DISBURSEMENT_DRAFTS_KEY, JSON.stringify(minimal));
+    }
+  } catch (e) {
+    console.error('Failed to save disbursement draft', e);
+  }
+}
+
+export function clearDisbursementDraft(targetKey: string): void {
+  if (!targetKey) return;
+  try {
+    const all = readAllDisbursementDrafts();
+    if (all[targetKey]) {
+      delete all[targetKey];
+      localStorage.setItem(DISBURSEMENT_DRAFTS_KEY, JSON.stringify(all));
+    }
+  } catch (e) {
+    console.error('Failed to clear disbursement draft', e);
+  }
+}
+
+export interface OpenDisbursementTarget {
+  type: 'customer' | 'invoice';
+  key: string;
+}
+
+export function loadOpenDisbursementTarget(): OpenDisbursementTarget | null {
+  try {
+    const raw = localStorage.getItem(OPEN_DISBURSEMENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && (parsed.type === 'customer' || parsed.type === 'invoice') && typeof parsed.key === 'string') {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveOpenDisbursementTarget(target: OpenDisbursementTarget | null): void {
+  try {
+    if (!target) {
+      localStorage.removeItem(OPEN_DISBURSEMENT_KEY);
+    } else {
+      localStorage.setItem(OPEN_DISBURSEMENT_KEY, JSON.stringify(target));
+    }
+  } catch (e) {
+    console.error('Failed to save open disbursement target', e);
+  }
+}
+
+export function clearOpenDisbursementTarget(): void {
+  try {
+    localStorage.removeItem(OPEN_DISBURSEMENT_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export function loadStoredNavPosition(): NavPosition {
   try {

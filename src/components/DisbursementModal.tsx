@@ -12,10 +12,17 @@ import {
   Eye,
   Check,
   Layers,
-  Wallet
+  Wallet,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { Invoice, PayoutMethod, CustomerSummary } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
+import {
+  loadDisbursementDraft,
+  saveDisbursementDraft,
+  clearDisbursementDraft,
+} from '../utils/storage';
 
 export interface CustomerDisbursementData {
   disbursedDate: string;
@@ -89,89 +96,250 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
     Boolean(customer?.disbursementSignature || invoice?.disbursementSignature)
   );
   const [previewPhoto, setPreviewPhoto] = useState(false);
+  const [isSignatureFullscreen, setIsSignatureFullscreen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Digital Signature Canvas
+  // Stable key for draft persistence & preventing background Firestore resets
+  const targetKey = customer
+    ? `cust:${customer.customerName.trim().toLowerCase()}`
+    : invoice
+      ? `inv:${invoice.id}`
+      : '';
+
+  // Digital Signature Canvas (Inline + Fullscreen)
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fullscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
+  const initializedTargetRef = useRef<string>('');
+  const signatureDataUrlRef = useRef<string | undefined>(
+    customer?.disbursementSignature || invoice?.disbursementSignature
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      const rec = customer?.recipientName || customer?.customerName || invoice?.recipientName || invoice?.customerName || '';
-      const dt = customer?.lastDisbursedDate || invoice?.disbursedDate || new Date().toISOString().split('T')[0];
-      const notes = customer?.disbursementNotes || invoice?.disbursementNotes || '';
-      const photo = customer?.disbursementProofPhoto || invoice?.disbursementProofPhoto || null;
-      const sig = customer?.disbursementSignature || invoice?.disbursementSignature;
-
-      setRecipientName(rec);
-      setDisbursedDate(dt);
-      setDisbursementNotes(notes);
-      setProofPhoto(photo);
-      setHasSignature(Boolean(sig));
-      setErrorMsg(null);
-
-      // Initialize canvas with existing signature or clean canvas
-      setTimeout(() => {
-        initCanvas(sig);
-      }, 120);
+  const exportSignatureDataUrl = (canvas: HTMLCanvasElement): string => {
+    const maxWidth = 900;
+    if (canvas.width <= maxWidth) {
+      return canvas.toDataURL('image/png');
     }
-  }, [isOpen, customer, invoice]);
+    const scale = maxWidth / canvas.width;
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = maxWidth;
+    outCanvas.height = Math.max(1, Math.round(canvas.height * scale));
+    const outCtx = outCanvas.getContext('2d');
+    if (!outCtx) {
+      return canvas.toDataURL('image/png');
+    }
+    outCtx.fillStyle = '#ffffff';
+    outCtx.fillRect(0, 0, outCanvas.width, outCanvas.height);
+    outCtx.drawImage(canvas, 0, 0, outCanvas.width, outCanvas.height);
+    return outCanvas.toDataURL('image/png');
+  };
 
-  const initCanvas = (existingSignature?: string) => {
-    const canvas = canvasRef.current;
+  const persistCurrentDraft = (overrides?: {
+    recipientName?: string;
+    disbursedDate?: string;
+    disbursementNotes?: string;
+    disbursementProofPhoto?: string | null;
+    disbursementSignature?: string;
+    isSignatureFullscreen?: boolean;
+  }) => {
+    if (!targetKey) return;
+    saveDisbursementDraft(targetKey, {
+      recipientName: overrides?.recipientName !== undefined ? overrides.recipientName : recipientName,
+      disbursedDate: overrides?.disbursedDate !== undefined ? overrides.disbursedDate : disbursedDate,
+      disbursementNotes: overrides?.disbursementNotes !== undefined ? overrides.disbursementNotes : disbursementNotes,
+      disbursementProofPhoto: overrides?.disbursementProofPhoto !== undefined ? overrides.disbursementProofPhoto : proofPhoto,
+      disbursementSignature:
+        overrides && 'disbursementSignature' in overrides
+          ? overrides.disbursementSignature
+          : signatureDataUrlRef.current,
+      isSignatureFullscreen:
+        overrides?.isSignatureFullscreen !== undefined
+          ? overrides.isSignatureFullscreen
+          : isSignatureFullscreen,
+      updatedAt: Date.now(),
+    });
+  };
+
+  const drawImageContain = (
+    ctx: CanvasRenderingContext2D,
+    img: HTMLImageElement,
+    targetWidth: number,
+    targetHeight: number
+  ) => {
+    if (!img.width || !img.height || !targetWidth || !targetHeight) return;
+    const scale = Math.min(targetWidth / img.width, targetHeight / img.height);
+    const drawWidth = img.width * scale;
+    const drawHeight = img.height * scale;
+    const offsetX = (targetWidth - drawWidth) / 2;
+    const offsetY = (targetHeight - drawHeight) / 2;
+    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+  };
+
+  const setupCanvas = (
+    canvas: HTMLCanvasElement | null,
+    existingSignature?: string,
+    strokeWidth = 2.5
+  ) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set resolution for crisp drawing on mobile & retina
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
-    ctx.scale(2, 2);
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 2, 2);
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = strokeWidth;
 
-    // Clear background
+    // Clear background with crisp white
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, rect.width, rect.height);
 
     if (existingSignature) {
       const img = new Image();
       img.onload = () => {
-        ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        drawImageContain(ctx, img, rect.width, rect.height);
         setHasSignature(true);
       };
       img.src = existingSignature;
     }
   };
 
+  // Initialize form & canvas ONLY when modal opens or switches to a different customer/invoice
+  // Never wipe in-progress signature if parent prop object reference refreshes from Firestore
+  useEffect(() => {
+    if (!isOpen) {
+      initializedTargetRef.current = '';
+      return;
+    }
+    if (!targetKey || initializedTargetRef.current === targetKey) {
+      return;
+    }
+    initializedTargetRef.current = targetKey;
+
+    const draft = loadDisbursementDraft(targetKey);
+    const baseRec = customer?.recipientName || customer?.customerName || invoice?.recipientName || invoice?.customerName || '';
+    const baseDt = customer?.lastDisbursedDate || invoice?.disbursedDate || new Date().toISOString().split('T')[0];
+    const baseNotes = customer?.disbursementNotes || invoice?.disbursementNotes || '';
+    const basePhoto = customer?.disbursementProofPhoto || invoice?.disbursementProofPhoto || null;
+    const baseSig = customer?.disbursementSignature || invoice?.disbursementSignature;
+
+    const rec = draft?.recipientName !== undefined ? draft.recipientName : baseRec;
+    const dt = draft?.disbursedDate !== undefined ? draft.disbursedDate : baseDt;
+    const notes = draft?.disbursementNotes !== undefined ? draft.disbursementNotes : baseNotes;
+    const photo = draft?.disbursementProofPhoto !== undefined ? draft.disbursementProofPhoto : basePhoto;
+    const sig = draft?.disbursementSignature !== undefined ? draft.disbursementSignature : baseSig;
+    const restoreFullscreen = Boolean(draft?.isSignatureFullscreen);
+
+    setRecipientName(rec);
+    setDisbursedDate(dt);
+    setDisbursementNotes(notes);
+    setProofPhoto(photo);
+    signatureDataUrlRef.current = sig;
+    setHasSignature(Boolean(sig));
+    setIsSignatureFullscreen(restoreFullscreen);
+    setErrorMsg(null);
+
+    // Initialize inline canvas with saved/draft signature
+    setTimeout(() => {
+      setupCanvas(canvasRef.current, sig, 2.5);
+    }, 100);
+  }, [isOpen, targetKey]);
+
+  // Keep inline & fullscreen canvases synchronized whenever toggling maximize/minimize or resizing
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleResize = () => {
+      if (isSignatureFullscreen && fullscreenCanvasRef.current) {
+        setupCanvas(
+          fullscreenCanvasRef.current,
+          signatureDataUrlRef.current,
+          3.2
+        );
+      } else if (!isSignatureFullscreen && canvasRef.current) {
+        setupCanvas(
+          canvasRef.current,
+          signatureDataUrlRef.current,
+          2.5
+        );
+      }
+    };
+
+    const timer = setTimeout(() => {
+      if (isSignatureFullscreen && fullscreenCanvasRef.current) {
+        setupCanvas(
+          fullscreenCanvasRef.current,
+          signatureDataUrlRef.current,
+          3.2
+        );
+      } else if (!isSignatureFullscreen && canvasRef.current) {
+        setupCanvas(
+          canvasRef.current,
+          signatureDataUrlRef.current,
+          2.5
+        );
+      }
+    }, 60);
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isOpen, isSignatureFullscreen]);
+
+  // Persist draft whenever form fields or fullscreen mode update while modal is open
+  useEffect(() => {
+    if (!isOpen || !targetKey || initializedTargetRef.current !== targetKey) return;
+    persistCurrentDraft();
+  }, [isOpen, targetKey, recipientName, disbursedDate, disbursementNotes, proofPhoto, isSignatureFullscreen]);
+
   // Canvas Mouse & Touch Drawing Handlers
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
+  const getCoordinates = (
+    canvas: HTMLCanvasElement,
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  };
+
+  const startDrawing = (
+    canvas: HTMLCanvasElement | null,
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     isDrawingRef.current = true;
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+    const { x, y } = getCoordinates(canvas, e);
 
     ctx.beginPath();
     ctx.moveTo(x, y);
+    // Support single tap dots
+    ctx.lineTo(x + 0.01, y + 0.01);
+    ctx.stroke();
+    setHasSignature(true);
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawingRef.current) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const draw = (
+    canvas: HTMLCanvasElement | null,
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
+    if (!isDrawingRef.current || !canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -180,38 +348,75 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
       e.preventDefault();
     }
 
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
+    const { x, y } = getCoordinates(canvas, e);
     ctx.lineTo(x, y);
     ctx.stroke();
     setHasSignature(true);
   };
 
-  const stopDrawing = () => {
+  const stopDrawing = (canvas: HTMLCanvasElement | null) => {
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
-    const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.closePath();
+    if (ctx) {
+      ctx.closePath();
+    }
+    const dataUrl = exportSignatureDataUrl(canvas);
+    signatureDataUrlRef.current = dataUrl;
+    setHasSignature(true);
+    persistCurrentDraft({ disbursementSignature: dataUrl });
   };
 
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, rect.width, rect.height);
+  const clearCanvas = (target: 'inline' | 'fullscreen' | 'both' = 'both') => {
+    if (target === 'inline' || target === 'both') {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const rect = canvas.getBoundingClientRect();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, rect.width, rect.height);
+        }
+      }
+    }
+    if (target === 'fullscreen' || target === 'both') {
+      const fsCanvas = fullscreenCanvasRef.current;
+      if (fsCanvas) {
+        const fsCtx = fsCanvas.getContext('2d');
+        if (fsCtx) {
+          const rect = fsCanvas.getBoundingClientRect();
+          fsCtx.fillStyle = '#ffffff';
+          fsCtx.fillRect(0, 0, rect.width, rect.height);
+        }
+      }
+    }
+    signatureDataUrlRef.current = undefined;
     setHasSignature(false);
+    persistCurrentDraft({ disbursementSignature: undefined });
+  };
+
+  const handleOpenFullscreenSignature = () => {
+    if (hasSignature && canvasRef.current) {
+      const dataUrl = exportSignatureDataUrl(canvasRef.current);
+      signatureDataUrlRef.current = dataUrl;
+      persistCurrentDraft({ disbursementSignature: dataUrl, isSignatureFullscreen: true });
+    }
+    setIsSignatureFullscreen(true);
+  };
+
+  const handleCloseFullscreenSignature = () => {
+    if (hasSignature && fullscreenCanvasRef.current) {
+      const dataUrl = exportSignatureDataUrl(fullscreenCanvasRef.current);
+      signatureDataUrlRef.current = dataUrl;
+      persistCurrentDraft({ disbursementSignature: dataUrl, isSignatureFullscreen: false });
+    } else {
+      persistCurrentDraft({
+        disbursementSignature: hasSignature ? signatureDataUrlRef.current : undefined,
+        isSignatureFullscreen: false,
+      });
+    }
+    setIsSignatureFullscreen(false);
   };
 
   // Photo Upload with Canvas Compression
@@ -274,8 +479,12 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
 
     // Get signature data URL if drawn
     let signatureDataUrl: string | undefined = undefined;
-    if (hasSignature && canvasRef.current) {
-      signatureDataUrl = canvasRef.current.toDataURL('image/png');
+    if (hasSignature) {
+      if (signatureDataUrlRef.current) {
+        signatureDataUrl = signatureDataUrlRef.current;
+      } else if (canvasRef.current) {
+        signatureDataUrl = exportSignatureDataUrl(canvasRef.current);
+      }
     }
 
     const nowISO = new Date().toISOString();
@@ -291,6 +500,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
         disbursementNotes: disbursementNotes.trim(),
         totalCashbackPaid: amountToDisburse,
       });
+      if (targetKey) clearDisbursementDraft(targetKey);
       onClose();
     } else if (invoice && onConfirmInvoiceDisbursement) {
       onConfirmInvoiceDisbursement(invoice.id, {
@@ -302,6 +512,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
         disbursementSignature: signatureDataUrl,
         disbursementNotes: disbursementNotes.trim(),
       });
+      if (targetKey) clearDisbursementDraft(targetKey);
       onClose();
     }
   };
@@ -311,7 +522,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
       <div 
-        className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+        className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
         role="dialog"
         aria-modal="true"
       >
@@ -568,35 +779,50 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
           </div>
 
           {/* Tanda Tangan Elektronik Digital */}
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-            <div className="flex items-center justify-between">
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
                 <PenTool className="w-4 h-4 text-emerald-600" />
                 <span>Tanda Tangan Elektronik Penerima</span>
               </div>
-              <button
-                type="button"
-                onClick={clearCanvas}
-                className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 font-semibold"
-              >
-                <RotateCcw className="w-3 h-3" /> Hapus / Ulangi
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenFullscreenSignature}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                  title="Perbesar area tanda tangan hingga layar penuh"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>Perbesar (Layar Penuh)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => clearCanvas('both')}
+                  className="px-2 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-[11px] text-slate-600 hover:text-slate-900 flex items-center gap-1 font-semibold transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Ulangi</span>
+                </button>
+              </div>
             </div>
 
-            <div className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-2xs">
+            <div className="relative border border-slate-300 rounded-xl overflow-hidden bg-white shadow-2xs">
               <canvas
                 ref={canvasRef}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-                className="w-full h-36 cursor-crosshair touch-none"
+                onMouseDown={(e) => startDrawing(canvasRef.current, e)}
+                onMouseMove={(e) => draw(canvasRef.current, e)}
+                onMouseUp={() => stopDrawing(canvasRef.current)}
+                onMouseLeave={() => stopDrawing(canvasRef.current)}
+                onTouchStart={(e) => startDrawing(canvasRef.current, e)}
+                onTouchMove={(e) => draw(canvasRef.current, e)}
+                onTouchEnd={() => stopDrawing(canvasRef.current)}
+                className="w-full h-52 sm:h-60 cursor-crosshair touch-none select-none block"
               />
-              <div className="bg-slate-100 px-3 py-1.5 border-t border-slate-200 text-[10px] text-slate-500 flex items-center justify-between">
-                <span>Goreskan tanda tangan dengan jari (layar sentuh) atau kursor mouse.</span>
+              {/* Subtle Baseline Guide (visual only, not baked into exported PNG) */}
+              <div className="pointer-events-none absolute inset-x-8 bottom-12 border-b border-dashed border-slate-200" />
+
+              <div className="bg-slate-100 px-3 py-2 border-t border-slate-200 text-[10px] text-slate-500 flex flex-wrap items-center justify-between gap-2">
+                <span>Goreskan tanda tangan di area ini atau tekan <strong className="text-slate-700">Perbesar</strong> untuk area maksimal.</span>
                 {hasSignature ? (
                   <span className="text-emerald-700 font-bold flex items-center gap-1">
                     <Check className="w-3 h-3" /> Tanda tangan tersimpan
@@ -665,6 +891,98 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
         )}
 
       </div>
+
+      {/* Fullscreen Maximized Signature Overlay */}
+      {isSignatureFullscreen && (
+        <div
+          className="fixed inset-0 z-80 bg-slate-100 flex flex-col animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Area Tanda Tangan Layar Penuh"
+        >
+          {/* Top Bar */}
+          <div className="bg-slate-900 text-white px-3 sm:px-5 py-3 flex items-center justify-between gap-2 shrink-0 shadow-sm">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <PenTool className="w-4 h-4 text-emerald-400 shrink-0" />
+                <h3 className="text-sm sm:text-base font-bold truncate">
+                  Tanda Tangan Penerima
+                </h3>
+              </div>
+              <p className="text-[11px] text-slate-300 truncate">
+                {recipientName.trim() || targetName} · {formatRupiah(amountToDisburse)}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => clearCanvas('fullscreen')}
+                className="min-h-[40px] px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Ulangi</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCloseFullscreenSignature}
+                className="min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
+                title="Perkecil kembali"
+                aria-label="Perkecil kembali"
+              >
+                <Minimize2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Maximized Canvas Area */}
+          <div className="flex-1 p-2 sm:p-4 flex flex-col min-h-0">
+            <div className="relative flex-1 bg-white rounded-2xl border-2 border-slate-300 shadow-inner overflow-hidden">
+              <canvas
+                ref={fullscreenCanvasRef}
+                onMouseDown={(e) => startDrawing(fullscreenCanvasRef.current, e)}
+                onMouseMove={(e) => draw(fullscreenCanvasRef.current, e)}
+                onMouseUp={() => stopDrawing(fullscreenCanvasRef.current)}
+                onMouseLeave={() => stopDrawing(fullscreenCanvasRef.current)}
+                onTouchStart={(e) => startDrawing(fullscreenCanvasRef.current, e)}
+                onTouchMove={(e) => draw(fullscreenCanvasRef.current, e)}
+                onTouchEnd={() => stopDrawing(fullscreenCanvasRef.current)}
+                className="w-full h-full cursor-crosshair touch-none select-none block"
+              />
+              {/* Visual guide line (not baked into exported image) */}
+              <div className="pointer-events-none absolute inset-x-8 sm:inset-x-16 bottom-12 sm:bottom-16 border-b-2 border-dashed border-slate-200 flex justify-center">
+                <span className="translate-y-5 text-[11px] font-medium text-slate-300 select-none">
+                  Area Tanda Tangan Maksimal
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Thumb Action Bar */}
+          <div className="bg-white border-t border-slate-200 px-3 sm:px-5 py-3 flex items-center justify-between gap-3 shrink-0">
+            <span className="text-xs text-slate-500 hidden sm:inline">
+              {hasSignature ? 'Tanda tangan tersimpan otomatis dan siap digunakan.' : 'Silakan goreskan tanda tangan di area putih di atas.'}
+            </span>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleCloseFullscreenSignature}
+                className="min-h-[44px] px-4 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+              >
+                Perkecil
+              </button>
+              <button
+                type="button"
+                onClick={handleCloseFullscreenSignature}
+                className="flex-1 sm:flex-initial min-h-[44px] px-5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] shadow-xs flex items-center justify-center gap-2 transition-all"
+              >
+                <Check className="w-4 h-4" />
+                <span>Gunakan Tanda Tangan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

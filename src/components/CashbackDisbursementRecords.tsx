@@ -15,7 +15,8 @@ import {
   Layers,
   Sparkles,
   Gift,
-  Coins
+  Coins,
+  X
 } from 'lucide-react';
 import { CustomerSummary, Invoice, PayoutMethod, CompanyProfile } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
@@ -147,10 +148,81 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
 
   return (
     <div>
-      <div className="space-y-4 print:hidden">
+      <div className="space-y-3 sm:space-y-4 print:hidden">
       
-      {/* Top 3 KPI Summary Cards - Per Konsumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Mobile Minimalist Summary Strip (< sm) */}
+      <div className="sm:hidden bg-white rounded-2xl border border-slate-200 p-3.5 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-[11px] font-medium text-slate-500">Total Hak Cashback</div>
+            <div className="text-lg font-extrabold text-slate-900 font-mono tabular-nums tracking-tight">
+              {formatRupiah(metrics.totalEligibleCashback)}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-xs font-bold text-emerald-700 font-mono tabular-nums">
+              {metrics.realizationRate.toFixed(1)}% cair
+            </div>
+            <div className="text-[11px] text-slate-500 tabular-nums">
+              {metrics.totalCustomers} konsumen · {invoices.length} faktur
+            </div>
+          </div>
+        </div>
+
+        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-emerald-600 rounded-full transition-all duration-300"
+            style={{ width: `${Math.min(100, Math.max(0, metrics.realizationRate))}%` }}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setFilterMode(filterMode === 'undisbursed' ? 'all' : 'undisbursed');
+              setCurrentPage(1);
+            }}
+            className={`text-left p-2.5 rounded-xl border transition-all min-h-[56px] active:scale-[0.98] ${
+              filterMode === 'undisbursed'
+                ? 'bg-amber-50/70 border-amber-400 ring-1 ring-amber-400/40'
+                : 'bg-slate-50/70 border-slate-200'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-amber-800">
+              <span>Belum Terima</span>
+              <span className="font-mono tabular-nums">{metrics.undisbursedCustomersCount} org</span>
+            </div>
+            <div className="text-sm font-extrabold text-amber-700 font-mono tabular-nums mt-0.5 truncate">
+              {formatRupiah(metrics.totalUndisbursedCashback)}
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setFilterMode(filterMode === 'disbursed' ? 'all' : 'disbursed');
+              setCurrentPage(1);
+            }}
+            className={`text-left p-2.5 rounded-xl border transition-all min-h-[56px] active:scale-[0.98] ${
+              filterMode === 'disbursed'
+                ? 'bg-emerald-50/70 border-emerald-400 ring-1 ring-emerald-400/40'
+                : 'bg-slate-50/70 border-slate-200'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-1 text-[11px] font-semibold text-emerald-800">
+              <span>Sudah Terima</span>
+              <span className="font-mono tabular-nums">{metrics.totalDisbursedCustomers} org</span>
+            </div>
+            <div className="text-sm font-extrabold text-emerald-700 font-mono tabular-nums mt-0.5 truncate">
+              {formatRupiah(metrics.totalDisbursedCashback)}
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Desktop Top 3 KPI Summary Cards (sm+) */}
+      <div className="hidden sm:grid sm:grid-cols-3 gap-3">
         
         {/* Card 1: Sudah Menerima Cashback */}
         <div 
@@ -168,12 +240,12 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
             </span>
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
           </div>
-          <div className="text-xl sm:text-2xl font-black text-emerald-700 font-mono tracking-tight">
+          <div className="text-xl sm:text-2xl font-black text-emerald-700 font-mono tabular-nums tracking-tight">
             {formatRupiah(metrics.totalDisbursedCashback)}
           </div>
           <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
             <span>{metrics.totalDisbursedCustomers} Konsumen Tuntas/Cair</span>
-            <span className="font-bold text-emerald-700 font-mono">{metrics.realizationRate.toFixed(1)}% Realisasi</span>
+            <span className="font-bold text-emerald-700 font-mono tabular-nums">{metrics.realizationRate.toFixed(1)}% Realisasi</span>
           </div>
         </div>
 
@@ -193,10 +265,10 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
             </span>
             <Clock className="w-5 h-5 text-amber-600" />
           </div>
-          <div className="text-xl sm:text-2xl font-black text-amber-700 font-mono tracking-tight">
+          <div className="text-xl sm:text-2xl font-black text-amber-700 font-mono tabular-nums tracking-tight">
             {formatRupiah(metrics.totalUndisbursedCashback)}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 mt-1 font-mono">
+          <div className="flex items-center justify-between text-xs text-slate-500 mt-1 font-mono tabular-nums">
             <span>{metrics.undisbursedCustomersCount} Konsumen Menunggu</span>
             <span className="text-amber-700 font-semibold">Siap Diserahkan</span>
           </div>
@@ -218,7 +290,7 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
             </span>
             <TrendingUp className="w-5 h-5 text-slate-700" />
           </div>
-          <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
+          <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono tabular-nums tracking-tight">
             {formatRupiah(metrics.totalEligibleCashback)}
           </div>
           <div className="text-xs text-slate-500 mt-1">
@@ -229,103 +301,372 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
       </div>
 
       {/* Main Container */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-4">
+      <div className="bg-white rounded-2xl sm:rounded-xl border border-slate-200 p-3.5 sm:p-5 shadow-2xs space-y-3 sm:space-y-4">
         
         {/* Title Bar & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          <div>
+        <div className="flex items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b border-slate-100">
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-emerald-600 text-white">
+              <div className="p-1.5 rounded-lg bg-emerald-600 text-white shrink-0">
                 <Receipt className="w-4 h-4" />
               </div>
-              <h1 className="text-base font-bold text-slate-900">
-                Rekap Penerimaan Cashback Konsumen
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+                Penerimaan Cashback
               </h1>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span className="hidden sm:inline-flex text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
                 Pencairan Per Konsumen
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="hidden sm:block text-xs text-slate-500 mt-0.5">
               Rekapitulasi serah terima cashback dikelompokkan dan dicairkan per konsumen, lengkap dengan tanda tangan elektronik dan foto bukti serah terima.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onExportExcel}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg shadow-2xs transition-colors shrink-0"
-              title="Unduh laporan Excel"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Export Excel</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onExportExcel}
+            className="flex items-center gap-1.5 px-3 min-h-[40px] sm:min-h-0 sm:py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl sm:rounded-lg shadow-2xs transition-colors shrink-0 whitespace-nowrap"
+            title="Unduh laporan Excel"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-700" />
+            <span className="sm:hidden">Excel</span>
+            <span className="hidden sm:inline">Export Excel</span>
+          </button>
         </div>
 
         {/* Filter Tabs (Belum Menerima, Sudah Menerima, Semua) */}
-        <div className="flex items-center p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+        <div className="grid grid-cols-3 p-1 bg-slate-100 rounded-xl text-xs font-semibold gap-1">
           <button
+            type="button"
             onClick={() => {
               setFilterMode('undisbursed');
               setCurrentPage(1);
             }}
-            className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            className={`min-h-[40px] sm:min-h-0 py-2 px-2 sm:px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               filterMode === 'undisbursed'
                 ? 'bg-white text-amber-800 shadow-2xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Clock className="w-4 h-4 text-amber-600" />
-            <span>Belum Menerima Cashback ({metrics.undisbursedCustomersCount})</span>
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" />
+            <span className="sm:hidden tabular-nums">Belum ({metrics.undisbursedCustomersCount})</span>
+            <span className="hidden sm:inline">Belum Menerima Cashback ({metrics.undisbursedCustomersCount})</span>
           </button>
 
           <button
+            type="button"
             onClick={() => {
               setFilterMode('disbursed');
               setCurrentPage(1);
             }}
-            className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            className={`min-h-[40px] sm:min-h-0 py-2 px-2 sm:px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               filterMode === 'disbursed'
                 ? 'bg-white text-emerald-800 shadow-2xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Sudah Menerima Cashback ({metrics.totalDisbursedCustomers})</span>
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
+            <span className="sm:hidden tabular-nums">Sudah ({metrics.totalDisbursedCustomers})</span>
+            <span className="hidden sm:inline">Sudah Menerima Cashback ({metrics.totalDisbursedCustomers})</span>
           </button>
 
           <button
+            type="button"
             onClick={() => {
               setFilterMode('all');
               setCurrentPage(1);
             }}
-            className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            className={`min-h-[40px] sm:min-h-0 py-2 px-2 sm:px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               filterMode === 'all'
                 ? 'bg-white text-slate-900 shadow-2xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <span>Semua Konsumen ({metrics.totalCustomers})</span>
+            <span className="sm:hidden tabular-nums">Semua ({metrics.totalCustomers})</span>
+            <span className="hidden sm:inline">Semua Konsumen ({metrics.totalCustomers})</span>
           </button>
         </div>
 
         {/* Search Bar */}
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
-            placeholder="Cari nama konsumen, nomor HP, kode, atau penerima..."
+            placeholder="Cari nama, HP, atau kode konsumen..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
+            className="w-full pl-9 pr-10 py-2.5 sm:py-2 text-xs sm:text-xs bg-slate-50 border border-slate-200 rounded-xl sm:rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setCurrentPage(1);
+              }}
+              aria-label="Hapus pencarian"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        {/* Customer Disbursement Records Table */}
-        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+        {/* Mobile Minimalist Card List (< md) */}
+        <div className="md:hidden space-y-2.5">
+          {filteredCustomers.length === 0 ? (
+            <div className="py-10 px-4 text-center text-slate-400 border border-dashed border-slate-200 rounded-2xl">
+              <Receipt className="w-8 h-8 mx-auto mb-2 opacity-40 text-slate-400" />
+              <p className="text-xs font-semibold text-slate-600">Tidak ada data konsumen yang sesuai filter</p>
+              <p className="text-[11px] mt-0.5">Ubah kata kunci pencarian atau pilih status lain.</p>
+            </div>
+          ) : (
+            paginatedCustomers.map((cust, idx) => {
+              const globalIdx = startIndex + idx;
+              const uniqueKey = cust.customerCode || `${cust.customerName}_${globalIdx}`;
+              const isExpanded = expandedCustomerKey === uniqueKey;
+              const isFullyDisbursed = cust.disbursedCashback >= cust.totalCashback && cust.totalCashback > 0;
+              const isPartial = cust.disbursedCashback > 0 && !isFullyDisbursed;
+              const remainingCashback = Math.max(0, cust.totalCashback - cust.disbursedCashback);
+
+              const benefitLabel =
+                cust.benefitType === 'cashback_parcel'
+                  ? 'Cashback + Parsel'
+                  : cust.benefitType === 'parcel_only'
+                    ? 'Parcel'
+                    : 'Cashback';
+
+              return (
+                <div
+                  key={uniqueKey}
+                  className={`rounded-2xl border p-3.5 space-y-2.5 transition-colors ${
+                    cust.isExcludedFromCashback
+                      ? 'bg-rose-50/25 border-rose-200/80'
+                      : isFullyDisbursed
+                        ? 'bg-white border-emerald-200/90'
+                        : 'bg-white border-slate-200'
+                  }`}
+                >
+                  {/* Top Row: Name + Quiet Metadata + Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className={`text-sm font-bold truncate ${
+                        cust.isExcludedFromCashback ? 'line-through text-slate-400' : 'text-slate-900'
+                      }`}>
+                        {cust.customerName}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-slate-500 mt-0.5">
+                        {cust.customerCode && (
+                          <>
+                            <span className="font-mono text-slate-600">{cust.customerCode}</span>
+                            <span aria-hidden="true">·</span>
+                          </>
+                        )}
+                        <span className="font-mono tabular-nums">{cust.customerPhone || 'Tanpa HP'}</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="tabular-nums">{cust.invoiceCount} Faktur</span>
+                        <span aria-hidden="true">·</span>
+                        <span className={`font-semibold ${
+                          cust.benefitType === 'cashback_parcel'
+                            ? 'text-purple-700'
+                            : cust.benefitType === 'parcel_only'
+                              ? 'text-amber-700'
+                              : 'text-emerald-700'
+                        }`}>
+                          {benefitLabel}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 text-right pt-0.5">
+                      {cust.isExcludedFromCashback ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700">
+                          <AlertTriangle className="w-3.5 h-3.5" /> Dicoret
+                        </span>
+                      ) : isFullyDisbursed ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Sudah Cair
+                        </span>
+                      ) : isPartial ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700">
+                          <Clock className="w-3.5 h-3.5" /> Sebagian
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
+                          <Clock className="w-3.5 h-3.5" /> Belum Cair
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Key Financial Numbers */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                    <div>
+                      <div className="text-[10px] text-slate-500">
+                        {remainingCashback > 0 ? 'Sisa Belum Cair' : 'Sudah Cair'}
+                      </div>
+                      <div className={`text-sm font-extrabold font-mono tabular-nums ${
+                        remainingCashback > 0 ? 'text-amber-700' : 'text-emerald-700'
+                      }`}>
+                        {formatRupiah(remainingCashback > 0 ? remainingCashback : cust.disbursedCashback)}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] text-slate-500">
+                        Total Hak · Belanja
+                      </div>
+                      <div className="text-xs font-bold text-slate-800 font-mono tabular-nums">
+                        {formatRupiah(cust.totalCashback)}
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-mono tabular-nums">
+                        Belanja {formatRupiah(cust.totalPurchase)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Proof & Signature Strip (if available) */}
+                  {(cust.disbursementProofPhoto || cust.disbursementSignature) && (
+                    <button
+                      type="button"
+                      onClick={() => setViewingReceiptCustomer(cust)}
+                      className="w-full flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-left active:opacity-80"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {cust.disbursementProofPhoto && (
+                          <img
+                            src={cust.disbursementProofPhoto}
+                            alt="Bukti"
+                            className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0"
+                          />
+                        )}
+                        {cust.disbursementSignature && (
+                          <div className="w-11 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center p-0.5 shrink-0">
+                            <img
+                              src={cust.disbursementSignature}
+                              alt="TTD"
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold text-slate-800 truncate">
+                            {cust.recipientName || cust.customerName}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-mono">
+                            {cust.lastDisbursedDate || 'Bukti tersimpan'}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-semibold text-emerald-700 shrink-0">
+                        Bukti →
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Thumb-Friendly Actions */}
+                  <div className="flex items-center gap-2 pt-1">
+                    {!cust.isExcludedFromCashback && remainingCashback > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenCustomerDisbursement(cust)}
+                        className="flex-1 min-h-[44px] px-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span className="truncate">Cairkan ({formatRupiah(remainingCashback)})</span>
+                      </button>
+                    )}
+
+                    {cust.disbursedCashback > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setViewingReceiptCustomer(cust)}
+                        className="flex-1 min-h-[44px] px-3 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] rounded-xl flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <Receipt className="w-4 h-4 text-slate-600 shrink-0" />
+                        <span>Tanda Terima</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setExpandedCustomerKey(isExpanded ? null : uniqueKey)}
+                      aria-label={isExpanded ? 'Tutup rincian faktur' : 'Lihat rincian faktur'}
+                      className={`min-w-[44px] min-h-[44px] px-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-[0.98] flex items-center justify-center gap-1 text-xs font-medium transition-all ${
+                        cust.isExcludedFromCashback && cust.disbursedCashback === 0 ? 'flex-1' : 'shrink-0'
+                      }`}
+                    >
+                      {cust.isExcludedFromCashback && cust.disbursedCashback === 0 && (
+                        <span>Rincian Faktur</span>
+                      )}
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  {/* Expanded Invoice List (Mobile Stacked Rows) */}
+                  {isExpanded && cust.invoices && cust.invoices.length > 0 && (
+                    <div className="pt-2.5 border-t border-slate-100 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                        <span>Rincian Faktur ({cust.invoices.length})</span>
+                        <button
+                          type="button"
+                          onClick={() => onSelectCustomerForInvoices(cust.customerName)}
+                          className="text-emerald-700 font-semibold flex items-center gap-1"
+                        >
+                          Lihat di Faktur <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <div className="divide-y divide-slate-100 bg-slate-50/70 rounded-xl px-3 py-1">
+                        {cust.invoices.map((inv) => (
+                          <div key={inv.id} className="py-2 flex items-center justify-between gap-2 text-xs">
+                            <div className="min-w-0">
+                              <div className="font-mono font-bold text-slate-800 truncate">
+                                {inv.invoiceNumber}
+                              </div>
+                              <div className="text-[10px] text-slate-500 font-mono tabular-nums">
+                                {inv.date} · {formatRupiah(inv.purchaseAmount)} ({inv.cashbackPercentage}%)
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="font-mono font-bold text-emerald-700 tabular-nums">
+                                {formatRupiah(inv.cashbackAmount)}
+                              </div>
+                              <div className={`text-[10px] font-semibold ${
+                                inv.claimStatus === 'disbursed'
+                                  ? 'text-emerald-700'
+                                  : inv.claimStatus === 'ready'
+                                    ? 'text-blue-700'
+                                    : 'text-amber-700'
+                              }`}>
+                                {inv.claimStatus === 'disbursed' ? 'Sudah Cair' : inv.claimStatus === 'ready' ? 'Siap Cair' : 'Pending'}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {cust.disbursedCashback > 0 && onRevertCustomerDisbursement && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomerToRevert(cust.customerName)}
+                          className="w-full min-h-[40px] text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" /> Batalkan Pencairan
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Customer Disbursement Records Table (Desktop md+) */}
+        <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-xl">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-bold uppercase tracking-wider text-[11px]">
               <tr>
@@ -664,11 +1005,11 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
           itemLabel="konsumen"
         />
 
-        <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 gap-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 gap-1.5">
           <span>
-            Total <strong className="text-slate-800 font-mono">{filteredCustomers.length}</strong> dari <strong className="text-slate-800 font-mono">{customerSummaries.length}</strong> konsumen terdaftar.
+            Total <strong className="text-slate-800 font-mono tabular-nums">{filteredCustomers.length}</strong> dari <strong className="text-slate-800 font-mono tabular-nums">{customerSummaries.length}</strong> konsumen terdaftar.
           </span>
-          <span className="text-[11px] text-slate-400">
+          <span className="hidden sm:inline text-[11px] text-slate-400">
             * Pencairan otomatis mengupdate seluruh faktur transaksi milik konsumen terkait di database Firebase.
           </span>
         </div>

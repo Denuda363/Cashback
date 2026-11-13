@@ -8,6 +8,11 @@ import {
   saveStoredCustomers,
   loadStoredNavPosition,
   saveStoredNavPosition,
+  loadStoredActiveTab,
+  saveStoredActiveTab,
+  loadOpenDisbursementTarget,
+  saveOpenDisbursementTarget,
+  clearOpenDisbursementTarget,
   aggregateCustomerSummaries, 
   exportBackupJSON,
   wipeAllLocalData,
@@ -31,10 +36,11 @@ import { DateRangeFilterBar } from './components/DateRangeFilterBar';
 import { ImportExcelModal } from './components/ImportExcelModal';
 import { ImportCustomerModal } from './components/ImportCustomerModal';
 import { UserGuideModal } from './components/UserGuideModal';
+import { AboutModal } from './components/AboutModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { DisbursementModal, CustomerDisbursementData } from './components/DisbursementModal';
 import { CashbackDisbursementRecords } from './components/CashbackDisbursementRecords';
-import { CheckCircle2, FileSpreadsheet, Upload, BookOpen } from 'lucide-react';
+import { CheckCircle2, FileSpreadsheet, Upload, BookOpen, Info } from 'lucide-react';
 import {
   testFirestoreConnection,
   ensureFirestoreTablesExist,
@@ -61,7 +67,11 @@ export default function App() {
   const [customers, setCustomers] = useState<CustomerMaster[]>(() => loadStoredCustomers());
   const [settings, setSettings] = useState<CashbackSettings>(() => loadStoredSettings());
   const [navPosition, setNavPosition] = useState<NavPosition>(() => loadStoredNavPosition());
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => loadStoredActiveTab());
+
+  useEffect(() => {
+    saveStoredActiveTab(activeTab);
+  }, [activeTab]);
 
   // Firebase Real-time Auto-Connection State (Direct & Automatic without login)
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(true);
@@ -148,6 +158,7 @@ export default function App() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImportCustomerModalOpen, setIsImportCustomerModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [disbursingInvoice, setDisbursingInvoice] = useState<Invoice | null>(null);
   const [disbursingCustomer, setDisbursingCustomer] = useState<CustomerSummary | null>(null);
 
@@ -185,6 +196,51 @@ export default function App() {
       settings.customerBenefitOverrides || {}
     );
   }, [dateFilteredInvoices, settings.minSpendForParcel, customers, settings.excludedCustomerNames, settings.customerBenefitOverrides]);
+
+  // Helpers to open/close disbursement modal while preserving target across refresh
+  const openCustomerDisbursement = (cust: CustomerSummary) => {
+    setDisbursingInvoice(null);
+    setDisbursingCustomer(cust);
+    saveOpenDisbursementTarget({ type: 'customer', key: cust.customerName.trim().toLowerCase() });
+  };
+
+  const openInvoiceDisbursement = (inv: Invoice) => {
+    setDisbursingCustomer(null);
+    setDisbursingInvoice(inv);
+    saveOpenDisbursementTarget({ type: 'invoice', key: inv.id });
+  };
+
+  const closeDisbursementModal = () => {
+    setDisbursingCustomer(null);
+    setDisbursingInvoice(null);
+    clearOpenDisbursementTarget();
+  };
+
+  // Restore open disbursement modal after a page refresh if user had it open while signing
+  const [hasCheckedPendingDisbursementModal, setHasCheckedPendingDisbursementModal] = useState(false);
+  useEffect(() => {
+    if (hasCheckedPendingDisbursementModal) return;
+    const savedTarget = loadOpenDisbursementTarget();
+    if (!savedTarget) {
+      setHasCheckedPendingDisbursementModal(true);
+      return;
+    }
+    if (savedTarget.type === 'customer') {
+      const matched = customerSummaries.find(
+        (c) => c.customerName.trim().toLowerCase() === savedTarget.key
+      );
+      if (matched) {
+        setDisbursingCustomer(matched);
+        setHasCheckedPendingDisbursementModal(true);
+      }
+    } else if (savedTarget.type === 'invoice') {
+      const matchedInv = invoices.find((i) => i.id === savedTarget.key);
+      if (matchedInv) {
+        setDisbursingInvoice(matchedInv);
+        setHasCheckedPendingDisbursementModal(true);
+      }
+    }
+  }, [customerSummaries, invoices, hasCheckedPendingDisbursementModal]);
 
   const totalCashbackSum = useMemo(() => {
     return dateFilteredInvoices.reduce((sum, inv) => sum + inv.cashbackAmount, 0);
@@ -721,6 +777,7 @@ export default function App() {
       }}
       onExportExcel={handleExportExcel}
       onOpenImportExcel={() => setIsImportModalOpen(true)}
+      onOpenAbout={() => setIsAboutModalOpen(true)}
       totalInvoicesCount={invoices.length}
       totalMasterCustomersCount={customers.length}
       totalCashbackSum={totalCashbackSum}
@@ -817,9 +874,9 @@ export default function App() {
                 (c) => c.customerName.toLowerCase() === inv.customerName.toLowerCase()
               );
               if (matchedCust) {
-                setDisbursingCustomer(matchedCust);
+                openCustomerDisbursement(matchedCust);
               } else {
-                setDisbursingInvoice(inv);
+                openInvoiceDisbursement(inv);
               }
             }}
             initialCustomerFilter={customerFilterForInvoices}
@@ -832,7 +889,7 @@ export default function App() {
           <CashbackDisbursementRecords
             customerSummaries={customerSummaries}
             invoices={dateFilteredInvoices}
-            onOpenCustomerDisbursement={(cust) => setDisbursingCustomer(cust)}
+            onOpenCustomerDisbursement={openCustomerDisbursement}
             onRevertCustomerDisbursement={handleRevertCustomerDisbursement}
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
             onExportExcel={handleExportExcel}
@@ -850,7 +907,7 @@ export default function App() {
             benefitOverrides={settings.customerBenefitOverrides || {}}
             onSetCustomerBenefit={handleSetCustomerBenefit}
             onToggleExcludeCustomer={handleToggleExcludeCustomer}
-            onOpenCustomerDisbursement={(cust) => setDisbursingCustomer(cust)}
+            onOpenCustomerDisbursement={openCustomerDisbursement}
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
             onExportExcel={handleExportExcel}
             companyProfile={settings.companyProfile}
@@ -884,46 +941,55 @@ export default function App() {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500 print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1">
             <span className="font-semibold text-slate-800">{settings.storeName}</span>
-            <span aria-hidden="true">·</span>
-            <span>Rekapitulasi Cashback Konsumen & Master Data</span>
+            <span aria-hidden="true">&middot;</span>
+            <span>Hak Cipta &copy; 2026 Denuda</span>
+            <span aria-hidden="true">&middot;</span>
+            <span>Developer: <strong className="text-slate-700">Denuda</strong></span>
           </div>
-          <div className="flex items-center gap-4 text-[11px]">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px]">
             <button
               onClick={() => setActiveTab('master_customers')}
               className="hover:text-slate-900"
             >
               Master Data ({customers.length} Konsumen)
             </button>
-            <span aria-hidden="true">·</span>
+            <span aria-hidden="true">&middot;</span>
             <button
               onClick={() => setIsSettingsModalOpen(true)}
               className="hover:text-slate-900"
             >
               Pengaturan Aturan ({settings.mode === 'flat' ? `${settings.flatPercentage}% Flat` : 'Tiered'})
             </button>
-            <span aria-hidden="true">·</span>
+            <span aria-hidden="true">&middot;</span>
             <button
               onClick={() => setIsImportModalOpen(true)}
               className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1"
             >
               <Upload className="w-3.5 h-3.5" /> Import Excel
             </button>
-            <span aria-hidden="true">·</span>
+            <span aria-hidden="true">&middot;</span>
             <button
               onClick={handleExportExcel}
               className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" /> Unduh Format Excel
             </button>
-            <span aria-hidden="true">·</span>
+            <span aria-hidden="true">&middot;</span>
             <button
               onClick={() => setIsGuideModalOpen(true)}
               className="text-slate-800 hover:text-emerald-700 font-bold flex items-center gap-1 bg-slate-100 hover:bg-emerald-50 px-2 py-0.5 rounded-md transition-colors"
             >
               <BookOpen className="w-3.5 h-3.5 text-emerald-600" /> Buku Panduan
+            </button>
+            <span aria-hidden="true">&middot;</span>
+            <button
+              onClick={() => setIsAboutModalOpen(true)}
+              className="text-slate-800 hover:text-emerald-700 font-bold flex items-center gap-1 bg-slate-100 hover:bg-emerald-50 px-2 py-0.5 rounded-md transition-colors"
+            >
+              <Info className="w-3.5 h-3.5 text-emerald-600" /> Tentang Aplikasi
             </button>
           </div>
         </div>
@@ -998,6 +1064,13 @@ export default function App() {
         onOpenSettings={() => setIsSettingsModalOpen(true)}
       />
 
+      {/* About Application & Copyright Modal */}
+      <AboutModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
+        storeName={settings.storeName}
+      />
+
       {/* Digital Receipt Modal */}
       <ReceiptModal
         invoice={receiptInvoice}
@@ -1022,10 +1095,7 @@ export default function App() {
       {(disbursingCustomer || disbursingInvoice) && (
         <DisbursementModal
           isOpen={Boolean(disbursingCustomer || disbursingInvoice)}
-          onClose={() => {
-            setDisbursingCustomer(null);
-            setDisbursingInvoice(null);
-          }}
+          onClose={closeDisbursementModal}
           customer={disbursingCustomer}
           invoice={disbursingInvoice}
           onConfirmCustomerDisbursement={handleConfirmCustomerDisbursement}
