@@ -29,9 +29,10 @@ interface TimelinePoint {
   unclaimed: number;
   ready: number;
   pending: number;
-  receivedCount: number;
-  unclaimedCount: number;
-  totalCount: number;
+  receivedCustomerCount: number;
+  unclaimedCustomerCount: number;
+  receivedCustomerKeys: string[];
+  unclaimedCustomerKeys: string[];
 }
 
 function formatCompactRupiah(amount: number): string {
@@ -91,6 +92,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
   onNavigateToTab,
 }) => {
   const [chartType, setChartType] = useState<'line' | 'bar' | 'konsumen'>('line');
+  const [metricBasis, setMetricBasis] = useState<'customers' | 'amount'>('customers');
   const [granularity, setGranularity] = useState<'daily' | 'monthly'>('monthly');
   const [isCumulative, setIsCumulative] = useState<boolean>(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -167,44 +169,31 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
     });
   }, [invoices, chartStartDate, chartEndDate, hasChartDateFilter]);
 
-  // Scoped totals & counts
-  const chartMetrics = useMemo(() => {
+  // Scoped Rupiah totals (customer counts & progress % are computed from customerReceiptStats below)
+  const chartAmounts = useMemo(() => {
     let totalCashback = 0;
     let disbursedCashback = 0;
     let readyCashback = 0;
     let pendingCashback = 0;
-    let receivedCount = 0;
-    let unclaimedCount = 0;
 
     for (const inv of chartInvoices) {
       const amt = Math.round(Number(inv.cashbackAmount) || 0);
       totalCashback += amt;
       if (inv.claimStatus === 'disbursed') {
         disbursedCashback += amt;
-        if (amt > 0) receivedCount++;
       } else if (inv.claimStatus === 'ready') {
         readyCashback += amt;
-        if (amt > 0) unclaimedCount++;
       } else {
         pendingCashback += amt;
-        if (amt > 0) unclaimedCount++;
       }
     }
-
-    const unclaimedTotal = readyCashback + pendingCashback;
-    const receivedPct = totalCashback > 0 ? Math.round((disbursedCashback / totalCashback) * 100) : 0;
-    const unclaimedPct = totalCashback > 0 ? Math.max(0, 100 - receivedPct) : 0;
 
     return {
       totalCashback,
       disbursedCashback,
       readyCashback,
       pendingCashback,
-      unclaimedTotal,
-      receivedPct,
-      unclaimedPct,
-      receivedCount,
-      unclaimedCount,
+      unclaimedTotal: readyCashback + pendingCashback,
     };
   }, [chartInvoices]);
 
@@ -265,19 +254,45 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
     });
   }, [hasChartDateFilter, customerSummaries, chartInvoices]);
 
+  const totalCustomerCount = customerReceiptStats.length;
+
   const disbursedCustomerCount = useMemo(
     () => customerReceiptStats.filter((c) => c.disbursedCashback > 0).length,
     [customerReceiptStats]
   );
 
-  // Build daily & monthly timeline series
+  const unclaimedCustomerCount = useMemo(
+    () => Math.max(0, totalCustomerCount - disbursedCustomerCount),
+    [totalCustomerCount, disbursedCustomerCount]
+  );
+
+  // Progress % strictly calculated from customer count (jumlah konsumen)
+  const receivedCustomerPct =
+    totalCustomerCount > 0 ? Math.round((disbursedCustomerCount / totalCustomerCount) * 100) : 0;
+  const unclaimedCustomerPct =
+    totalCustomerCount > 0 ? Math.max(0, 100 - receivedCustomerPct) : 0;
+
+  // Build daily & monthly timeline series tracking unique customers and Rupiah amounts
   const { dailySeries, monthlySeries } = useMemo(() => {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    const dayMap = new Map<string, TimelinePoint>();
-    const monthMap = new Map<string, TimelinePoint>();
+    type Bucket = {
+      key: string;
+      label: string;
+      shortLabel: string;
+      received: number;
+      unclaimed: number;
+      ready: number;
+      pending: number;
+      receivedSet: Set<string>;
+      unclaimedSet: Set<string>;
+    };
+    const dayMap = new Map<string, Bucket>();
+    const monthMap = new Map<string, Bucket>();
 
     for (const inv of chartInvoices) {
       const amt = Math.round(Number(inv.cashbackAmount) || 0);
+      if (amt <= 0) continue;
+      const custKey = (inv.customerName || inv.id || 'tanpa-nama').trim().toLowerCase();
       const isDisbursed = inv.claimStatus === 'disbursed';
       const isReady = inv.claimStatus === 'ready';
       const refDateStr = isDisbursed && inv.disbursedDate ? inv.disbursedDate : inv.date;
@@ -300,7 +315,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
         ? `${monthNames[d.getMonth()]} '${String(d.getFullYear()).slice(-2)}`
         : 'Lainnya';
 
-      const applyPoint = (map: Map<string, TimelinePoint>, key: string, label: string, shortLabel: string) => {
+      const applyPoint = (map: Map<string, Bucket>, key: string, label: string, shortLabel: string) => {
         const cur = map.get(key) || {
           key,
           label,
@@ -309,17 +324,15 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
           unclaimed: 0,
           ready: 0,
           pending: 0,
-          receivedCount: 0,
-          unclaimedCount: 0,
-          totalCount: 0,
+          receivedSet: new Set<string>(),
+          unclaimedSet: new Set<string>(),
         };
-        cur.totalCount += 1;
         if (isDisbursed) {
           cur.received += amt;
-          cur.receivedCount += 1;
+          cur.receivedSet.add(custKey);
         } else {
           cur.unclaimed += amt;
-          cur.unclaimedCount += 1;
+          cur.unclaimedSet.add(custKey);
           if (isReady) cur.ready += amt;
           else cur.pending += amt;
         }
@@ -330,9 +343,26 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
       applyPoint(monthMap, monthKey, monthLabel, monthShort);
     }
 
+    const finalize = (map: Map<string, Bucket>): TimelinePoint[] =>
+      Array.from(map.values())
+        .sort((a, b) => a.key.localeCompare(b.key))
+        .map((b) => ({
+          key: b.key,
+          label: b.label,
+          shortLabel: b.shortLabel,
+          received: b.received,
+          unclaimed: b.unclaimed,
+          ready: b.ready,
+          pending: b.pending,
+          receivedCustomerCount: b.receivedSet.size,
+          unclaimedCustomerCount: b.unclaimedSet.size,
+          receivedCustomerKeys: Array.from(b.receivedSet),
+          unclaimedCustomerKeys: Array.from(b.unclaimedSet),
+        }));
+
     return {
-      dailySeries: Array.from(dayMap.values()).sort((a, b) => a.key.localeCompare(b.key)),
-      monthlySeries: Array.from(monthMap.values()).sort((a, b) => a.key.localeCompare(b.key)),
+      dailySeries: finalize(dayMap),
+      monthlySeries: finalize(monthMap),
     };
   }, [chartInvoices]);
 
@@ -349,27 +379,31 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
     let accUnclaimed = 0;
     let accReady = 0;
     let accPending = 0;
-    let accReceivedCount = 0;
-    let accUnclaimedCount = 0;
-    let accTotalCount = 0;
+    const accReceivedCustomers = new Set<string>();
+    const accUnclaimedCustomers = new Set<string>();
 
     return raw.map((p) => {
       accReceived += p.received;
       accUnclaimed += p.unclaimed;
       accReady += p.ready;
       accPending += p.pending;
-      accReceivedCount += p.receivedCount;
-      accUnclaimedCount += p.unclaimedCount;
-      accTotalCount += p.totalCount;
+      for (const k of p.receivedCustomerKeys) {
+        accReceivedCustomers.add(k);
+        accUnclaimedCustomers.delete(k);
+      }
+      for (const k of p.unclaimedCustomerKeys) {
+        if (!accReceivedCustomers.has(k)) {
+          accUnclaimedCustomers.add(k);
+        }
+      }
       return {
         ...p,
         received: accReceived,
         unclaimed: accUnclaimed,
         ready: accReady,
         pending: accPending,
-        receivedCount: accReceivedCount,
-        unclaimedCount: accUnclaimedCount,
-        totalCount: accTotalCount,
+        receivedCustomerCount: accReceivedCustomers.size,
+        unclaimedCustomerCount: accUnclaimedCustomers.size,
       };
     });
   }, [effectiveGranularity, dailySeries, monthlySeries, isCumulative]);
@@ -393,14 +427,31 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
   const plotH = svgHeight - padTop - padBottom;
   const baselineY = padTop + plotH;
 
+  const getSeriesValues = (item: TimelinePoint) =>
+    metricBasis === 'customers'
+      ? { rec: item.receivedCustomerCount, unc: item.unclaimedCustomerCount }
+      : { rec: item.received, unc: item.unclaimed };
+
+  const formatAxisValue = (val: number) =>
+    metricBasis === 'customers' ? `${Math.round(val)} ksm` : formatCompactRupiah(val);
+
   const maxChartVal = useMemo(() => {
     const rawMax = Math.max(
-      ...activeSeries.map((p) => Math.max(p.received, p.unclaimed)),
+      ...activeSeries.map((p) => {
+        const vals =
+          metricBasis === 'customers'
+            ? { rec: p.receivedCustomerCount, unc: p.unclaimedCustomerCount }
+            : { rec: p.received, unc: p.unclaimed };
+        return Math.max(vals.rec, vals.unc);
+      }),
       0
     );
+    if (metricBasis === 'customers') {
+      return Math.max(3, Math.ceil(rawMax * 1.15));
+    }
     if (rawMax <= 0) return 100_000;
     return rawMax * 1.15;
-  }, [activeSeries]);
+  }, [activeSeries, metricBasis]);
 
   const yTicks = useMemo(() => {
     return [0, 0.33, 0.66, 1].map((ratio) => ({
@@ -414,12 +465,16 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
     const n = activeSeries.length;
     if (n === 0) return [];
     return activeSeries.map((item, idx) => {
+      const vals =
+        metricBasis === 'customers'
+          ? { rec: item.receivedCustomerCount, unc: item.unclaimedCustomerCount }
+          : { rec: item.received, unc: item.unclaimed };
       const x = n === 1 ? padLeft + plotW / 2 : padLeft + (idx / (n - 1)) * plotW;
-      const yReceived = baselineY - (item.received / maxChartVal) * plotH;
-      const yUnclaimed = baselineY - (item.unclaimed / maxChartVal) * plotH;
+      const yReceived = baselineY - (vals.rec / maxChartVal) * plotH;
+      const yUnclaimed = baselineY - (vals.unc / maxChartVal) * plotH;
       return { x, yReceived, yUnclaimed, item };
     });
-  }, [activeSeries, padLeft, plotW, baselineY, plotH, maxChartVal]);
+  }, [activeSeries, metricBasis, padLeft, plotW, baselineY, plotH, maxChartVal]);
 
   const receivedLinePath = useMemo(() => {
     return buildSmoothLinePath(
@@ -470,7 +525,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
 
   const donutRadius = 24;
   const donutCircumference = 2 * Math.PI * donutRadius;
-  const receivedDash = (chartMetrics.receivedPct / 100) * donutCircumference;
+  const receivedDash = (receivedCustomerPct / 100) * donutCircumference;
 
   return (
     <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-3.5 sm:p-5 flex flex-col justify-between shadow-2xs">
@@ -634,7 +689,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
 
         {/* Hero Visual Ratio Strip: Donut Gauge + Two Contrast Comparison Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-12 gap-2 sm:gap-3 mb-3.5 sm:mb-4">
-          {/* Circular Ring Gauge */}
+          {/* Circular Ring Gauge (Customer-Count Progress) */}
           <div className="col-span-2 sm:col-span-4 p-2.5 sm:p-3 rounded-xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-white flex items-center gap-3">
             <div className="relative w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 60 60">
@@ -655,9 +710,9 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
                   strokeWidth="6.5"
                   strokeDasharray={`${donutCircumference} ${donutCircumference}`}
                   strokeLinecap="round"
-                  opacity={chartMetrics.totalCashback > 0 ? 0.85 : 0.2}
+                  opacity={totalCustomerCount > 0 ? 0.85 : 0.2}
                 />
-                {chartMetrics.receivedPct > 0 && (
+                {receivedCustomerPct > 0 && (
                   <circle
                     cx="30"
                     cy="30"
@@ -672,14 +727,14 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
                 )}
               </svg>
               <span className="absolute text-[11px] sm:text-xs font-extrabold font-mono text-slate-900">
-                {chartMetrics.receivedPct}%
+                {receivedCustomerPct}%
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-bold text-slate-800">Rasio Penerimaan</div>
+              <div className="text-[11px] font-bold text-slate-800">Progress Konsumen</div>
               <div className="text-[10px] text-slate-500 mt-0.5 leading-snug">
                 <strong className="text-emerald-700">{disbursedCustomerCount}</strong> dari{' '}
-                <strong>{customerReceiptStats.length}</strong> konsumen terima cair
+                <strong>{totalCustomerCount}</strong> konsumen sudah terima
               </div>
             </div>
           </div>
@@ -695,10 +750,10 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
             </div>
             <div className="mt-1">
               <div className="text-xs sm:text-base font-extrabold text-emerald-700 font-mono tabular-nums truncate">
-                {formatRupiah(chartMetrics.disbursedCashback)}
+                {formatRupiah(chartAmounts.disbursedCashback)}
               </div>
               <div className="text-[10px] text-emerald-700/80 font-medium mt-0.5 truncate">
-                {chartMetrics.receivedPct}% · {chartMetrics.receivedCount} faktur
+                {receivedCustomerPct}% · {disbursedCustomerCount} konsumen
               </div>
             </div>
           </div>
@@ -714,10 +769,10 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
             </div>
             <div className="mt-1">
               <div className="text-xs sm:text-base font-extrabold text-amber-700 font-mono tabular-nums truncate">
-                {formatRupiah(chartMetrics.unclaimedTotal)}
+                {formatRupiah(chartAmounts.unclaimedTotal)}
               </div>
               <div className="text-[10px] text-amber-800/80 font-medium mt-0.5 truncate">
-                {chartMetrics.unclaimedPct}% · {chartMetrics.unclaimedCount} faktur
+                {unclaimedCustomerPct}% · {unclaimedCustomerCount} konsumen
               </div>
             </div>
           </div>
@@ -727,6 +782,31 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
         {chartType !== 'konsumen' && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-100">
             <div className="flex flex-wrap items-center gap-1.5">
+              <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setMetricBasis('customers')}
+                  className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors ${
+                    metricBasis === 'customers'
+                      ? 'bg-white text-emerald-700 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Konsumen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMetricBasis('amount')}
+                  className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors ${
+                    metricBasis === 'amount'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Nominal Rp
+                </button>
+              </div>
+
               <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5">
                 <button
                   type="button"
@@ -790,11 +870,11 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
                 <span className="font-bold text-slate-800">{inspectedPoint.label}:</span>
                 <div className="flex items-center gap-1.5 font-mono">
                   <span className="font-semibold text-emerald-700">
-                    +{formatCompactRupiah(inspectedPoint.received)}
+                    {inspectedPoint.receivedCustomerCount} ksm ({formatCompactRupiah(inspectedPoint.received)})
                   </span>
                   <span className="text-slate-300">|</span>
                   <span className="font-semibold text-amber-700">
-                    {formatCompactRupiah(inspectedPoint.unclaimed)} belum
+                    {inspectedPoint.unclaimedCustomerCount} belum ({formatCompactRupiah(inspectedPoint.unclaimed)})
                   </span>
                 </div>
               </div>
@@ -844,7 +924,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
                       textAnchor="end"
                       className="fill-slate-400 text-[11px] sm:text-[10px] font-mono"
                     >
-                      {formatCompactRupiah(tick.value)}
+                      {formatAxisValue(tick.value)}
                     </text>
                   </g>
                 ))}
@@ -942,7 +1022,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
                             textAnchor="middle"
                             className="fill-emerald-700 text-[11px] font-bold font-mono"
                           >
-                            Diterima: {formatCompactRupiah(coord.item.received)}
+                            Diterima: {formatAxisValue(getSeriesValues(coord.item).rec)}
                           </text>
                           <text
                             x={coord.x}
@@ -950,7 +1030,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
                             textAnchor="middle"
                             className="fill-amber-700 text-[11px] font-bold font-mono"
                           >
-                            Belum: {formatCompactRupiah(coord.item.unclaimed)}
+                            Belum: {formatAxisValue(getSeriesValues(coord.item).unc)}
                           </text>
                         </>
                       )}
@@ -1014,7 +1094,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
                       textAnchor="end"
                       className="fill-slate-400 text-[11px] sm:text-[10px] font-mono"
                     >
-                      {formatCompactRupiah(tick.value)}
+                      {formatAxisValue(tick.value)}
                     </text>
                   </g>
                 ))}
@@ -1026,8 +1106,9 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
                   const barWidth = Math.min(24, Math.max(8, (groupWidth - 14) / 2));
                   const gap = 4;
 
-                  const hRec = Math.max(item.received > 0 ? 4 : 0, (item.received / maxChartVal) * plotH);
-                  const hUnc = Math.max(item.unclaimed > 0 ? 4 : 0, (item.unclaimed / maxChartVal) * plotH);
+                  const vals = getSeriesValues(item);
+                  const hRec = Math.max(vals.rec > 0 ? 4 : 0, (vals.rec / maxChartVal) * plotH);
+                  const hUnc = Math.max(vals.unc > 0 ? 4 : 0, (vals.unc / maxChartVal) * plotH);
                   const isActive = idx === inspectedIdx;
 
                   const step = n <= 6 ? 1 : n <= 12 ? 2 : Math.ceil(n / 6);
@@ -1071,24 +1152,24 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
                         className="transition-all duration-200"
                       />
 
-                      {(n <= 6 || isActive) && item.received > 0 && (
+                      {(n <= 6 || isActive) && vals.rec > 0 && (
                         <text
                           x={centerX - barWidth / 2 - gap / 2}
                           y={baselineY - hRec - 5}
                           textAnchor="middle"
                           className="fill-emerald-700 text-[9px] font-bold font-mono"
                         >
-                          {formatCompactRupiah(item.received)}
+                          {formatAxisValue(vals.rec)}
                         </text>
                       )}
-                      {(n <= 6 || isActive) && item.unclaimed > 0 && (
+                      {(n <= 6 || isActive) && vals.unc > 0 && (
                         <text
                           x={centerX + barWidth / 2 + gap / 2}
                           y={baselineY - hUnc - 5}
                           textAnchor="middle"
                           className="fill-amber-700 text-[9px] font-bold font-mono"
                         >
-                          {formatCompactRupiah(item.unclaimed)}
+                          {formatAxisValue(vals.unc)}
                         </text>
                       )}
 
