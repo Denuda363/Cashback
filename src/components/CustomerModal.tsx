@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Save, CheckCircle2, AlertCircle, Building2, Wallet } from 'lucide-react';
+import { X, UserPlus, CheckCircle2, AlertCircle, Wallet } from 'lucide-react';
 import { CustomerMaster, PayoutMethod } from '../types/cashback';
 
 interface CustomerModalProps {
@@ -23,12 +23,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [email, setEmail] = useState('');
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
-  const [preferredPayoutMethod, setPreferredPayoutMethod] = useState<PayoutMethod>('transfer_bank');
-  const [bankName, setBankName] = useState('BCA');
-  const [bankAccountNumber, setBankAccountNumber] = useState('');
-  const [bankAccountHolder, setBankAccountHolder] = useState('');
-  const [eWalletType, setEWalletType] = useState('GoPay');
-  const [eWalletNumber, setEWalletNumber] = useState('');
+  const preferredPayoutMethod: PayoutMethod = 'tunai';
   const [notes, setNotes] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,12 +41,6 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       setEmail(editingCustomer.email || '');
       setCity(editingCustomer.city || '');
       setAddress(editingCustomer.address || '');
-      setPreferredPayoutMethod(editingCustomer.preferredPayoutMethod || 'transfer_bank');
-      setBankName(editingCustomer.bankName || 'BCA');
-      setBankAccountNumber(editingCustomer.bankAccountNumber || '');
-      setBankAccountHolder(editingCustomer.bankAccountHolder || editingCustomer.name);
-      setEWalletType(editingCustomer.eWalletType || 'GoPay');
-      setEWalletNumber(editingCustomer.eWalletNumber || '');
       setNotes(editingCustomer.notes || '');
       setIsActive(editingCustomer.isActive ?? true);
     } else {
@@ -61,12 +50,6 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       setEmail('');
       setCity('');
       setAddress('');
-      setPreferredPayoutMethod('transfer_bank');
-      setBankName('BCA');
-      setBankAccountNumber('');
-      setBankAccountHolder('');
-      setEWalletType('GoPay');
-      setEWalletNumber('');
       setNotes('');
       setIsActive(true);
     }
@@ -105,11 +88,6 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       city: city.trim() || undefined,
       address: address.trim() || undefined,
       preferredPayoutMethod,
-      bankName: preferredPayoutMethod === 'transfer_bank' ? bankName.trim() : undefined,
-      bankAccountNumber: preferredPayoutMethod === 'transfer_bank' ? bankAccountNumber.trim() : undefined,
-      bankAccountHolder: preferredPayoutMethod === 'transfer_bank' ? (bankAccountHolder.trim() || name.trim()) : undefined,
-      eWalletType: preferredPayoutMethod === 'e_wallet' ? eWalletType.trim() : undefined,
-      eWalletNumber: preferredPayoutMethod === 'e_wallet' ? eWalletNumber.trim() : undefined,
       notes: notes.trim() || undefined,
       joinedDate: editingCustomer ? editingCustomer.joinedDate : new Date().toISOString().split('T')[0],
       isActive,
@@ -134,7 +112,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 {editingCustomer ? 'Edit Master Data Konsumen' : 'Tambah Master Data Konsumen'}
               </h2>
               <p className="text-[10px] sm:text-[11px] text-slate-500">
-                Data identitas dan rekening pencairan cashback
+                Data identitas konsumen untuk rekap & pencairan cashback tunai
               </p>
             </div>
           </div>
@@ -188,10 +166,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               type="text"
               required
               value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (!bankAccountHolder) setBankAccountHolder(e.target.value);
-              }}
+              onChange={(e) => setName(e.target.value)}
               placeholder="Contoh: Hendra Gunawan"
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 text-sm font-semibold text-slate-900"
             />
@@ -246,113 +221,24 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             </div>
           </div>
 
-          {/* Row 5: Preferred Payout Method */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="font-bold text-slate-900 text-xs">
-                Metode Pencairan Cashback Pilihan Konsumen
-              </label>
-              <span className="text-[10px] text-slate-500">Otomatis saat input faktur</span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { id: 'transfer_bank', label: 'Transfer Bank', icon: <Building2 className="w-3.5 h-3.5" /> },
-                { id: 'e_wallet', label: 'E-Wallet', icon: <Wallet className="w-3.5 h-3.5" /> },
-                { id: 'potongan_belanja', label: 'Potongan Belanja', icon: null },
-                { id: 'tunai', label: 'Tunai Kasir', icon: null },
-              ].map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setPreferredPayoutMethod(m.id as PayoutMethod)}
-                  className={`p-2 rounded-lg border text-left transition-all ${
-                    preferredPayoutMethod === m.id
-                      ? 'border-emerald-600 bg-white shadow-xs font-semibold text-slate-900'
-                      : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 text-[11px]">
-                    {m.icon}
-                    <span>{m.label}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* If Transfer Bank */}
-            {preferredPayoutMethod === 'transfer_bank' && (
-              <div className="pt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div>
-                  <span className="text-[10px] text-slate-500 block mb-1">Nama Bank</span>
-                  <select
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs"
-                  >
-                    <option value="BCA">BCA</option>
-                    <option value="Mandiri">Mandiri</option>
-                    <option value="BRI">BRI</option>
-                    <option value="BNI">BNI</option>
-                    <option value="BSI">BSI (Syariah)</option>
-                    <option value="CIMB Niaga">CIMB Niaga</option>
-                    <option value="Permata">Permata</option>
-                    <option value="Bank Jago">Bank Jago</option>
-                    <option value="SeaBank">SeaBank</option>
-                  </select>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block mb-1">Nomor Rekening</span>
-                  <input
-                    type="text"
-                    value={bankAccountNumber}
-                    onChange={(e) => setBankAccountNumber(e.target.value)}
-                    placeholder="Contoh: 8830192811"
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block mb-1">Atas Nama Rekening</span>
-                  <input
-                    type="text"
-                    value={bankAccountHolder}
-                    onChange={(e) => setBankAccountHolder(e.target.value)}
-                    placeholder="Nama di buku tabungan"
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs"
-                  />
-                </div>
+          {/* Row 5: Payout Method (Cash Only) */}
+          <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <Wallet className="w-4 h-4" />
               </div>
-            )}
-
-            {/* If E-Wallet */}
-            {preferredPayoutMethod === 'e_wallet' && (
-              <div className="pt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <span className="text-[10px] text-slate-500 block mb-1">Jenis E-Wallet</span>
-                  <select
-                    value={eWalletType}
-                    onChange={(e) => setEWalletType(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs"
-                  >
-                    <option value="GoPay">GoPay</option>
-                    <option value="OVO">OVO</option>
-                    <option value="DANA">DANA</option>
-                    <option value="ShopeePay">ShopeePay</option>
-                    <option value="LinkAja">LinkAja</option>
-                  </select>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block mb-1">Nomor Akun E-Wallet</span>
-                  <input
-                    type="tel"
-                    value={eWalletNumber || phone}
-                    onChange={(e) => setEWalletNumber(e.target.value)}
-                    placeholder="08xxxxxxxxxx"
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono"
-                  />
-                </div>
+              <div>
+                <span className="font-bold text-slate-900 text-xs block">
+                  Metode Pencairan Cashback
+                </span>
+                <span className="text-[11px] text-slate-600">
+                  Tunai (Cash) — standar resmi untuk semua pencairan konsumen
+                </span>
               </div>
-            )}
+            </div>
+            <span className="text-[10px] font-bold bg-emerald-600 text-white px-2.5 py-0.5 rounded-full">
+              Tunai (Cash)
+            </span>
           </div>
 
           {/* Notes */}

@@ -9,12 +9,11 @@ import {
   Receipt, 
   ExternalLink,
   Sparkles,
-  ArrowUpDown,
-  Gift
 } from 'lucide-react';
 import { CustomerSummary, Invoice } from '../types/cashback';
-import { formatRupiah, formatNumber, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
+import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
 import { aggregateCustomerSummaries } from '../utils/storage';
+import { PaginationBar } from './PaginationBar';
 
 interface Top10LeaderboardProps {
   customerSummaries: CustomerSummary[];
@@ -31,6 +30,8 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
 }) => {
   const [periodFilter, setPeriodFilter] = useState<'all' | 'this_month' | 'last_month'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Filter invoices based on period if selected, then recalculate rankings with the same aggregate function
   const rankedData = useMemo(() => {
@@ -65,17 +66,24 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
     return aggregated.map((item, idx) => ({ ...item, rank: idx + 1 }));
   }, [invoices, customerSummaries, periodFilter]);
 
-  // Top 10 with search
-  const top10 = useMemo(() => {
-    const base = rankedData.slice(0, 10);
-    if (!searchQuery.trim()) return base;
+  // Filtered leaderboard items (default displays Top 10 via rowsPerPage=10, user can change rows per page)
+  const filteredRanked = useMemo(() => {
+    if (!searchQuery.trim()) return rankedData;
     const q = searchQuery.toLowerCase();
-    return base.filter(
+    return rankedData.filter(
       (c) =>
         c.customerName.toLowerCase().includes(q) ||
         c.customerPhone.toLowerCase().includes(q)
     );
   }, [rankedData, searchQuery]);
+
+  const top10 = useMemo(() => {
+    if (rowsPerPage === 'all') return filteredRanked;
+    const totalPages = Math.max(1, Math.ceil(filteredRanked.length / rowsPerPage));
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (safePage - 1) * rowsPerPage;
+    return filteredRanked.slice(start, start + rowsPerPage);
+  }, [filteredRanked, rowsPerPage, currentPage]);
 
   const top1 = rankedData[0];
   const top2 = rankedData[1];
@@ -132,7 +140,10 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
             {/* Period Segmented Filter */}
             <div className="flex items-center p-1 bg-slate-100 rounded-lg">
               <button
-                onClick={() => setPeriodFilter('all')}
+                onClick={() => {
+                  setPeriodFilter('all');
+                  setCurrentPage(1);
+                }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   periodFilter === 'all'
                     ? 'bg-white text-slate-900 shadow-xs'
@@ -142,7 +153,10 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
                 Semua Waktu
               </button>
               <button
-                onClick={() => setPeriodFilter('this_month')}
+                onClick={() => {
+                  setPeriodFilter('this_month');
+                  setCurrentPage(1);
+                }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   periodFilter === 'this_month'
                     ? 'bg-white text-slate-900 shadow-xs'
@@ -152,7 +166,10 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
                 Bulan Ini
               </button>
               <button
-                onClick={() => setPeriodFilter('last_month')}
+                onClick={() => {
+                  setPeriodFilter('last_month');
+                  setCurrentPage(1);
+                }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   periodFilter === 'last_month'
                     ? 'bg-white text-slate-900 shadow-xs'
@@ -377,7 +394,10 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
               type="text"
               placeholder="Cari nama / no. HP..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             />
           </div>
@@ -618,18 +638,32 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
           </table>
         </div>
 
-        {/* Footer info */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 gap-2">
-          <span>
-            Menampilkan maksimal 10 konsumen teratas sesuai kriteria cashback kumulatif.
-          </span>
-          <button
-            onClick={onExportExcel}
-            className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 self-start sm:self-auto"
-          >
-            <span>Unduh Laporan Excel Top 10</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
+        {/* Pagination & Footer info */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50 space-y-2.5">
+          <PaginationBar
+            totalItems={filteredRanked.length}
+            rowsPerPage={rowsPerPage}
+            currentPage={currentPage}
+            onChangeRowsPerPage={(rows) => {
+              setRowsPerPage(rows);
+              setCurrentPage(1);
+            }}
+            onChangePage={setCurrentPage}
+            itemLabel="konsumen"
+            options={[5, 10, 20, 50]}
+          />
+          <div className="px-1 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 gap-2">
+            <span>
+              Menampilkan peringkat konsumen berdasarkan cashback kumulatif tertinggi (default 10 Besar).
+            </span>
+            <button
+              onClick={onExportExcel}
+              className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 self-start sm:self-auto"
+            >
+              <span>Unduh Laporan Excel Top 10</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
       </div>

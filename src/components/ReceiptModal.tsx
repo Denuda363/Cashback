@@ -74,11 +74,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 print:static print:inset-auto print:block print:bg-white print:p-0">
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150 print:max-w-none print:shadow-none print:border-none print:rounded-none">
         
         {/* Header */}
-        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50 print:hidden">
           <div className="flex items-center gap-2">
             <ReceiptIcon className="w-4 h-4 text-emerald-600" />
             <span className="text-xs font-bold text-slate-800">
@@ -147,6 +147,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <span>Kategori:</span>
               <span className="text-slate-800">{invoice.category}</span>
             </div>
+            <div className="flex justify-between">
+              <span>Metode Pencairan:</span>
+              <span className="font-semibold text-emerald-700">Tunai (Cash)</span>
+            </div>
             {invoice.itemsDescription && (
               <div className="flex justify-between text-[11px]">
                 <span>Item:</span>
@@ -195,7 +199,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="pt-2 flex flex-col gap-2">
+          <div className="pt-2 flex flex-col gap-2 print:hidden">
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"

@@ -4,25 +4,13 @@ import {
   Clock, 
   Search, 
   Download, 
-  Camera, 
-  PenTool, 
-  FileText, 
-  Calendar, 
-  CreditCard, 
   Receipt, 
-  Eye, 
-  Phone, 
-  Filter, 
   ArrowRight,
   TrendingUp,
-  Building2,
-  X,
-  Printer,
   ChevronDown,
   ChevronUp,
   User,
   RotateCcw,
-  Check,
   AlertTriangle,
   Layers,
   Sparkles,
@@ -30,9 +18,10 @@ import {
   Coins
 } from 'lucide-react';
 import { CustomerSummary, Invoice, PayoutMethod, CompanyProfile } from '../types/cashback';
-import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
+import { formatRupiah } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
 import { OfficialReceiptModal } from './OfficialReceiptModal';
+import { PaginationBar } from './PaginationBar';
 
 interface CashbackDisbursementRecordsProps {
   customerSummaries: CustomerSummary[];
@@ -57,7 +46,8 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
 }) => {
   const [filterMode, setFilterMode] = useState<'all' | 'disbursed' | 'undisbursed'>('undisbursed');
   const [search, setSearch] = useState('');
-  const [methodFilter, setMethodFilter] = useState<string>('all');
+  const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [expandedCustomerKey, setExpandedCustomerKey] = useState<string | null>(null);
 
   // Selected customer for full Tanda Terima modal
@@ -134,50 +124,40 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
         if (!matchName && !matchPhone && !matchCode && !matchRecipient) return false;
       }
 
-      // 3. Payout Method Filter
-      if (methodFilter !== 'all') {
-        const met = c.disbursementPayoutMethod || c.preferredPayoutMethod;
-        if (met !== methodFilter) return false;
-      }
-
       return true;
     });
-  }, [customerSummaries, filterMode, search, methodFilter]);
+  }, [customerSummaries, filterMode, search]);
 
-  const methodLabel = (m?: PayoutMethod) => {
-    switch (m) {
-      case 'transfer_bank': return 'Transfer Bank';
-      case 'e_wallet': return 'E-Wallet';
-      case 'tunai': return 'Tunai (Cash)';
-      case 'potongan_belanja': return 'Potongan Belanja';
-      default: return m || 'Transfer Bank';
+  const { paginatedCustomers, startIndex } = useMemo(() => {
+    if (rowsPerPage === 'all') {
+      return { paginatedCustomers: filteredCustomers, startIndex: 0 };
     }
-  };
+    const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / rowsPerPage));
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (safePage - 1) * rowsPerPage;
+    return {
+      paginatedCustomers: filteredCustomers.slice(start, start + rowsPerPage),
+      startIndex: start,
+    };
+  }, [filteredCustomers, rowsPerPage, currentPage]);
 
-  // Helper to convert number to Indonesian words (Terbilang)
-  const terbilang = (nominal: number): string => {
-    const angka = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
-    const n = Math.floor(Math.abs(nominal));
-    if (n < 12) return angka[n];
-    if (n < 20) return terbilang(n - 10) + ' Belas';
-    if (n < 100) return terbilang(Math.floor(n / 10)) + ' Puluh ' + angka[n % 10];
-    if (n < 200) return 'Seratus ' + terbilang(n - 100);
-    if (n < 1000) return terbilang(Math.floor(n / 100)) + ' Ratus ' + terbilang(n % 100);
-    if (n < 2000) return 'Seribu ' + terbilang(n - 1000);
-    if (n < 1000000) return terbilang(Math.floor(n / 1000)) + ' Ribu ' + terbilang(n % 1000);
-    if (n < 1000000000) return terbilang(Math.floor(n / 1000000)) + ' Juta ' + terbilang(n % 1000000);
-    return terbilang(Math.floor(n / 1000000000)) + ' Miliar ' + terbilang(n % 1000000000);
+  const methodLabel = (_m?: PayoutMethod) => {
+    return 'Tunai (Cash)';
   };
 
   return (
-    <div className="space-y-4">
+    <div>
+      <div className="space-y-4 print:hidden">
       
       {/* Top 3 KPI Summary Cards - Per Konsumen */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         
         {/* Card 1: Sudah Menerima Cashback */}
         <div 
-          onClick={() => setFilterMode('disbursed')}
+          onClick={() => {
+            setFilterMode('disbursed');
+            setCurrentPage(1);
+          }}
           className={`bg-white rounded-xl border p-4 shadow-2xs cursor-pointer transition-all ${
             filterMode === 'disbursed' ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-emerald-300'
           }`}
@@ -199,7 +179,10 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
 
         {/* Card 2: Belum Menerima Cashback */}
         <div 
-          onClick={() => setFilterMode('undisbursed')}
+          onClick={() => {
+            setFilterMode('undisbursed');
+            setCurrentPage(1);
+          }}
           className={`bg-white rounded-xl border p-4 shadow-2xs cursor-pointer transition-all ${
             filterMode === 'undisbursed' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-slate-200 hover:border-amber-300'
           }`}
@@ -221,7 +204,10 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
 
         {/* Card 3: Total Hak Cashback Konsumen */}
         <div 
-          onClick={() => setFilterMode('all')}
+          onClick={() => {
+            setFilterMode('all');
+            setCurrentPage(1);
+          }}
           className={`bg-white rounded-xl border p-4 shadow-2xs cursor-pointer transition-all ${
             filterMode === 'all' ? 'border-slate-900 ring-2 ring-slate-900/20' : 'border-slate-200 hover:border-slate-400'
           }`}
@@ -279,7 +265,10 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
         {/* Filter Tabs (Belum Menerima, Sudah Menerima, Semua) */}
         <div className="flex items-center p-1 bg-slate-100 rounded-xl text-xs font-semibold">
           <button
-            onClick={() => setFilterMode('undisbursed')}
+            onClick={() => {
+              setFilterMode('undisbursed');
+              setCurrentPage(1);
+            }}
             className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               filterMode === 'undisbursed'
                 ? 'bg-white text-amber-800 shadow-2xs font-bold'
@@ -291,7 +280,10 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
           </button>
 
           <button
-            onClick={() => setFilterMode('disbursed')}
+            onClick={() => {
+              setFilterMode('disbursed');
+              setCurrentPage(1);
+            }}
             className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               filterMode === 'disbursed'
                 ? 'bg-white text-emerald-800 shadow-2xs font-bold'
@@ -303,7 +295,10 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
           </button>
 
           <button
-            onClick={() => setFilterMode('all')}
+            onClick={() => {
+              setFilterMode('all');
+              setCurrentPage(1);
+            }}
             className={`flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               filterMode === 'all'
                 ? 'bg-white text-slate-900 shadow-2xs font-bold'
@@ -314,32 +309,19 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
           </button>
         </div>
 
-        {/* Search & Payout Filter Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <div className="relative sm:col-span-2">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Cari nama konsumen, nomor HP, kode, atau penerima..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
-            />
-          </div>
-
-          <div>
-            <select
-              value={methodFilter}
-              onChange={(e) => setMethodFilter(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
-            >
-              <option value="all">Semua Metode Payout</option>
-              <option value="transfer_bank">Transfer Bank</option>
-              <option value="e_wallet">E-Wallet</option>
-              <option value="tunai">Uang Tunai (Cash)</option>
-              <option value="potongan_belanja">Potongan Belanja</option>
-            </select>
-          </div>
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <input
+            type="text"
+            placeholder="Cari nama konsumen, nomor HP, kode, atau penerima..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
+          />
         </div>
 
         {/* Customer Disbursement Records Table */}
@@ -368,12 +350,12 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((cust, idx) => {
-                  const uniqueKey = cust.customerCode || `${cust.customerName}_${idx}`;
+                paginatedCustomers.map((cust, idx) => {
+                  const globalIdx = startIndex + idx;
+                  const uniqueKey = cust.customerCode || `${cust.customerName}_${globalIdx}`;
                   const isExpanded = expandedCustomerKey === uniqueKey;
                   const isFullyDisbursed = cust.disbursedCashback >= cust.totalCashback && cust.totalCashback > 0;
                   const isPartial = cust.disbursedCashback > 0 && !isFullyDisbursed;
-                  const isUndisbursed = cust.disbursedCashback === 0;
                   const remainingCashback = Math.max(0, cust.totalCashback - cust.disbursedCashback);
 
                   return (
@@ -390,7 +372,7 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                         
                         {/* No */}
                         <td className="py-3 px-3 text-center text-slate-400 font-mono">
-                          {idx + 1}
+                          {globalIdx + 1}
                         </td>
 
                         {/* Customer Info */}
@@ -669,16 +651,29 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
           </table>
         </div>
 
-        {/* Footer info */}
+        {/* Pagination & Footer info */}
+        <PaginationBar
+          totalItems={filteredCustomers.length}
+          rowsPerPage={rowsPerPage}
+          currentPage={currentPage}
+          onChangeRowsPerPage={(rows) => {
+            setRowsPerPage(rows);
+            setCurrentPage(1);
+          }}
+          onChangePage={setCurrentPage}
+          itemLabel="konsumen"
+        />
+
         <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 gap-2">
           <span>
-            Menampilkan <strong className="text-slate-800 font-mono">{filteredCustomers.length}</strong> dari <strong className="text-slate-800 font-mono">{customerSummaries.length}</strong> konsumen terdaftar.
+            Total <strong className="text-slate-800 font-mono">{filteredCustomers.length}</strong> dari <strong className="text-slate-800 font-mono">{customerSummaries.length}</strong> konsumen terdaftar.
           </span>
           <span className="text-[11px] text-slate-400">
             * Pencairan otomatis mengupdate seluruh faktur transaksi milik konsumen terkait di database Firebase.
           </span>
         </div>
 
+      </div>
       </div>
 
       {/* Official Customer Handover Receipt Modal (Tanda Terima Serah Terima Cashback) */}

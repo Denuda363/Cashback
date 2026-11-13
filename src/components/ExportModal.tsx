@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   X, 
   FileSpreadsheet, 
   Download, 
-  Check, 
   Layers, 
   CheckCircle2, 
   Gift, 
   PenTool, 
-  ArrowRight,
   Sparkles,
   Percent
 } from 'lucide-react';
 import { CashbackSettings, CustomerMaster, CustomerSummary, Invoice } from '../types/cashback';
 import { exportCashbackToExcel, exportTandaTerimaFormat } from '../utils/excelExport';
-import { formatRupiah } from '../utils/cashbackCalculator';
+import { getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
+import { PaginationBar } from './PaginationBar';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -41,6 +40,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [activePercentage, setActivePercentage] = useState<number>(settings.flatPercentage || 2);
   const [parcelThreshold, setParcelThreshold] = useState<number>(settings.minSpendForParcel || 5000000);
   const [isExporting, setIsExporting] = useState(false);
+  const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(5);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  const effectiveRowsPerPage = rowsPerPage === 'all' ? Math.max(1, customerSummaries.length) : rowsPerPage;
+  const totalPages = rowsPerPage === 'all' ? 1 : Math.max(1, Math.ceil(customerSummaries.length / effectiveRowsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const samplePreview = useMemo(() => {
+    if (rowsPerPage === 'all') return customerSummaries;
+    const start = (safeCurrentPage - 1) * effectiveRowsPerPage;
+    return customerSummaries.slice(start, start + effectiveRowsPerPage);
+  }, [customerSummaries, rowsPerPage, safeCurrentPage, effectiveRowsPerPage]);
 
   if (!isOpen) return null;
 
@@ -72,8 +83,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       setIsExporting(false);
     }
   };
-
-  const samplePreview = customerSummaries.slice(0, 5);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
@@ -130,7 +139,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 Format Rekap Tanda Terima & Parcel
               </h3>
               <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                Tabel praktis dengan kolom <strong>No</strong>, <strong>Nama Konsumen</strong>, <strong>Total Pembelanjaan</strong>, <strong>Carshback</strong>, <strong>Parcel (Ya/Tidak)</strong>, dan kolom <strong>Tanda tangan</strong> (1 & 2 selang-seling).
+                Tabel praktis dengan kolom <strong>No</strong>, <strong>Nama Konsumen</strong>, <strong>Total Pembelanjaan</strong>, <strong>Carshback</strong>, <strong>Paket Diterima</strong>, dan kolom <strong>Tanda tangan</strong>.
               </p>
             </button>
 
@@ -248,7 +257,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </div>
               <div className="bg-white p-2 rounded-lg border border-emerald-100">
                 <span className="font-bold text-slate-900 block">Rata Tengah (Status)</span>
-                <span className="text-slate-500">No Urut, Tanggal, No. Faktur, Parcel (Ya/Tidak)</span>
+                <span className="text-slate-500">No Urut, Tanggal, No. Faktur, Paket Diterima</span>
               </div>
               <div className="bg-white p-2 rounded-lg border border-emerald-100">
                 <span className="font-bold text-slate-900 block">Rata Kanan & Rumus</span>
@@ -257,12 +266,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
           </div>
 
-          {/* Visual Preview Box (Exact layout like in the user's screenshot) */}
+          {/* Visual Preview Box */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                 <PenTool className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Pratinjau Format Lembar Excel ({samplePreview.length} Baris Pertama):</span>
+                <span>Pratinjau Format Lembar Excel ({samplePreview.length} dari {customerSummaries.length} Konsumen):</span>
               </span>
               <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-mono">
                 Rumus: =ROUND(C2*{activePercentage}%, 0)
@@ -281,20 +290,23 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                       <div>Carshback</div>
                       <div className="text-[9px] font-normal text-emerald-800 font-mono">[Rumus: Belanja x {activePercentage}%]</div>
                     </th>
-                    <th className="py-2.5 px-3 border-r border-slate-300 w-16 text-center">Parcel</th>
+                    <th className="py-2.5 px-3 border-r border-slate-300 text-center">Paket Diterima</th>
                     <th colSpan={2} className="py-2.5 px-3 text-center">Tanda tangan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {samplePreview.map((cust, idx) => {
-                    const rowNumber = idx + 1;
+                    const globalIdx = rowsPerPage === 'all' ? idx : (safeCurrentPage - 1) * effectiveRowsPerPage + idx;
+                    const rowNumber = globalIdx + 1;
                     const isParcel = cust.getParcel !== undefined 
                       ? cust.getParcel 
                       : (cust.totalPurchase >= parcelThreshold);
+                    const resolvedType = cust.benefitType || (isParcel ? 'cashback_parcel' : 'cashback_only');
+                    const benefitBadge = getBenefitBadgeClasses(resolvedType);
                     const calculatedCashback = Math.round((cust.totalPurchase || 0) * (activePercentage / 100));
 
                     return (
-                      <tr key={cust.customerCode || `${cust.customerName}_${idx}`} className="hover:bg-slate-50/70">
+                      <tr key={cust.customerCode || `${cust.customerName}_${rowNumber}`} className="hover:bg-slate-50/70">
                         <td className="py-2.5 px-3 text-center border-r border-slate-200 font-mono text-slate-700">
                           {rowNumber}
                         </td>
@@ -307,10 +319,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                         <td className="py-2.5 px-3 text-right font-mono tabular-nums font-bold text-emerald-800 border-r border-slate-200">
                           Rp{calculatedCashback.toLocaleString('id-ID')}
                         </td>
-                        <td className={`py-2.5 px-3 text-center font-bold border-r border-slate-200 ${
-                          isParcel ? 'text-emerald-700' : 'text-slate-500'
-                        }`}>
-                          {isParcel ? 'Ya' : 'Tidak'}
+                        <td className="py-2.5 px-3 text-center border-r border-slate-200">
+                          <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border ${benefitBadge.bg} ${benefitBadge.border}`}>
+                            {getBenefitLabel(resolvedType)}
+                          </span>
                         </td>
                         {/* Staggered signature columns */}
                         {(() => {
@@ -343,10 +355,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                           return (
                             <>
                               <td className="py-2.5 px-2 border-r border-slate-200 w-24 text-center text-slate-700 font-mono">
-                                {idx % 2 === 0 ? renderSigContent() : ''}
+                                {globalIdx % 2 === 0 ? renderSigContent() : ''}
                               </td>
                               <td className="py-2.5 px-2 w-24 text-center text-slate-700 font-mono">
-                                {idx % 2 !== 0 ? renderSigContent() : ''}
+                                {globalIdx % 2 !== 0 ? renderSigContent() : ''}
                               </td>
                             </>
                           );
@@ -357,6 +369,19 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </tbody>
               </table>
             </div>
+
+            <PaginationBar
+              totalItems={customerSummaries.length}
+              rowsPerPage={rowsPerPage}
+              currentPage={safeCurrentPage}
+              onChangeRowsPerPage={(val) => {
+                setRowsPerPage(val);
+                setCurrentPage(1);
+              }}
+              onChangePage={setCurrentPage}
+              itemLabel="konsumen"
+              options={[5, 10, 20, 50]}
+            />
 
             <p className="text-[11px] text-slate-500 italic">
               * Pada hasil export Excel, kolom tanda tangan otomatis disisipkan gambar tanda tangan elektronik penerima bagi konsumen yang sudah menerima cashback. Untuk yang belum menerima, nomor urut tetap tersedia untuk tanda tangan fisik.

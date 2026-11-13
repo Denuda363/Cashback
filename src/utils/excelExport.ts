@@ -10,10 +10,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const PAYOUT_LABELS: Record<string, string> = {
-  transfer_bank: 'Transfer Bank',
-  e_wallet: 'E-Wallet',
-  potongan_belanja: 'Potongan Belanja',
-  tunai: 'Tunai di Kasir',
+  transfer_bank: 'Tunai (Cash)',
+  e_wallet: 'Tunai (Cash)',
+  potongan_belanja: 'Tunai (Cash)',
+  tunai: 'Tunai (Cash)',
 };
 
 // Common borders and fills
@@ -295,7 +295,10 @@ export function populateTandaTerimaSheet(
       '',
       { formula: `SUM(C2:C${lastDataRow})`, result: customerSummaries.reduce((s, c) => s + c.totalPurchase, 0) },
       { formula: `SUM(D2:D${lastDataRow})`, result: customerSummaries.reduce((s, c) => s + c.totalCashback, 0) },
-      { formula: `COUNTIF(E2:E${lastDataRow},"Ya")&" Penerima"`, result: `${customerSummaries.filter(c => c.getParcel).length} Penerima` },
+      {
+        formula: `(COUNTIF(E2:E${lastDataRow},"*Parsel*")+COUNTIF(E2:E${lastDataRow},"*Parcel*"))&" Penerima"`,
+        result: `${customerSummaries.filter((c) => c.getParcel || c.benefitType === 'cashback_parcel' || c.benefitType === 'parcel_only').length} Penerima`,
+      },
       '',
       '',
     ]);
@@ -376,6 +379,12 @@ export async function exportCashbackToExcel(
     views: [{ showGridLines: true }],
   });
 
+  const benefitMap = new Map<string, string>();
+  customerSummaries.forEach((cs) => {
+    const label = cs.benefitType ? getBenefitLabel(cs.benefitType) : (cs.getParcel ? 'Cashback + Parsel' : 'Cashback');
+    benefitMap.set((cs.customerName || '').trim().toLowerCase(), label);
+  });
+
   wsInvoices.columns = [
     { width: 6 },  // A: No
     { width: 18 }, // B: No. Faktur
@@ -387,7 +396,7 @@ export async function exportCashbackToExcel(
     { width: 20 }, // H: Nilai Belanja (Rp)
     { width: 14 }, // I: % Cashback
     { width: 20 }, // J: Nilai Cashback (Rp) - RUMUS
-    { width: 12 }, // K: Parcel
+    { width: 20 }, // K: Paket Diterima
     { width: 18 }, // L: Status Klaim
     { width: 20 }, // M: Metode Pencairan
     { width: 14 }, // N: Tgl Pencairan
@@ -406,7 +415,7 @@ export async function exportCashbackToExcel(
     'Nilai Belanja (Rp)',
     '% Cashback',
     'Nilai Cashback (Rp)',
-    'Parcel',
+    'Paket Diterima',
     'Status Klaim',
     'Metode Pencairan',
     'Tgl Pencairan',
@@ -429,6 +438,9 @@ export async function exportCashbackToExcel(
     const isParcel = inv.getParcel !== undefined
       ? inv.getParcel
       : inv.purchaseAmount >= (settings.minSpendForParcel || 5000000);
+    const invBenefitLabel =
+      benefitMap.get((inv.customerName || '').trim().toLowerCase()) ||
+      (isParcel ? 'Cashback + Parsel' : 'Cashback');
 
     // Formula: Total Belanja (Col H) * Persentase Cashback (Col I)
     const formulaString = `ROUND(H${r}*I${r}, 0)`;
@@ -452,9 +464,9 @@ export async function exportCashbackToExcel(
       inv.purchaseAmount,
       inv.cashbackPercentage / 100, // Stored as decimal (e.g. 0.02)
       { formula: formulaString, result: inv.cashbackAmount },
-      isParcel ? 'Ya' : 'Tidak',
+      invBenefitLabel,
       STATUS_LABELS[inv.claimStatus] || inv.claimStatus,
-      PAYOUT_LABELS[inv.payoutMethod] || inv.payoutMethod,
+      PAYOUT_LABELS[inv.payoutMethod] || 'Tunai (Cash)',
       inv.disbursedDate || '-',
       inv.notes || '-',
       sigText,
@@ -522,7 +534,7 @@ export async function exportCashbackToExcel(
       { formula: `SUM(H2:H${lastInvRow})`, result: invoices.reduce((s, i) => s + i.purchaseAmount, 0) },
       { formula: `AVERAGE(I2:I${lastInvRow})`, result: invoices.length > 0 ? (invoices.reduce((s, i) => s + i.cashbackPercentage, 0) / invoices.length) / 100 : 0 },
       { formula: `SUM(J2:J${lastInvRow})`, result: invoices.reduce((s, i) => s + i.cashbackAmount, 0) },
-      { formula: `COUNTIF(K2:K${lastInvRow},"Ya")&" Penerima"`, result: `${invoices.filter(i => i.getParcel).length} Penerima` },
+      { formula: `(COUNTIF(K2:K${lastInvRow},"*Parsel*")+COUNTIF(K2:K${lastInvRow},"*Parcel*"))&" Penerima"`, result: `${invoices.filter(i => i.getParcel).length} Penerima` },
       '',
       '',
       '',
@@ -572,7 +584,7 @@ export async function exportCashbackToExcel(
     { width: 22 }, // F: Total Belanja (Rp)
     { width: 16 }, // G: % Cashback
     { width: 22 }, // H: Total Cashback (Rp) - RUMUS
-    { width: 12 }, // I: Parcel
+    { width: 20 }, // I: Paket Diterima
     { width: 22 }, // J: Sudah Dicairkan (Rp)
     { width: 22 }, // K: Sisa Belum Cair (Rp) - RUMUS
     { width: 16 }, // L: Belanja Terakhir
@@ -589,7 +601,7 @@ export async function exportCashbackToExcel(
     'Total Belanja (Rp)',
     '% Cashback Rata-rata',
     'Total Cashback (Rp)',
-    'Parcel',
+    'Paket Diterima',
     'Sudah Dicairkan (Rp)',
     'Sisa Belum Cair (Rp)',
     'Belanja Terakhir',
@@ -651,7 +663,7 @@ export async function exportCashbackToExcel(
       cust.totalPurchase,
       effectiveRate,
       { formula: formulaCashback, result: cust.totalCashback },
-      isParcel ? 'Ya' : 'Tidak',
+      cust.benefitType ? getBenefitLabel(cust.benefitType) : (isParcel ? 'Cashback + Parsel' : 'Cashback'),
       cust.disbursedCashback,
       { formula: formulaSisa, result: cust.totalCashback - cust.disbursedCashback },
       cust.lastPurchaseDate,
@@ -711,7 +723,7 @@ export async function exportCashbackToExcel(
       { formula: `SUM(F2:F${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + c.totalPurchase, 0) },
       { formula: `AVERAGE(G2:G${lastCustRow})`, result: 0.02 },
       { formula: `SUM(H2:H${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + c.totalCashback, 0) },
-      { formula: `COUNTIF(I2:I${lastCustRow},"Ya")&" Penerima"`, result: `${customerSummaries.filter(c => c.getParcel).length} Penerima` },
+      { formula: `(COUNTIF(I2:I${lastCustRow},"*Parsel*")+COUNTIF(I2:I${lastCustRow},"*Parcel*"))&" Penerima"`, result: `${customerSummaries.filter(c => c.getParcel || c.benefitType === 'cashback_parcel' || c.benefitType === 'parcel_only').length} Penerima` },
       { formula: `SUM(J2:J${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + c.disbursedCashback, 0) },
       { formula: `SUM(K2:K${lastCustRow})`, result: customerSummaries.reduce((s, c) => s + (c.totalCashback - c.disbursedCashback), 0) },
       '',
@@ -760,7 +772,7 @@ export async function exportCashbackToExcel(
     { width: 22 }, // F: Total Belanja (Rp)
     { width: 16 }, // G: % Cashback
     { width: 22 }, // H: Total Cashback (Rp) - RUMUS
-    { width: 12 }, // I: Parcel
+    { width: 20 }, // I: Paket Diterima
     { width: 18 }, // J: % Kontribusi
   ];
 
@@ -773,7 +785,7 @@ export async function exportCashbackToExcel(
     'Total Belanja (Rp)',
     '% Cashback',
     'Total Cashback (Rp)',
-    'Parcel',
+    'Paket Diterima',
     '% Kontribusi Total',
   ]);
   top10Header.height = 26;
@@ -807,7 +819,7 @@ export async function exportCashbackToExcel(
       c.totalPurchase,
       rate,
       { formula: `ROUND(F${r}*G${r}, 0)`, result: c.totalCashback },
-      isParcel ? 'Ya' : 'Tidak',
+      c.benefitType ? getBenefitLabel(c.benefitType) : (isParcel ? 'Cashback + Parsel' : 'Cashback'),
       kontribusi,
     ]);
     row.height = 22;
@@ -965,7 +977,6 @@ export async function exportCashbackToExcel(
         : settings.tiers.map((t) => `${t.label}: ${t.percentage}%`).join(' | '),
       false,
     ],
-    ['Batas Minimum Pembelian', settings.minPurchaseAmount, true],
     ['Batas Minimal Belanja Dapat Parcel', settings.minSpendForParcel || 5000000, true],
     [
       'Maksimum Cashback / Transaksi',
@@ -1029,7 +1040,7 @@ export async function exportInvoiceImportTemplate(): Promise<void> {
     { header: 'Nilai Belanja (Angka Rp)', key: 'purchaseAmount', width: 22 },
     { header: 'Keterangan Barang (Opsional)', key: 'itemsDescription', width: 32 },
     { header: 'Status Klaim (pending/ready/disbursed)', key: 'claimStatus', width: 28 },
-    { header: 'Metode Pencairan (transfer_bank/e_wallet/potongan_belanja/tunai)', key: 'payoutMethod', width: 32 },
+    { header: 'Metode Pencairan (tunai)', key: 'payoutMethod', width: 24 },
   ];
 
   const headerRow = ws.getRow(1);
@@ -1047,10 +1058,10 @@ export async function exportInvoiceImportTemplate(): Promise<void> {
 
   // Example sample rows
   const sampleRows = [
-    ['INV-2026-001', '2026-01-15', 'Fatur', '081234567890', 5000000, 'Belanja Perlengkapan Rumah', 'ready', 'transfer_bank'],
-    ['INV-2026-002', '2026-01-18', 'fabio', '085712345678', 4000000, 'Elektronik & Aksesoris', 'disbursed', 'transfer_bank'],
-    ['INV-2026-003', '2026-02-05', 'Hendra Wijaya', '081398765432', 8500000, 'Grosir Sembako & Minyak', 'pending', 'e_wallet'],
-    ['INV-2026-004', '2026-03-12', 'Siti Rahmawati', '082155667788', 3500000, 'Peralatan Masak', 'ready', 'potongan_belanja'],
+    ['INV-2026-001', '2026-01-15', 'Fatur', '081234567890', 5000000, 'Belanja Perlengkapan Rumah', 'ready', 'tunai'],
+    ['INV-2026-002', '2026-01-18', 'fabio', '085712345678', 4000000, 'Elektronik & Aksesoris', 'disbursed', 'tunai'],
+    ['INV-2026-003', '2026-02-05', 'Hendra Wijaya', '081398765432', 8500000, 'Grosir Sembako & Minyak', 'pending', 'tunai'],
+    ['INV-2026-004', '2026-03-12', 'Siti Rahmawati', '082155667788', 3500000, 'Peralatan Masak', 'ready', 'tunai'],
   ];
 
   sampleRows.forEach((r) => {
@@ -1146,14 +1157,7 @@ export async function parseInvoicesFromExcel(file: File): Promise<ParsedImportIn
       claimStatus = 'ready';
     }
 
-    let payoutMethod: PayoutMethod = 'transfer_bank';
-    if (rawPayout === 'e_wallet' || rawPayout.includes('wallet') || rawPayout.includes('gopay') || rawPayout.includes('ovo') || rawPayout.includes('dana')) {
-      payoutMethod = 'e_wallet';
-    } else if (rawPayout === 'potongan_belanja' || rawPayout.includes('potong') || rawPayout.includes('voucher')) {
-      payoutMethod = 'potongan_belanja';
-    } else if (rawPayout === 'tunai' || rawPayout.includes('cash')) {
-      payoutMethod = 'tunai';
-    }
+    const payoutMethod: PayoutMethod = 'tunai';
 
     let isValid = true;
     let validationError = '';
@@ -1247,12 +1251,12 @@ export async function exportCustomerImportTemplate(): Promise<void> {
     cell.border = thinBorder;
   });
 
-  // Example sample rows with Indonesian profiles
+  // Example sample rows with Indonesian profiles (Cash-only payout)
   const sampleRows = [
-    [1, 'CUST-001', 'Fatur', '081234567890', 'fatur@example.com', 'Surabaya', 'Jl. Pemuda No. 45', 'transfer_bank', 'BCA', '8220192831', 'Fatur Rochman', '', '', 'Pelanggan setia elektronik'],
-    [2, 'CUST-002', 'fabio', '085712345678', 'fabio@example.com', 'Sidoarjo', 'Ruko Graha Indah B-12', 'transfer_bank', 'Mandiri', '1420019283741', 'Fabio Pratama', '', '', 'Member toko VIP'],
-    [3, 'CUST-003', 'Hendra Wijaya', '081398765432', 'hendra@example.com', 'Gresik', 'Jl. Veteran No. 8', 'e_wallet', '', '', '', 'GoPay', '081398765432', 'Pencairan via GoPay'],
-    [4, 'CUST-004', 'Siti Rahmawati', '082155667788', '', 'Malang', 'Jl. Ijen No. 15', 'transfer_bank', 'BRI', '002101928374501', 'Siti Rahmawati', '', '', 'Toko Kelontong Berkah'],
+    [1, 'CUST-001', 'Fatur', '081234567890', 'fatur@example.com', 'Surabaya', 'Jl. Pemuda No. 45', 'tunai', '', '', '', '', '', 'Pelanggan setia elektronik'],
+    [2, 'CUST-002', 'fabio', '085712345678', 'fabio@example.com', 'Sidoarjo', 'Ruko Graha Indah B-12', 'tunai', '', '', '', '', '', 'Member toko VIP'],
+    [3, 'CUST-003', 'Hendra Wijaya', '081398765432', 'hendra@example.com', 'Gresik', 'Jl. Veteran No. 8', 'tunai', '', '', '', '', '', 'Pencairan tunai (cash)'],
+    [4, 'CUST-004', 'Siti Rahmawati', '082155667788', '', 'Malang', 'Jl. Ijen No. 15', 'tunai', '', '', '', '', '', 'Toko Kelontong Berkah'],
     [5, 'CUST-005', 'Budi Santoso', '081877665544', 'budi@example.com', 'Surabaya', 'Jl. Dharmahusada No. 22', 'tunai', '', '', '', '', '', 'Ambil tunai kasir toko'],
   ];
 
@@ -1344,14 +1348,7 @@ export async function parseCustomersFromExcel(file: File): Promise<ParsedImportC
 
     if (!rawName.trim() && !rawPhone.trim() && !rawCode.trim()) return;
 
-    let payoutMethod: PayoutMethod = 'transfer_bank';
-    if (rawPayout === 'e_wallet' || rawPayout.includes('wallet') || rawPayout.includes('gopay') || rawPayout.includes('ovo') || rawPayout.includes('dana') || rawPayout.includes('shopee')) {
-      payoutMethod = 'e_wallet';
-    } else if (rawPayout === 'potongan_belanja' || rawPayout.includes('potong') || rawPayout.includes('belanja') || rawPayout.includes('voucher')) {
-      payoutMethod = 'potongan_belanja';
-    } else if (rawPayout === 'tunai' || rawPayout.includes('cash') || rawPayout.includes('kasir')) {
-      payoutMethod = 'tunai';
-    }
+    const payoutMethod: PayoutMethod = 'tunai';
 
     // Clean phone number (strip spaces, dashes)
     const cleanPhone = rawPhone.trim().replace(/[\s-]/g, '');

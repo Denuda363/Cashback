@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Search, 
-  Filter, 
   Download, 
   Plus, 
   Edit3, 
@@ -10,15 +9,13 @@ import {
   CheckCircle2, 
   Clock, 
   AlertCircle,
-  Calendar,
-  Tag,
-  ArrowUpDown,
   Upload,
   RotateCcw
 } from 'lucide-react';
 import { ClaimStatus, Invoice, PayoutMethod } from '../types/cashback';
-import { formatRupiah, formatNumber, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
+import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
+import { PaginationBar } from './PaginationBar';
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -51,29 +48,22 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
 }) => {
   const [search, setSearch] = useState(initialCustomerFilter || '');
   const [statusFilter, setStatusFilter] = useState<'all' | ClaimStatus>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'cashback_desc'>('date_desc');
+  const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (initialCustomerFilter !== undefined) {
       setSearch(initialCustomerFilter);
+      setCurrentPage(1);
     }
   }, [initialCustomerFilter]);
 
-  // Categories list
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    for (const inv of invoices) {
-      if (inv.category) set.add(inv.category);
-    }
-    return Array.from(set);
-  }, [invoices]);
-
   // Filter and sort invoices
   const filteredInvoices = useMemo(() => {
-    let list = invoices.filter((inv) => {
+    const list = invoices.filter((inv) => {
       // Search
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -86,11 +76,6 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
 
       // Status
       if (statusFilter !== 'all' && inv.claimStatus !== statusFilter) {
-        return false;
-      }
-
-      // Category
-      if (categoryFilter !== 'all' && inv.category !== categoryFilter) {
         return false;
       }
 
@@ -115,7 +100,15 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
     });
 
     return list;
-  }, [invoices, search, statusFilter, categoryFilter, sortBy]);
+  }, [invoices, search, statusFilter, sortBy]);
+
+  const paginatedInvoices = useMemo(() => {
+    if (rowsPerPage === 'all') return filteredInvoices;
+    const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / rowsPerPage));
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (safePage - 1) * rowsPerPage;
+    return filteredInvoices.slice(start, start + rowsPerPage);
+  }, [filteredInvoices, rowsPerPage, currentPage]);
 
   // Summaries of current filtered view
   const filteredSummary = useMemo(() => {
@@ -146,19 +139,8 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
     );
   };
 
-  const getPayoutLabel = (method: PayoutMethod) => {
-    switch (method) {
-      case 'transfer_bank':
-        return 'Transfer Bank';
-      case 'e_wallet':
-        return 'E-Wallet';
-      case 'potongan_belanja':
-        return 'Potongan Belanja';
-      case 'tunai':
-        return 'Tunai Kasir';
-      default:
-        return method;
-    }
+  const getPayoutLabel = (_method?: PayoutMethod) => {
+    return 'Tunai (Cash)';
   };
 
   return (
@@ -216,7 +198,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
         </div>
 
         {/* Filters Bar */}
-        <div className="mt-5 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="mt-5 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3">
           
           {/* Search Input */}
           <div className="relative">
@@ -225,13 +207,17 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
               type="text"
               placeholder="Cari no. faktur / nama / HP..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             />
             {initialCustomerFilter && (
               <button
                 onClick={() => {
                   setSearch('');
+                  setCurrentPage(1);
                   if (onClearCustomerFilter) onClearCustomerFilter();
                 }}
                 className="absolute right-2 top-2 text-[10px] bg-slate-200 hover:bg-slate-300 px-1.5 py-0.5 rounded text-slate-700"
@@ -245,7 +231,10 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           <div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'all' | ClaimStatus)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as 'all' | ClaimStatus);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             >
               <option value="all">Semua Status Pencairan</option>
@@ -255,25 +244,14 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
             </select>
           </div>
 
-          {/* Category Filter */}
-          <div>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
-            >
-              <option value="all">Semua Kategori Produk</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-
           {/* Sort Option */}
           <div>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => {
+                setSortBy(e.target.value as any);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             >
               <option value="date_desc">Tanggal Terbaru</option>
@@ -308,7 +286,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
             <p className="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci atau filter status.</p>
           </div>
         ) : (
-          filteredInvoices.map((inv) => (
+          paginatedInvoices.map((inv) => (
             <div key={inv.id} className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs space-y-2.5">
               {/* Header: Customer Name & Status */}
               <div className="flex items-start justify-between gap-2">
@@ -423,7 +401,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredInvoices.map((inv) => (
+                paginatedInvoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors">
                     
                     {/* Invoice Number */}
@@ -534,6 +512,19 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Pagination Bar */}
+      <PaginationBar
+        totalItems={filteredInvoices.length}
+        rowsPerPage={rowsPerPage}
+        currentPage={currentPage}
+        onChangeRowsPerPage={(rows) => {
+          setRowsPerPage(rows);
+          setCurrentPage(1);
+        }}
+        onChangePage={setCurrentPage}
+        itemLabel="faktur"
+      />
 
       {/* Delete Confirmation Modal */}
       <ConfirmDialog

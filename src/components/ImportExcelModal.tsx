@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   FileSpreadsheet, 
   Upload, 
@@ -7,14 +7,12 @@ import {
   AlertCircle, 
   X, 
   FileCheck, 
-  Loader2,
-  Calendar,
-  Wallet,
-  Users
+  Loader2
 } from 'lucide-react';
-import { CashbackSettings, ClaimStatus, CustomerMaster, Invoice, PayoutMethod } from '../types/cashback';
-import { calculateCashback, formatRupiah, formatNumber } from '../utils/cashbackCalculator';
+import { CashbackSettings, CustomerMaster, Invoice } from '../types/cashback';
+import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
 import { exportInvoiceImportTemplate, parseInvoicesFromExcel, ParsedImportInvoice } from '../utils/excelExport';
+import { PaginationBar } from './PaginationBar';
 
 interface ImportExcelModalProps {
   isOpen: boolean;
@@ -36,7 +34,19 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
   const [parsedRows, setParsedRows] = useState<ParsedImportInvoice[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(15);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const effectiveRowsPerPage = rowsPerPage === 'all' ? Math.max(1, parsedRows.length) : rowsPerPage;
+  const totalPages = rowsPerPage === 'all' ? 1 : Math.max(1, Math.ceil(parsedRows.length / effectiveRowsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedRows = useMemo(() => {
+    if (rowsPerPage === 'all') return parsedRows;
+    const start = (safeCurrentPage - 1) * effectiveRowsPerPage;
+    return parsedRows.slice(start, start + effectiveRowsPerPage);
+  }, [parsedRows, rowsPerPage, safeCurrentPage, effectiveRowsPerPage]);
 
   if (!isOpen) return null;
 
@@ -52,6 +62,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     setParseError(null);
     setFile(uploadedFile);
     setIsParsing(true);
+    setCurrentPage(1);
 
     try {
       const results = await parseInvoicesFromExcel(uploadedFile);
@@ -126,7 +137,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
           customerCode: nextCode,
           name: r.customerName,
           phone: r.customerPhone,
-          preferredPayoutMethod: r.payoutMethod,
+          preferredPayoutMethod: 'tunai',
           joinedDate: r.date,
           isActive: true,
         };
@@ -147,7 +158,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
         cashbackPercentage: calc.effectivePercentage,
         cashbackAmount: calc.cashbackAmount,
         claimStatus: r.claimStatus,
-        payoutMethod: r.payoutMethod,
+        payoutMethod: 'tunai',
         disbursedDate: r.claimStatus === 'disbursed' ? r.date : undefined,
         getParcel: r.purchaseAmount >= (settings.minSpendForParcel || 5000000),
         createdAt: new Date().toISOString(),
@@ -162,6 +173,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     setFile(null);
     setParsedRows([]);
     setParseError(null);
+    setCurrentPage(1);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -325,10 +337,10 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {parsedRows.slice(0, 15).map((row, idx) => {
+                      {paginatedRows.map((row, idx) => {
                         const calc = calculateCashback(row.purchaseAmount, settings);
                         return (
-                          <tr key={idx} className={row.isValid ? 'hover:bg-slate-50' : 'bg-red-50/50'}>
+                          <tr key={`${row.invoiceNumber}_${idx}`} className={row.isValid ? 'hover:bg-slate-50' : 'bg-red-50/50'}>
                             <td className="py-1.5 px-3 font-mono font-semibold text-slate-800">{row.invoiceNumber}</td>
                             <td className="py-1.5 px-3 font-mono text-slate-600">{row.date}</td>
                             <td className="py-1.5 px-3 font-medium text-slate-900">{row.customerName}</td>
@@ -347,12 +359,19 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                     </tbody>
                   </table>
                 </div>
-                {parsedRows.length > 15 && (
-                  <div className="p-2 text-center text-[10px] text-slate-400 bg-slate-50 border-t border-slate-100">
-                    Menampilkan 15 dari total {parsedRows.length} baris...
-                  </div>
-                )}
               </div>
+              <PaginationBar
+                totalItems={parsedRows.length}
+                rowsPerPage={rowsPerPage}
+                currentPage={safeCurrentPage}
+                onChangeRowsPerPage={(val) => {
+                  setRowsPerPage(val);
+                  setCurrentPage(1);
+                }}
+                onChangePage={setCurrentPage}
+                itemLabel="baris faktur"
+                options={[10, 15, 30, 50]}
+              />
             </div>
           )}
 

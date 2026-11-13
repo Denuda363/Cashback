@@ -8,7 +8,6 @@ import {
   Search,
   UserCheck,
   UserPlus,
-  Building2,
   Wallet,
   MapPin,
   ChevronDown,
@@ -60,7 +59,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   const [customRate, setCustomRate] = useState<number>(settings.flatPercentage);
 
   const [claimStatus, setClaimStatus] = useState<ClaimStatus>('pending');
-  const [payoutMethod, setPayoutMethod] = useState<PayoutMethod>('transfer_bank');
+  const payoutMethod: PayoutMethod = 'tunai';
   const [disbursedDate, setDisbursedDate] = useState('');
   const [notes, setNotes] = useState('');
   const [getParcel, setGetParcel] = useState<boolean>(false);
@@ -120,7 +119,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       setPurchaseAmount(editingInvoice.purchaseAmount);
       setPurchaseAmountInput(String(editingInvoice.purchaseAmount));
       setClaimStatus(editingInvoice.claimStatus);
-      setPayoutMethod(editingInvoice.payoutMethod);
       setDisbursedDate(editingInvoice.disbursedDate || '');
       setNotes(editingInvoice.notes || '');
       setGetParcel(editingInvoice.getParcel ?? (editingInvoice.purchaseAmount >= (settings.minSpendForParcel || 5000000)));
@@ -159,7 +157,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       setIsCustomRate(false);
       setCustomRate(settings.flatPercentage);
       setClaimStatus('pending');
-      setPayoutMethod('transfer_bank');
       setDisbursedDate('');
       setNotes('');
       setGetParcel(false);
@@ -175,18 +172,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     setCustomerName(customer.name);
     setCustomerPhone(customer.phone);
     if (customer.email) setCustomerEmail(customer.email);
-    if (customer.preferredPayoutMethod) {
-      setPayoutMethod(customer.preferredPayoutMethod);
-    }
-    
-    // Auto-fill account note if notes is empty
-    if (!notes) {
-      if (customer.preferredPayoutMethod === 'transfer_bank' && customer.bankAccountNumber) {
-        setNotes(`Rekening: ${customer.bankName} ${customer.bankAccountNumber} a.n ${customer.bankAccountHolder || customer.name}`);
-      } else if (customer.preferredPayoutMethod === 'e_wallet' && customer.eWalletNumber) {
-        setNotes(`E-Wallet: ${customer.eWalletType} ${customer.eWalletNumber}`);
-      }
-    }
 
     setCustomerSearchQuery('');
     setIsSearchDropdownOpen(false);
@@ -400,12 +385,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                         </>
                       )}
                     </div>
-                    {selectedMasterCustomer.bankName && (
-                      <div className="text-[10px] text-slate-600 mt-0.5 flex items-center gap-1">
-                        <Building2 className="w-3 h-3 text-slate-400" />
-                        <span>{selectedMasterCustomer.bankName} {selectedMasterCustomer.bankAccountNumber} (a.n {selectedMasterCustomer.bankAccountHolder || selectedMasterCustomer.name})</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -485,13 +464,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                           </div>
 
                           <div className="text-right text-[10px] text-slate-500">
-                            {cust.preferredPayoutMethod === 'transfer_bank' && cust.bankName ? (
-                              <span className="text-slate-600 font-medium">{cust.bankName}</span>
-                            ) : cust.preferredPayoutMethod === 'e_wallet' && cust.eWalletType ? (
-                              <span className="text-emerald-700 font-medium">{cust.eWalletType}</span>
-                            ) : (
-                              <span>Pilih</span>
-                            )}
+                            <span>Tunai (Cash)</span>
                           </div>
                         </button>
                       ))
@@ -693,7 +666,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Minimal belanja <span className="font-semibold">{formatRupiah(settings.minSpendForParcel || 5000000)}</span> untuk otomatis mendapat parcel.
+                    Otomatis aktif bila nilai belanja mencapai <span className="font-semibold">{formatRupiah(settings.minSpendForParcel || 5000000)}</span> (dapat diubah manual).
                   </p>
                 </div>
               </div>
@@ -726,16 +699,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Metode Pencairan</label>
-              <select
-                value={payoutMethod}
-                onChange={(e) => setPayoutMethod(e.target.value as PayoutMethod)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
-              >
-                <option value="transfer_bank">Transfer Bank (BCA, Mandiri, BRI, dll)</option>
-                <option value="e_wallet">E-Wallet (GoPay, OVO, Dana, ShopeePay)</option>
-                <option value="potongan_belanja">Potongan Belanja Langsung / Voucher</option>
-                <option value="tunai">Tunai di Kasir</option>
-              </select>
+              <div className="w-full px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900 font-bold flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                  Tunai (Cash)
+                </span>
+                <span className="text-[10px] font-semibold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                  Semua Cash
+                </span>
+              </div>
             </div>
           </div>
 
@@ -753,12 +725,12 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
           {/* Notes */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Catatan Tambahan (Rekening / Instruksi)</label>
+            <label className="block font-semibold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Contoh: Nomor rekening BCA 1234567890 a.n. Konsumen"
+              placeholder="Contoh: Pencairan tunai langsung di kasir / pengambilan barang"
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             />
           </div>

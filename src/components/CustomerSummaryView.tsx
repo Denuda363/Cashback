@@ -19,21 +19,16 @@ import {
   ChevronUp, 
   FileText, 
   Layers, 
-  Eye, 
-  X,
-  CreditCard,
-  FileSpreadsheet,
-  ArrowRight,
   UserX,
   UserCheck,
-  AlertTriangle,
   Printer
 } from 'lucide-react';
 import { CustomerSummary, Invoice, CustomerBenefitType, CompanyProfile } from '../types/cashback';
-import { formatRupiah, formatNumber, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
+import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
 import { aggregateCustomerSummaries } from '../utils/storage';
 import { ConfirmDialog } from './ConfirmDialog';
 import { OfficialReceiptModal } from './OfficialReceiptModal';
+import { PaginationBar } from './PaginationBar';
 
 interface CustomerSummaryViewProps {
   customerSummaries: CustomerSummary[];
@@ -72,13 +67,12 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
     'rank_asc' | 'purchase_desc' | 'cashback_desc' | 'invoices_desc' | 'name_asc'
   >('rank_asc');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(10);
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Accordion state: set of expanded customer keys
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   
-  // Modal state for customer detail breakdown
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerSummary | null>(null);
-
   // Modal confirmation for excluding a customer
   const [customerToExclude, setCustomerToExclude] = useState<string | null>(null);
 
@@ -200,6 +194,19 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
     return list;
   }, [resolvedSummaries, search, eligibilityFilter, benefitFilter, tierFilter, parcelFilter, sortBy]);
 
+  const { paginatedCustomers, startIndex } = useMemo(() => {
+    if (rowsPerPage === 'all') {
+      return { paginatedCustomers: filtered, startIndex: 0 };
+    }
+    const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (safePage - 1) * rowsPerPage;
+    return {
+      paginatedCustomers: filtered.slice(start, start + rowsPerPage),
+      startIndex: start,
+    };
+  }, [filtered, rowsPerPage, currentPage]);
+
   // Helper key for customer identification (unique per consumer)
   const getCustomerKey = (c: CustomerSummary, idx?: number) => {
     if (c.customerCode) return `code:${c.customerCode}`;
@@ -315,16 +322,13 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
     document.body.removeChild(a);
   };
 
-  const totalInvoicesCount = useMemo(() => {
-    return filtered.reduce((sum, c) => sum + c.invoiceCount, 0);
-  }, [filtered]);
-
   const excludedCount = useMemo(() => {
     return resolvedSummaries.filter((c) => c.isExcludedFromCashback).length;
   }, [resolvedSummaries]);
 
   return (
-    <div className="space-y-4">
+    <div>
+      <div className="space-y-4 print:hidden">
       
       {/* Focused Header for Per-Customer Data */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-4">
@@ -444,7 +448,10 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
               type="text"
               placeholder="Cari nama konsumen..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
             />
           </div>
@@ -453,7 +460,10 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
           <div>
             <select
               value={benefitFilter}
-              onChange={(e) => setBenefitFilter(e.target.value as any)}
+              onChange={(e) => {
+                setBenefitFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-semibold text-purple-900"
             >
               <option value="all">Semua Paket Diterima</option>
@@ -467,7 +477,10 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
           <div>
             <select
               value={eligibilityFilter}
-              onChange={(e) => setEligibilityFilter(e.target.value as any)}
+              onChange={(e) => {
+                setEligibilityFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-semibold"
             >
               <option value="all">Semua Status Hak Cashback</option>
@@ -480,7 +493,10 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
           <div>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => {
+                setSortBy(e.target.value as any);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
             >
               <option value="rank_asc">Urutan: Sesuai Urutan (#1, #2...)</option>
@@ -495,7 +511,10 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
           <div>
             <select
               value={tierFilter}
-              onChange={(e) => setTierFilter(e.target.value as any)}
+              onChange={(e) => {
+                setTierFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
             >
               <option value="all">Semua Tier Loyalitas</option>
@@ -510,7 +529,10 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
           <div>
             <select
               value={parcelFilter}
-              onChange={(e) => setParcelFilter(e.target.value as any)}
+              onChange={(e) => {
+                setParcelFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900 font-medium"
             >
               <option value="all">Semua Status Parcel</option>
@@ -535,8 +557,9 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
               </p>
             </div>
           ) : (
-            filtered.map((cust, idx) => {
-              const key = getCustomerKey(cust, idx);
+            paginatedCustomers.map((cust, idx) => {
+              const globalIdx = startIndex + idx;
+              const key = getCustomerKey(cust, globalIdx);
               const isExpanded = expandedKeys.has(key);
               const isCopied = copiedKey === key;
               const ratio = cust.totalPurchase > 0 ? ((cust.totalCashback / cust.totalPurchase) * 100).toFixed(1) : '0';
@@ -563,7 +586,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                         <span className={`w-8 h-8 rounded-lg font-mono font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs mt-0.5 ${
                           isExcluded ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'
                         }`}>
-                          {idx + 1}
+                          {globalIdx + 1}
                         </span>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
@@ -722,7 +745,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                         </button>
 
                         <button
-                          onClick={(e) => handleCopyCustomer(cust, idx, e)}
+                          onClick={(e) => handleCopyCustomer(cust, globalIdx, e)}
                           className="p-1.5 text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors"
                           title="Salin data teks konsumen ini"
                         >
@@ -730,7 +753,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                         </button>
 
                         <button
-                          onClick={(e) => handleContactWhatsApp(cust, idx, e)}
+                          onClick={(e) => handleContactWhatsApp(cust, globalIdx, e)}
                           className="p-1.5 text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors"
                           title="Kirim rincian via WhatsApp"
                         >
@@ -829,14 +852,10 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                           </span>
                         </div>
 
-                        {(cust.bankName || cust.eWalletType) && (
-                          <div className="text-[11px] text-slate-600 flex items-center gap-1 font-mono">
-                            <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                            <span>
-                              {cust.bankName ? `${cust.bankName} - ${cust.bankAccountNumber}` : `${cust.eWalletType} - ${cust.eWalletNumber}`}
-                            </span>
-                          </div>
-                        )}
+                        <div className="text-[11px] text-emerald-800 flex items-center gap-1 font-semibold">
+                          <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Metode Pencairan: Tunai (Cash)</span>
+                        </div>
                       </div>
                     </div>
 
@@ -968,8 +987,9 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((cust, idx) => {
-                    const key = getCustomerKey(cust, idx);
+                  paginatedCustomers.map((cust, idx) => {
+                    const globalIdx = startIndex + idx;
+                    const key = getCustomerKey(cust, globalIdx);
                     const isExpanded = expandedKeys.has(key);
                     const unclaimed = Math.max(0, cust.totalCashback - cust.disbursedCashback);
                     const isExcluded = Boolean(cust.isExcludedFromCashback);
@@ -978,7 +998,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                       <React.Fragment key={key}>
                         <tr className={`hover:bg-slate-50/70 transition-colors ${isExcluded ? 'bg-rose-50/20' : ''}`}>
                           <td className="py-3 px-3 text-center font-mono font-bold text-slate-600">
-                            {idx + 1}
+                            {globalIdx + 1}
                           </td>
                           <td className="py-3 px-3.5 font-bold text-slate-900 text-sm">
                             <div className="flex items-center gap-1.5">
@@ -1099,14 +1119,14 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                                 )
                               )}
                               <button
-                                onClick={(e) => handleCopyCustomer(cust, idx, e)}
+                                onClick={(e) => handleCopyCustomer(cust, globalIdx, e)}
                                 title="Salin data teks"
                                 className="p-1.5 text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200"
                               >
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={(e) => handleContactWhatsApp(cust, idx, e)}
+                                onClick={(e) => handleContactWhatsApp(cust, globalIdx, e)}
                                 title="Kirim via WhatsApp"
                                 className="p-1.5 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100 bg-emerald-50 rounded-lg transition-colors border border-emerald-300"
                               >
@@ -1172,6 +1192,20 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Pagination Bar */}
+      <PaginationBar
+        totalItems={filtered.length}
+        rowsPerPage={rowsPerPage}
+        currentPage={currentPage}
+        onChangeRowsPerPage={(rows) => {
+          setRowsPerPage(rows);
+          setCurrentPage(1);
+        }}
+        onChangePage={setCurrentPage}
+        itemLabel="konsumen"
+      />
+      </div>
 
       {/* Confirmation Dialog to Disqualify / Strike-through Customer */}
       <ConfirmDialog

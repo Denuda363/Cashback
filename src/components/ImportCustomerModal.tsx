@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   Users, 
   Upload, 
@@ -7,14 +7,11 @@ import {
   AlertCircle, 
   X, 
   FileCheck, 
-  Loader2,
-  Phone,
-  Building2,
-  Wallet,
-  MapPin
+  Loader2
 } from 'lucide-react';
 import { CustomerMaster } from '../types/cashback';
 import { exportCustomerImportTemplate, parseCustomersFromExcel, ParsedImportCustomer } from '../utils/excelExport';
+import { PaginationBar } from './PaginationBar';
 
 interface ImportCustomerModalProps {
   isOpen: boolean;
@@ -34,7 +31,19 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
   const [parsedRows, setParsedRows] = useState<ParsedImportCustomer[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(15);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const effectiveRowsPerPage = rowsPerPage === 'all' ? Math.max(1, parsedRows.length) : rowsPerPage;
+  const totalPages = rowsPerPage === 'all' ? 1 : Math.max(1, Math.ceil(parsedRows.length / effectiveRowsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedRows = useMemo(() => {
+    if (rowsPerPage === 'all') return parsedRows;
+    const start = (safeCurrentPage - 1) * effectiveRowsPerPage;
+    return parsedRows.slice(start, start + effectiveRowsPerPage);
+  }, [parsedRows, rowsPerPage, safeCurrentPage, effectiveRowsPerPage]);
 
   if (!isOpen) return null;
 
@@ -50,6 +59,7 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
     setParseError(null);
     setFile(uploadedFile);
     setIsParsing(true);
+    setCurrentPage(1);
 
     try {
       const results = await parseCustomersFromExcel(uploadedFile);
@@ -106,13 +116,11 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
     if (validRows.length === 0) return;
 
     const customersToAdd: CustomerMaster[] = [];
-    const usedPhones = new Set<string>();
     let nextIndex = existingCustomers.length + 1;
 
     for (let i = 0; i < validRows.length; i++) {
       const r = validRows[i];
-      const phoneKey = r.phone.trim();
-      
+
       // If code is not provided or duplicated, generate sequentially
       const code = r.customerCode && r.customerCode.trim() 
         ? r.customerCode.trim() 
@@ -128,12 +136,7 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
         email: r.email,
         city: r.city,
         address: r.address,
-        preferredPayoutMethod: r.preferredPayoutMethod,
-        bankName: r.bankName,
-        bankAccountNumber: r.bankAccountNumber,
-        bankAccountHolder: r.bankAccountHolder || r.name,
-        eWalletType: r.eWalletType,
-        eWalletNumber: r.eWalletNumber,
+        preferredPayoutMethod: 'tunai',
         notes: r.notes,
         joinedDate: new Date().toISOString().split('T')[0],
         isActive: true,
@@ -150,6 +153,7 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
     setFile(null);
     setParsedRows([]);
     setParseError(null);
+    setCurrentPage(1);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -168,7 +172,7 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
                 Import Master Konsumen dari File Excel (.xlsx)
               </h2>
               <p className="text-[10px] sm:text-[11px] text-slate-500">
-                Unggah daftar konsumen toko lengkap dengan data rekening bank & kontak
+                Unggah daftar konsumen toko dengan metode pencairan Tunai (Cash)
               </p>
             </div>
           </div>
@@ -190,7 +194,7 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
               <div>
                 <h4 className="font-bold text-slate-900 text-xs">Belum punya template Excel Master Konsumen?</h4>
                 <p className="text-[11px] text-slate-600 mt-0.5">
-                  Unduh template resmi dengan susunan kolom: Kode, Nama, No. HP/WA, Kota, Alamat, Bank, Rekening, dan E-Wallet.
+                  Unduh template resmi dengan susunan kolom: Kode, Nama, No. HP/WA, Kota, Alamat, dan Metode Pencairan (Tunai / Cash).
                 </p>
               </div>
             </div>
@@ -308,21 +312,21 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
                         <th className="py-1.5 px-3">Nama</th>
                         <th className="py-1.5 px-3">No. HP / WA</th>
                         <th className="py-1.5 px-3">Kota</th>
-                        <th className="py-1.5 px-3">Rekening Bank</th>
+                        <th className="py-1.5 px-3">Metode Pencairan</th>
                         <th className="py-1.5 px-2 text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {parsedRows.slice(0, 15).map((row, idx) => {
+                      {paginatedRows.map((row, idx) => {
                         const isDuplicate = existingPhoneSet.has(row.phone) || existingNameSet.has(row.name.toLowerCase());
                         return (
-                          <tr key={idx} className={row.isValid ? (isDuplicate ? 'bg-amber-50/40 hover:bg-amber-50/70' : 'hover:bg-slate-50') : 'bg-red-50/50'}>
+                          <tr key={`${row.phone}_${idx}`} className={row.isValid ? (isDuplicate ? 'bg-amber-50/40 hover:bg-amber-50/70' : 'hover:bg-slate-50') : 'bg-red-50/50'}>
                             <td className="py-1.5 px-3 font-mono font-semibold text-slate-700">{row.customerCode || 'Auto'}</td>
                             <td className="py-1.5 px-3 font-medium text-slate-900">{row.name}</td>
                             <td className="py-1.5 px-3 font-mono text-slate-600">{row.phone}</td>
                             <td className="py-1.5 px-3 text-slate-600">{row.city || '-'}</td>
-                            <td className="py-1.5 px-3 text-slate-600 font-mono text-[10px]">
-                              {row.bankName ? `${row.bankName} ${row.bankAccountNumber || ''}` : row.eWalletType ? `${row.eWalletType} ${row.eWalletNumber || ''}` : '-'}
+                            <td className="py-1.5 px-3 text-emerald-700 font-semibold text-[10px]">
+                              Tunai (Cash)
                             </td>
                             <td className="py-1.5 px-2 text-center">
                               {row.isValid ? (
@@ -337,12 +341,19 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
                     </tbody>
                   </table>
                 </div>
-                {parsedRows.length > 15 && (
-                  <div className="p-2 text-center text-[10px] text-slate-400 bg-slate-50 border-t border-slate-100">
-                    Menampilkan 15 dari total {parsedRows.length} baris...
-                  </div>
-                )}
               </div>
+              <PaginationBar
+                totalItems={parsedRows.length}
+                rowsPerPage={rowsPerPage}
+                currentPage={safeCurrentPage}
+                onChangeRowsPerPage={(val) => {
+                  setRowsPerPage(val);
+                  setCurrentPage(1);
+                }}
+                onChangePage={setCurrentPage}
+                itemLabel="baris konsumen"
+                options={[10, 15, 30, 50]}
+              />
             </div>
           )}
 

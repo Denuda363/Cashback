@@ -8,18 +8,17 @@ import {
   Download, 
   Phone, 
   Receipt, 
-  Building2, 
   Wallet, 
   CheckCircle2, 
   XCircle,
   MapPin,
-  ExternalLink,
   ShieldCheck,
   Upload
 } from 'lucide-react';
 import { CustomerMaster, CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
+import { PaginationBar } from './PaginationBar';
 
 interface MasterCustomerListProps {
   customers: CustomerMaster[];
@@ -50,6 +49,8 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name_asc' | 'code_asc' | 'cashback_desc' | 'joined_desc'>('code_asc');
+  const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [deletingCustomer, setDeletingCustomer] = useState<CustomerMaster | null>(null);
 
   // Map customer stats by phone or name for quick lookup
@@ -117,6 +118,14 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
     return list;
   }, [customers, search, statusFilter, cityFilter, sortBy, statsMap]);
 
+  const paginatedCustomers = useMemo(() => {
+    if (rowsPerPage === 'all') return filteredCustomers;
+    const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / rowsPerPage));
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (safePage - 1) * rowsPerPage;
+    return filteredCustomers.slice(start, start + rowsPerPage);
+  }, [filteredCustomers, rowsPerPage, currentPage]);
+
   const activeCount = customers.filter((c) => c.isActive).length;
 
   const handleContactWhatsApp = (phone: string, name: string) => {
@@ -148,7 +157,7 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
                   Master Data Konsumen
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Database master identitas konsumen, nomor rekening pencairan, dan riwayat transaksi
+                  Database master identitas konsumen, metode pencairan tunai, dan riwayat transaksi
                 </p>
               </div>
             </div>
@@ -220,9 +229,12 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Cari nama / kode / HP / rekening..."
+              placeholder="Cari nama / kode / no. HP / kota..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             />
           </div>
@@ -230,7 +242,10 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
           <div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             >
               <option value="all">Semua Status Konsumen</option>
@@ -242,7 +257,10 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
           <div>
             <select
               value={cityFilter}
-              onChange={(e) => setCityFilter(e.target.value)}
+              onChange={(e) => {
+                setCityFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             >
               <option value="all">Semua Kota Domisili</option>
@@ -255,7 +273,10 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
           <div>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => {
+                setSortBy(e.target.value as any);
+                setCurrentPage(1);
+              }}
               className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             >
               <option value="code_asc">Urutkan Kode (CUST-001)</option>
@@ -282,7 +303,7 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
             </button>
           </div>
         ) : (
-          filteredCustomers.map((cust) => {
+          paginatedCustomers.map((cust) => {
             const stats = statsMap.get(cust.phone?.trim()) || statsMap.get(cust.name.toLowerCase().trim());
             const totalCashback = stats ? stats.totalCashback : 0;
             const totalSpend = stats ? stats.totalPurchase : 0;
@@ -316,13 +337,13 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
                   </button>
                 </div>
 
-                {/* Bank / E-Wallet Info if present */}
-                {(cust.bankName || cust.bankAccountNumber) && (
-                  <div className="text-[11px] text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg flex items-center justify-between font-mono">
-                    <span className="text-slate-500 font-sans">{cust.bankName || 'Pencairan'}:</span>
-                    <span className="font-semibold text-slate-800">{cust.bankAccountNumber || '-'} a/n {cust.bankAccountHolder || cust.name}</span>
-                  </div>
-                )}
+                {/* Payout Method Info (Cash Only) */}
+                <div className="text-[11px] text-emerald-800 bg-emerald-50/70 px-2.5 py-1.5 rounded-lg flex items-center justify-between font-medium border border-emerald-100">
+                  <span className="text-slate-600">Metode Pencairan:</span>
+                  <span className="font-bold flex items-center gap-1">
+                    <Wallet className="w-3 h-3 text-emerald-600" /> Tunai (Cash)
+                  </span>
+                </div>
 
                 {/* Financial Summary */}
                 <div className="grid grid-cols-2 gap-2 p-2 bg-slate-50/70 rounded-lg text-xs font-mono tabular-nums">
@@ -400,7 +421,7 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((cust) => {
+                paginatedCustomers.map((cust) => {
                   const summary = statsMap.get(cust.phone) || statsMap.get(cust.name.toLowerCase());
                   const invoiceCount = summary?.invoiceCount || 0;
                   const totalSpend = summary?.totalPurchase || 0;
@@ -445,32 +466,12 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
                         )}
                       </td>
 
-                      {/* Payout Details */}
+                      {/* Payout Details (Cash Only) */}
                       <td className="py-3 px-4">
-                        {cust.preferredPayoutMethod === 'transfer_bank' && cust.bankName ? (
-                          <div>
-                            <div className="font-semibold text-slate-800 flex items-center gap-1">
-                              <Building2 className="w-3 h-3 text-slate-500" />
-                              <span>{cust.bankName} - {cust.bankAccountNumber || '-'}</span>
-                            </div>
-                            <div className="text-[10px] text-slate-500">
-                              a.n. {cust.bankAccountHolder || cust.name}
-                            </div>
-                          </div>
-                        ) : cust.preferredPayoutMethod === 'e_wallet' && cust.eWalletType ? (
-                          <div>
-                            <div className="font-semibold text-emerald-800 flex items-center gap-1">
-                              <Wallet className="w-3 h-3 text-emerald-600" />
-                              <span>{cust.eWalletType} ({cust.eWalletNumber || cust.phone})</span>
-                            </div>
-                          </div>
-                        ) : cust.preferredPayoutMethod === 'potongan_belanja' ? (
-                          <span className="text-[11px] text-slate-600">Potongan Belanja Langsung</span>
-                        ) : cust.preferredPayoutMethod === 'tunai' ? (
-                          <span className="text-[11px] text-slate-600">Tunai di Kasir</span>
-                        ) : (
-                          <span className="text-slate-400">Belum disetel</span>
-                        )}
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <Wallet className="w-3 h-3 text-emerald-600" />
+                          <span>Tunai (Cash)</span>
+                        </span>
                       </td>
 
                       {/* Spend */}
@@ -547,6 +548,19 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Pagination Bar */}
+      <PaginationBar
+        totalItems={filteredCustomers.length}
+        rowsPerPage={rowsPerPage}
+        currentPage={currentPage}
+        onChangeRowsPerPage={(rows) => {
+          setRowsPerPage(rows);
+          setCurrentPage(1);
+        }}
+        onChangePage={setCurrentPage}
+        itemLabel="konsumen"
+      />
 
       {/* Delete Customer Confirmation Modal */}
       <ConfirmDialog

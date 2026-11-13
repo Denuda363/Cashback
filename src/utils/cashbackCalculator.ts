@@ -17,18 +17,6 @@ export function calculateCashback(
 ): CalculationResult {
   const safeAmount = Math.max(0, Number(purchaseAmount) || 0);
 
-  // Check minimum spend
-  if (safeAmount < settings.minPurchaseAmount) {
-    return {
-      effectivePercentage: 0,
-      cashbackAmount: 0,
-      rawAmount: 0,
-      isCapped: false,
-      isBelowMinimum: true,
-      breakdown: `Belanja Rp ${safeAmount.toLocaleString('id-ID')} di bawah batas minimum (Rp ${settings.minPurchaseAmount.toLocaleString('id-ID')}). Cashback = Rp 0.`,
-    };
-  }
-
   let effectiveRate = 0;
   let appliedTier: TierRule | undefined;
 

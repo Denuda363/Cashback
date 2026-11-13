@@ -681,22 +681,24 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6">
         
         {/* Global Date Range Filter Bar */}
-        <DateRangeFilterBar
-          startDate={startDateFilter}
-          endDate={endDateFilter}
-          onChangeStartDate={setStartDateFilter}
-          onChangeEndDate={setEndDateFilter}
-          onResetDates={() => {
-            setStartDateFilter('');
-            setEndDateFilter('');
-          }}
-          totalFilteredCount={dateFilteredInvoices.length}
-          totalAllCount={invoices.length}
-        />
+        <div className="print:hidden">
+          <DateRangeFilterBar
+            startDate={startDateFilter}
+            endDate={endDateFilter}
+            onChangeStartDate={setStartDateFilter}
+            onChangeEndDate={setEndDateFilter}
+            onResetDates={() => {
+              setStartDateFilter('');
+              setEndDateFilter('');
+            }}
+            totalFilteredCount={dateFilteredInvoices.length}
+            totalAllCount={invoices.length}
+          />
+        </div>
 
         {/* Toast alert */}
         {toastMessage && (
-          <div className="mb-4 p-3 rounded-lg bg-slate-900 text-white text-xs font-medium flex items-center justify-between shadow-md transition-all animate-in fade-in">
+          <div className="mb-4 p-3 rounded-lg bg-slate-900 text-white text-xs font-medium flex items-center justify-between shadow-md transition-all animate-in fade-in print:hidden">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               <span>{toastMessage}</span>
@@ -830,7 +832,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
+      <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500 print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-slate-800">{settings.storeName}</span>

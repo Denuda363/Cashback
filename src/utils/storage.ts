@@ -311,7 +311,7 @@ export function aggregateCustomerSummaries(
         bankAccountHolder: master?.bankAccountHolder,
         eWalletType: master?.eWalletType,
         eWalletNumber: master?.eWalletNumber,
-        preferredPayoutMethod: master?.preferredPayoutMethod || inv.payoutMethod,
+        preferredPayoutMethod: 'tunai',
       });
     }
   }
@@ -386,7 +386,7 @@ export function aggregateCustomerSummaries(
     const signature = disbursedInvoices.find((i) => Boolean(i.disbursementSignature))?.disbursementSignature;
     const recipient = disbursedInvoices.find((i) => Boolean(i.recipientName))?.recipientName || c.customerName;
     const notes = disbursedInvoices.find((i) => Boolean(i.disbursementNotes))?.disbursementNotes;
-    const payoutMethod = latestDisbursed?.payoutMethod || c.preferredPayoutMethod || 'tunai';
+    const payoutMethod = 'tunai';
 
     return {
       customerCode: c.customerCode,

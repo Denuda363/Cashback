@@ -67,7 +67,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
         icon: Sparkles,
         tag: 'Konsep Dasar',
         summary:
-          'Memahami konsep dasar rekapitulasi cashback dari belanja konsumen hingga pencairan saldo ke rekening.',
+          'Memahami konsep dasar rekapitulasi cashback dari belanja konsumen hingga pencairan tunai (cash) per konsumen.',
         steps: [
           {
             title: '1. Siklus Hidup Cashback Konsumen',
@@ -75,9 +75,9 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
               'Aplikasi CashbackPro dirancang untuk mengotomatisasi pencatatan promosi cashback toko dengan 4 tahap utama:',
             details: [
               'Pencatatan Belanja: Kasir atau admin menginput faktur penjualan atau mengimpor file Excel rekap.',
-              'Kalkulasi Otomatis: Sistem secara otomatis menghitung besaran reward rupiah sesuai aturan (% Flat atau Tiered) yang aktif.',
-              'Penyimpanan Master Konsumen: Identitas konsumen (nama, no HP, rekening bank/e-wallet) otomatis terhubung ke Master Data.',
-              'Pencairan (Disbursement): Saat reward diserahkan ke pelanggan, status diubah menjadi Disbursed dan tanda terima digital dapat dikirimkan ke WhatsApp.',
+              'Kalkulasi Otomatis: Sistem secara otomatis menghitung besaran reward rupiah sesuai aturan (% Flat atau Tiered) yang aktif tanpa syarat minimal belanja.',
+              'Penyimpanan Master Konsumen: Identitas konsumen (nama, no HP, alamat, metode Tunai/Cash) otomatis terhubung ke Master Data.',
+              'Pencairan Tunai (Cash): Saat reward diserahkan tunai ke konsumen, status diubah menjadi Sudah Diterima dan Tanda Terima Resmi dicetak dalam 2 rangkap.',
             ],
             tips: 'Tidak perlu login manual atau sign-up. Sistem otomatis terhubung langsung ke Firebase Firestore Cloud untuk penyimpanan aman multi-perangkat.',
           },
@@ -118,14 +118,14 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             tips: 'Jika Anda mengubah persentase di masa mendatang, seluruh faktur yang ada dapat otomatis dihitung ulang secara massal ke rate baru.',
           },
           {
-            title: 'C. Menentukan Batas & Pembulatan Nilai',
+            title: 'C. Menentukan Pembulatan, Paket & Masa Berlaku',
             description: 'Atur ketentuan tambahan agar pengeluaran promosi tetap terkontrol:',
             details: [
-              'Minimal Pembelian: Nominal belanja terendah yang berhak mendapatkan cashback (misal: Rp 100.000). Belanja di bawah angka ini cashback adalah Rp 0.',
+              'Tanpa Batas Minimal Belanja: Seluruh transaksi belanja langsung dihitung cashback-nya tanpa syarat minimum pembelian.',
               'Batas Maksimal Reward: Opsi pembatasan cashback maksimum per transaksi (misal: maksimal Rp 500.000).',
               'Metode Pembulatan: Pilih pembulatan eksak, ratusan terdekat, atau ribuan terdekat.',
               'Masa Berlaku Klaim: Jumlah hari sebelum reward dinyatakan kedaluwarsa (misal: 30 hari).',
-              'Target Belanja Parcel: Nilai akumulasi belanja tahunan untuk mendapatkan bingkisan parcel (misal: Rp 5.000.000).',
+              'Target Belanja Parcel: Nilai akumulasi belanja untuk mendapatkan bingkisan parsel (Cashback + Parsel / Cashback / Parcel).',
             ],
           },
           {
@@ -147,12 +147,12 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
         icon: Users,
         tag: 'Database Pelanggan',
         summary:
-          'Menyimpan profil identitas pelanggan dan detail nomor rekening / e-wallet pencairan secara terpusat.',
+          'Menyimpan profil identitas pelanggan dan preferensi pencairan Tunai (Cash) secara terpusat.',
         steps: [
           {
             title: 'A. Mendaftarkan Konsumen Secara Manual',
             description:
-              'Buka tab "Master Konsumen" -> klik tombol hitam "+ Tambah Konsumen Baru". Masukkan Nama Lengkap, Nomor WhatsApp (awalan 08), Kota, Alamat Lengkap, Metode Pencairan Pilihan, serta Nomor Rekening Bank atau Akun E-Wallet (GoPay, OVO, Dana).',
+              'Buka tab "Master Konsumen" -> klik tombol hitam "+ Tambah Konsumen Baru". Masukkan Nama Lengkap, Nomor WhatsApp (awalan 08), Kota, dan Alamat Lengkap. Metode pencairan otomatis ditetapkan ke Tunai (Cash).',
             tips: 'Format nomor telepon otomatis dinormalisasi oleh sistem agar siap digunakan untuk klik pesan WhatsApp instan.',
           },
           {
@@ -167,9 +167,9 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             details: [
               'Klik tombol "Import Excel" di header menu Master Konsumen.',
               'Klik tombol "Unduh Template Excel" untuk mendapatkan format kolom resmi (.xlsx).',
-              'Isi kolom: Nama Konsumen, No WhatsApp, Email, Kota, Alamat, Metode Pencairan, Nama Bank/E-Wallet, Nomor Rekening, Catatan.',
+              'Isi kolom: Nama Konsumen, No WhatsApp, Email, Kota, Alamat, dan Catatan (Metode Pencairan otomatis Tunai/Cash).',
               'Upload file Excel ke modal. Sistem akan memvalidasi nomor telepon dan mendeteksi jika ada data duplikat.',
-              'Klik "Simpan Data Konsumen" untuk memasukkan semua baris ke Master Data & Firebase Cloud.',
+              'Klik "Simpan Konsumen ke Database" untuk memasukkan semua baris ke Master Data & Firebase Cloud.',
             ],
           },
           {
@@ -197,7 +197,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
               'Pilih Konsumen: Ketik nama atau nomor HP di kolom pencarian konsumen untuk memilih dari Master Data. Jika nama baru, ketik langsung.',
               'Rincian Belanja: Tuliskan nama barang atau jenis produk yang dibeli konsumen.',
               'Total Belanja (Rp): Masukkan nominal kotor belanja. Sistem langsung menampilkan persentase dan rupiah cashback otomatis di bawah kolom.',
-              'Metode Pencairan: Pilih Transfer Bank, E-Wallet, atau Tunai.',
+              'Metode Pencairan: Otomatis Tunai (Cash) untuk semua pencairan.',
             ],
           },
           {
@@ -233,16 +233,16 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             title: 'A. Memahami 3 Status Klaim',
             description: 'Tiap faktur memiliki status pembayaran cashback yang jelas:',
             details: [
-              'Pending (Menunggu): Faktur baru dicatat. Cashback belum jatuh tempo atau pelanggan belum mengajukan klaim.',
-              'Ready (Siap Cair): Batas minimal atau syarat belanja terpenuhi, reward siap dibayarkan ke konsumen.',
-              'Disbursed (Tercairkan): Dana reward telah berhasil ditransfer ke rekening bank / e-wallet atau diserahkan secara tunai.',
+              'Pending (Menunggu): Faktur baru dicatat dan menunggu proses pencairan.',
+              'Ready (Siap Cair): Cashback siap dicairkan secara tunai (cash) kepada konsumen.',
+              'Disbursed (Tercairkan): Dana cashback telah diserahkan secara tunai (cash) beserta tanda tangan penerima dan dokumentasi.',
             ],
-            tips: 'Anda dapat mengubah status secara cepat langsung dengan mengklik tombol status pada baris tabel faktur.',
+            tips: 'Anda dapat mengatur jumlah baris yang ditampilkan pada setiap halaman di semua tabel rekap.',
           },
           {
-            title: 'B. Melihat & Mencetak Tanda Terima Digital',
+            title: 'B. Melihat & Mencetak Tanda Terima Resmi (2 Rangkap)',
             description:
-              'Klik ikon dokumen/kwitansi pada baris faktur untuk membuka Tanda Terima Digital. Tanda terima menampilkan nomor invoice, tanggal, rincian barang, nominal cashback, tujuan rekening pencairan, dan status verifikasi.',
+              'Klik tombol "Tanda Terima Resmi" pada Rekap Konsumen atau Penerimaan Cashback untuk membuka dokumen Berita Acara resmi. Saat dicetak atau disimpan ke PDF, sistem otomatis mencetak tepat 2 rangkap (Rangkap 1 Asli untuk Konsumen dan Rangkap 2 Arsip untuk Perusahaan).',
           },
           {
             title: 'C. Mengirimkan Notifikasi ke WhatsApp Konsumen',

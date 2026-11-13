@@ -146,7 +146,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
       <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col md:flex-row font-sans">
         
         {/* Minimalist Mobile Header when in sidebar mode */}
-        <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3.5 py-2.5 flex items-center justify-between shadow-xs">
+        <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3.5 py-2.5 flex items-center justify-between shadow-xs print:hidden">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
@@ -192,14 +192,14 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
         {isMobileMenuOpen && (
           <div 
             onClick={() => setIsMobileMenuOpen(false)}
-            className="md:hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs transition-opacity"
+            className="md:hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs transition-opacity print:hidden"
           />
         )}
 
         {/* Desktop & Mobile Sidebar Container */}
         <aside
           className={`
-            fixed md:sticky top-0 z-50 md:z-30 h-screen bg-white border-r border-slate-200 flex flex-col justify-between transition-all duration-200 ease-in-out
+            fixed md:sticky top-0 z-50 md:z-30 h-screen bg-white border-r border-slate-200 flex flex-col justify-between transition-all duration-200 ease-in-out print:hidden
             ${isMobileMenuOpen ? 'translate-x-0 w-72' : '-translate-x-full md:translate-x-0'}
             ${isSidebarCollapsed ? 'md:w-20' : 'md:w-64'}
           `}
@@ -378,7 +378,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
       <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
         
         {/* Top Navbar */}
-        <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-xs">
+        <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-xs print:hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16 gap-4">
               
@@ -517,10 +517,10 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
    * RENDER MODE 3: FLOATING BOTTOM DOCK (DI BAWAH)
    * ----------------------------------------------------------- */
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative pb-28">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative pb-28 print:pb-0 print:bg-white">
       
       {/* Quiet Top Sub-Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-6 py-3 shadow-xs">
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-6 py-3 shadow-xs print:hidden">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold shadow-xs">
@@ -567,7 +567,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
       </div>
 
       {/* Modern Bottom Dock (Fixed native bottom bar on mobile, floating dock on desktop) */}
-      <div className="fixed bottom-0 sm:bottom-4 inset-x-0 z-50 flex justify-center pointer-events-none sm:px-3">
+      <div className="fixed bottom-0 sm:bottom-4 inset-x-0 z-50 flex justify-center pointer-events-none sm:px-3 print:hidden">
         <div className="pointer-events-auto w-full sm:w-auto bg-white/95 sm:bg-white/95 backdrop-blur-xl border-t sm:border border-slate-200/90 shadow-2xl sm:rounded-2xl px-2 py-1.5 sm:p-1.5 flex items-center justify-around sm:justify-center gap-1 max-w-full overflow-x-auto ring-1 ring-black/5 animate-in slide-in-from-bottom-3 duration-200">
           
           {navItems.map((item) => {

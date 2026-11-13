@@ -80,7 +80,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [mode, setMode] = useState<'flat' | 'tiered'>(settings.mode);
   const [flatPercentage, setFlatPercentage] = useState<number>(settings.flatPercentage);
   const [tiers, setTiers] = useState<TierRule[]>(settings.tiers);
-  const [minPurchaseAmount, setMinPurchaseAmount] = useState<number>(settings.minPurchaseAmount);
+  const [tierError, setTierError] = useState<string | null>(null);
   const [hasMaxCap, setHasMaxCap] = useState<boolean>(settings.maxCashbackPerTransaction !== null);
   const [maxCapValue, setMaxCapValue] = useState<number>(settings.maxCashbackPerTransaction || 1000000);
   const [rounding, setRounding] = useState<'exact' | 'round_hundred' | 'round_thousand'>(settings.rounding);
@@ -193,7 +193,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     mode,
     flatPercentage,
     tiers,
-    minPurchaseAmount,
+    minPurchaseAmount: 0,
     maxCashbackPerTransaction: hasMaxCap ? maxCapValue : null,
     rounding,
     claimValidityDays,
@@ -204,6 +204,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const simResult = calculateCashback(simSpend, currentDraftSettings);
 
   const handleAddTier = () => {
+    setTierError(null);
     const lastTier = tiers[tiers.length - 1];
     const newMin = lastTier ? (lastTier.maxSpend || lastTier.minSpend) + 1 : 1000000;
     const newTier: TierRule = {
@@ -217,6 +218,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleUpdateTier = (index: number, field: keyof TierRule, value: any) => {
+    setTierError(null);
     const updated = [...tiers];
     updated[index] = { ...updated[index], [field]: value };
     setTiers(updated);
@@ -224,9 +226,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleDeleteTier = (index: number) => {
     if (tiers.length <= 1) {
-      alert('Minimal harus ada 1 tier aturan cashback.');
+      setTierError('Minimal harus ada 1 tier aturan cashback.');
       return;
     }
+    setTierError(null);
     const updated = tiers.filter((_: TierRule, idx: number) => idx !== index);
     setTiers(updated);
   };
@@ -258,7 +261,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       mode,
       flatPercentage,
       tiers,
-      minPurchaseAmount,
+      minPurchaseAmount: 0,
       maxCashbackPerTransaction: hasMaxCap ? maxCapValue : null,
       rounding,
       claimValidityDays,
@@ -566,6 +569,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <Plus className="w-3.5 h-3.5" /> Tambah Tingkatan
                     </button>
                   </div>
+                  {tierError && (
+                    <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-medium flex items-center justify-between gap-2">
+                      <span>{tierError}</span>
+                      <button
+                        type="button"
+                        onClick={() => setTierError(null)}
+                        className="text-rose-500 hover:text-rose-800 font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
                   <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
                     {tiers.map((t, idx) => (
                       <div key={t.id} className="p-3 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -610,23 +625,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
 
               {/* Rules Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Minimal Belanja untuk Cashback
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-slate-400 font-mono">Rp</span>
-                    <input
-                      type="number"
-                      step={10000}
-                      value={minPurchaseAmount}
-                      onChange={(e) => setMinPurchaseAmount(parseInt(e.target.value) || 0)}
-                      className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-mono focus:outline-hidden focus:ring-1 focus:ring-slate-900"
-                    />
-                  </div>
-                </div>
-
+              <div className="pt-2">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
                     Masa Berlaku Klaim (Hari)

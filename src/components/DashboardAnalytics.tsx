@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   TrendingUp, 
   Wallet, 
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { CashbackSettings, CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
+import { PaginationBar } from './PaginationBar';
 
 interface DashboardAnalyticsProps {
   invoices: Invoice[];
@@ -33,6 +34,11 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   onOpenNewInvoice,
   onOpenSettings,
 }) => {
+  const [catRowsPerPage, setCatRowsPerPage] = useState<number | 'all'>(5);
+  const [catPage, setCatPage] = useState(1);
+  const [trendRowsPerPage, setTrendRowsPerPage] = useState<number | 'all'>(5);
+  const [trendPage, setTrendPage] = useState(1);
+
   // Aggregate KPIs
   const stats = useMemo(() => {
     let totalOmset = 0;
@@ -131,6 +137,22 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
     return Math.max(...monthlyTrend.map((m) => m.cashback), 1);
   }, [monthlyTrend]);
 
+  const paginatedCategories = useMemo(() => {
+    if (catRowsPerPage === 'all') return categoryStats;
+    const totalPages = Math.max(1, Math.ceil(categoryStats.length / catRowsPerPage));
+    const safePage = Math.min(Math.max(1, catPage), totalPages);
+    const start = (safePage - 1) * catRowsPerPage;
+    return categoryStats.slice(start, start + catRowsPerPage);
+  }, [categoryStats, catRowsPerPage, catPage]);
+
+  const paginatedTrend = useMemo(() => {
+    if (trendRowsPerPage === 'all') return monthlyTrend;
+    const totalPages = Math.max(1, Math.ceil(monthlyTrend.length / trendRowsPerPage));
+    const safePage = Math.min(Math.max(1, trendPage), totalPages);
+    const start = (safePage - 1) * trendRowsPerPage;
+    return monthlyTrend.slice(start, start + trendRowsPerPage);
+  }, [monthlyTrend, trendRowsPerPage, trendPage]);
+
   const top3Customers = useMemo(() => {
     return customerSummaries.slice(0, 3);
   }, [customerSummaries]);
@@ -159,9 +181,8 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 </span>
               </div>
               <p className="hidden sm:block text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
-                Setiap rupiah cashback dihitung otomatis berdasarkan faktur resmi. 
-                {settings.maxCashbackPerTransaction ? ` Maks. Cap ${formatRupiah(settings.maxCashbackPerTransaction)} · ` : ' Tanpa batas maksimal · '}
-                Min. Belanja {formatRupiah(settings.minPurchaseAmount)}.
+                Setiap rupiah cashback dihitung otomatis berdasarkan faktur resmi dengan pencairan Tunai (Cash).
+                {settings.maxCashbackPerTransaction ? ` Maks. Cap ${formatRupiah(settings.maxCashbackPerTransaction)}.` : ' Tanpa batas maksimal.'}
               </p>
             </div>
           </div>
@@ -357,7 +378,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                   Hanya Cashback
                 </span>
                 <span className="text-[10px] text-emerald-700">
-                  Uang tunai / transfer bank
+                  Pencairan Tunai (Cash)
                 </span>
               </div>
             </div>
@@ -420,7 +441,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
             </div>
           ) : (
             <div className="space-y-4 pt-2">
-              {monthlyTrend.map((m) => {
+              {paginatedTrend.map((m) => {
                 const percentage = Math.min(100, Math.round((m.cashback / maxMonthlyCashback) * 100));
                 return (
                   <div key={m.label} className="space-y-1.5">
@@ -450,6 +471,22 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                   </div>
                 );
               })}
+              {monthlyTrend.length > 0 && (
+                <div className="pt-2">
+                  <PaginationBar
+                    totalItems={monthlyTrend.length}
+                    rowsPerPage={trendRowsPerPage}
+                    currentPage={trendPage}
+                    onChangeRowsPerPage={(rows) => {
+                      setTrendRowsPerPage(rows);
+                      setTrendPage(1);
+                    }}
+                    onChangePage={setTrendPage}
+                    itemLabel="periode"
+                    options={[5, 10, 20]}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -493,7 +530,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 mt-1">
-                  Dana telah berhasil ditransfer / dipotong pada saat transaksi konsumen.
+                  Dana telah berhasil diserahkan secara Tunai (Cash) kepada konsumen.
                 </p>
               </div>
 
@@ -509,7 +546,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 mt-1">
-                  Faktur tervalidasi dan menunggu jadwal pencairan atau konfirmasi rekening.
+                  Faktur tervalidasi dan siap dicairkan secara Tunai (Cash) di kasir.
                 </p>
               </div>
 
@@ -525,7 +562,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Menunggu konsumen melampirkan akun penerima atau klaim kupon.
+                  Menunggu konsumen melakukan klaim pencairan tunai di kasir.
                 </p>
               </div>
 
@@ -633,7 +670,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {categoryStats.map((item) => {
+                {paginatedCategories.map((item) => {
                   const ratio = item.spend > 0 ? (item.cashback / item.spend) * 100 : 0;
                   return (
                     <tr key={item.name} className="hover:bg-slate-50/80 transition-colors">
@@ -656,6 +693,23 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
               </tbody>
             </table>
           </div>
+
+          {categoryStats.length > 0 && (
+            <div className="mt-3">
+              <PaginationBar
+                totalItems={categoryStats.length}
+                rowsPerPage={catRowsPerPage}
+                currentPage={catPage}
+                onChangeRowsPerPage={(rows) => {
+                  setCatRowsPerPage(rows);
+                  setCatPage(1);
+                }}
+                onChangePage={setCatPage}
+                itemLabel="kategori"
+                options={[5, 10, 20, 50]}
+              />
+            </div>
+          )}
         </div>
 
       </div>

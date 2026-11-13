@@ -2,22 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, 
   Camera, 
-  Upload, 
   Trash2, 
   CheckCircle2, 
   PenTool, 
   RotateCcw, 
-  CreditCard, 
   Calendar, 
   User, 
-  FileText, 
   AlertCircle,
   Eye,
   Check,
-  Building2,
-  Phone,
   Layers,
-  ArrowRight
+  Wallet
 } from 'lucide-react';
 import { Invoice, PayoutMethod, CustomerSummary } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
@@ -78,13 +73,12 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
     : (invoice?.cashbackAmount || 0);
 
   const initialRecipient = customer?.recipientName || customer?.customerName || invoice?.recipientName || invoice?.customerName || '';
-  const initialMethod: PayoutMethod = customer?.preferredPayoutMethod || customer?.disbursementPayoutMethod || invoice?.payoutMethod || 'transfer_bank';
+  const payoutMethod: PayoutMethod = 'tunai';
 
   const [recipientName, setRecipientName] = useState(initialRecipient);
   const [disbursedDate, setDisbursedDate] = useState(
     customer?.lastDisbursedDate || invoice?.disbursedDate || new Date().toISOString().split('T')[0]
   );
-  const [payoutMethod, setPayoutMethod] = useState<PayoutMethod>(initialMethod);
   const [disbursementNotes, setDisbursementNotes] = useState(
     customer?.disbursementNotes || invoice?.disbursementNotes || ''
   );
@@ -106,14 +100,12 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
     if (isOpen) {
       const rec = customer?.recipientName || customer?.customerName || invoice?.recipientName || invoice?.customerName || '';
       const dt = customer?.lastDisbursedDate || invoice?.disbursedDate || new Date().toISOString().split('T')[0];
-      const met = customer?.preferredPayoutMethod || customer?.disbursementPayoutMethod || invoice?.payoutMethod || 'transfer_bank';
       const notes = customer?.disbursementNotes || invoice?.disbursementNotes || '';
       const photo = customer?.disbursementProofPhoto || invoice?.disbursementProofPhoto || null;
       const sig = customer?.disbursementSignature || invoice?.disbursementSignature;
 
       setRecipientName(rec);
       setDisbursedDate(dt);
-      setPayoutMethod(met);
       setDisbursementNotes(notes);
       setProofPhoto(photo);
       setHasSignature(Boolean(sig));
@@ -406,25 +398,6 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
             </div>
           </div>
 
-          {/* Destination Account info if available in Master Data */}
-          {customer && (customer.bankAccountNumber || customer.eWalletNumber) && (
-            <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-blue-900 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-700 shrink-0" />
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 block">
-                    Informasi Rekening / E-Wallet Konsumen
-                  </span>
-                  <span className="text-xs font-semibold">
-                    {customer.bankName ? `${customer.bankName} - ${customer.bankAccountNumber} a.n. ${customer.bankAccountHolder || customer.customerName}` : ''}
-                    {customer.bankName && customer.eWalletType ? ' | ' : ''}
-                    {customer.eWalletType ? `${customer.eWalletType} - ${customer.eWalletNumber}` : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Invoices breakdown covered by this customer */}
           {customer?.invoices && customer.invoices.length > 0 && (
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
@@ -497,31 +470,19 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
               </div>
             </div>
 
-            {/* Payout Method */}
+            {/* Payout Method (Cash Only) */}
             <div className="sm:col-span-2">
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                 Metode Penyerahan / Pencairan
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { id: 'transfer_bank', label: 'Transfer Bank' },
-                  { id: 'e_wallet', label: 'E-Wallet / QRIS' },
-                  { id: 'tunai', label: 'Uang Tunai (Cash)' },
-                  { id: 'potongan_belanja', label: 'Potongan Belanja' },
-                ].map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setPayoutMethod(m.id as PayoutMethod)}
-                    className={`py-2 px-2.5 rounded-lg border text-center font-semibold transition-all ${
-                      payoutMethod === m.id
-                        ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-2xs font-bold'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
+              <div className="py-2.5 px-3 rounded-lg border border-emerald-500 bg-emerald-50 text-emerald-900 flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  <Wallet className="w-4 h-4 text-emerald-600" />
+                  <span>Tunai (Cash)</span>
+                </div>
+                <span className="text-[10px] font-semibold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                  Aktif
+                </span>
               </div>
             </div>
 
@@ -532,7 +493,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
                 <Camera className="w-4 h-4 text-emerald-600" />
-                <span>Foto Bukti Penerimaan / Struk Transfer</span>
+                <span>Foto Bukti Serah Terima Tunai</span>
               </div>
               {proofPhoto && (
                 <button
@@ -597,10 +558,10 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
                   <Camera className="w-4 h-4" />
                 </div>
                 <p className="text-xs font-bold text-slate-800">
-                  Ambil Foto Kamera atau Upload Bukti Transfer
+                  Ambil Foto Kamera atau Upload Bukti Serah Terima
                 </p>
                 <p className="text-[10px] text-slate-400">
-                  Mendukung foto struk ATM, bukti transfer M-Banking, atau nota serah terima uang tunai
+                  Mendukung foto penyerahan uang tunai, kwitansi kasir, atau nota serah terima
                 </p>
               </div>
             )}
@@ -656,7 +617,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
               value={disbursementNotes}
               onChange={(e) => setDisbursementNotes(e.target.value)}
               rows={2}
-              placeholder="Contoh: Diserahkan langsung di kasir toko / Transfer via Rekening Mandiri..."
+              placeholder="Contoh: Diserahkan tunai langsung di kasir toko..."
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             />
           </div>
