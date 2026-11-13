@@ -13,7 +13,7 @@ import {
   ChevronDown,
   Gift
 } from 'lucide-react';
-import { CashbackSettings, ClaimStatus, CustomerMaster, Invoice, PayoutMethod } from '../types/cashback';
+import { CashbackSettings, ClaimStatus, CustomerMaster, Invoice, PayoutMethod, CustomerBenefitType } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
 
 interface InvoiceModalProps {
@@ -62,7 +62,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   const payoutMethod: PayoutMethod = 'tunai';
   const [disbursedDate, setDisbursedDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [getParcel, setGetParcel] = useState<boolean>(false);
+  const [benefitType, setBenefitType] = useState<CustomerBenefitType>('cashback_parcel');
+  const [getParcel, setGetParcel] = useState<boolean>(true);
 
   // Quick Add New Customer Modal State
   const [isQuickAddingCustomer, setIsQuickAddingCustomer] = useState(false);
@@ -121,7 +122,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       setClaimStatus(editingInvoice.claimStatus);
       setDisbursedDate(editingInvoice.disbursedDate || '');
       setNotes(editingInvoice.notes || '');
-      setGetParcel(editingInvoice.getParcel ?? (editingInvoice.purchaseAmount >= (settings.minSpendForParcel || 5000000)));
+      const resolvedEditBenefit: CustomerBenefitType =
+        editingInvoice.benefitType ||
+        (editingInvoice.getParcel === false
+          ? 'cashback_only'
+          : editingInvoice.cashbackAmount > 0
+          ? 'cashback_parcel'
+          : 'parcel_only');
+      setBenefitType(resolvedEditBenefit);
+      setGetParcel(resolvedEditBenefit === 'cashback_parcel' || resolvedEditBenefit === 'parcel_only');
 
       // Check if matches master customer
       const matched = masterCustomers.find(
@@ -135,7 +144,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       setCustomerSearchQuery('');
 
       const normalCalc = calculateCashback(editingInvoice.purchaseAmount, settings);
-      if (Math.abs(normalCalc.effectivePercentage - editingInvoice.cashbackPercentage) > 0.01) {
+      if (editingInvoice.cashbackPercentage > 0 && Math.abs(normalCalc.effectivePercentage - editingInvoice.cashbackPercentage) > 0.01) {
         setIsCustomRate(true);
         setCustomRate(editingInvoice.cashbackPercentage);
       } else {
@@ -159,7 +168,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       setClaimStatus('pending');
       setDisbursedDate('');
       setNotes('');
-      setGetParcel(false);
+      // Otomatis dapat Cashback + Parcel terlebih dahulu saat input faktur baru
+      setBenefitType('cashback_parcel');
+      setGetParcel(true);
     }
     setIsQuickAddingCustomer(false);
     setIsSearchDropdownOpen(false);
@@ -227,9 +238,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     const num = Number(rawVal) || 0;
     setPurchaseAmount(num);
     setPurchaseAmountInput(rawVal);
-    // Automatically set parcel qualification if reaching threshold
-    setGetParcel(num >= (settings.minSpendForParcel || 5000000));
   };
+
+  const handleSelectBenefitType = (nextType: CustomerBenefitType) => {
+    setBenefitType(nextType);
+    setGetParcel(nextType === 'cashback_parcel' || nextType === 'parcel_only');
+  };
+
+  const effectiveCashbackAmount = benefitType === 'parcel_only' ? 0 : calculation.cashbackAmount;
+  const effectiveCashbackPercentage = benefitType === 'parcel_only' ? 0 : calculation.effectivePercentage;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -261,13 +278,14 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       category,
       itemsDescription: itemsDescription.trim() || undefined,
       purchaseAmount,
-      cashbackPercentage: calculation.effectivePercentage,
-      cashbackAmount: calculation.cashbackAmount,
+      cashbackPercentage: effectiveCashbackPercentage,
+      cashbackAmount: effectiveCashbackAmount,
       claimStatus,
       payoutMethod,
       disbursedDate: claimStatus === 'disbursed' ? (disbursedDate || date) : undefined,
       notes: notes.trim() || undefined,
       getParcel,
+      benefitType,
     };
 
     onSave(payload, editingInvoice ? editingInvoice.id : undefined);
@@ -629,56 +647,96 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   <span>Kalkulasi Cashback Transparan:</span>
                 </div>
                 <div className="text-[11px] text-slate-600 font-mono">
-                  {calculation.breakdown}
+                  {benefitType === 'parcel_only'
+                    ? 'Paket Parcel Saja — Cashback tunai dinonaktifkan manual (Rp 0)'
+                    : calculation.breakdown}
                 </div>
               </div>
               <div className="text-right sm:border-l sm:border-slate-100 sm:pl-4 shrink-0">
                 <span className="text-[10px] text-slate-500 block uppercase tracking-wider font-semibold">
                   Cashback Konsumen
                 </span>
-                <span className="text-base font-extrabold text-emerald-700 font-mono tabular-nums">
-                  {formatRupiah(calculation.cashbackAmount)}
+                <span className={`text-base font-extrabold font-mono tabular-nums ${
+                  benefitType === 'parcel_only' ? 'text-slate-400 line-through' : 'text-emerald-700'
+                }`}>
+                  {formatRupiah(effectiveCashbackAmount)}
                 </span>
               </div>
             </div>
 
-            {/* Parcel Qualification */}
-            <div className={`p-3 rounded-lg border flex items-center justify-between transition-colors ${
-              getParcel 
-                ? 'bg-amber-50/80 border-amber-300 text-amber-900' 
-                : 'bg-slate-50 border-slate-200 text-slate-600'
+            {/* Paket Diterima & Pengaturan Manual Dapat / Tidak */}
+            <div className={`p-3.5 rounded-xl border space-y-2.5 transition-colors ${
+              benefitType === 'cashback_parcel'
+                ? 'bg-purple-50/70 border-purple-200 text-purple-950'
+                : benefitType === 'parcel_only'
+                ? 'bg-amber-50/80 border-amber-300 text-amber-950'
+                : 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
             }`}>
-              <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                  getParcel ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-400'
-                }`}>
-                  <Gift className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold flex items-center gap-2">
-                    <span>Hadiah / Parcel Konsumen</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                      getParcel 
-                        ? 'bg-amber-200 text-amber-900' 
-                        : 'bg-slate-200 text-slate-600'
-                    }`}>
-                      {getParcel ? 'Dapat Parcel (Ya)' : 'Tidak'}
-                    </span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    benefitType === 'cashback_parcel'
+                      ? 'bg-purple-700 text-white'
+                      : benefitType === 'parcel_only'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-emerald-600 text-white'
+                  }`}>
+                    <Gift className="w-4 h-4" />
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Otomatis aktif bila nilai belanja mencapai <span className="font-semibold">{formatRupiah(settings.minSpendForParcel || 5000000)}</span> (dapat diubah manual).
-                  </p>
+                  <div>
+                    <div className="text-xs font-bold flex items-center gap-2 flex-wrap">
+                      <span>Paket Diterima Konsumen</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        getParcel
+                          ? 'bg-purple-200 text-purple-900'
+                          : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {getParcel ? 'Dapat (Ya)' : 'Tidak Dapat Parsel'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] opacity-80 mt-0.5">
+                      Otomatis terpilih <strong>Cashback + Parsel</strong> terlebih dahulu. Ubah manual dapat tidaknya di bawah ini:
+                    </p>
+                  </div>
                 </div>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold select-none">
-                <input
-                  type="checkbox"
-                  checked={getParcel}
-                  onChange={(e) => setGetParcel(e.target.checked)}
-                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
-                />
-                <span className="hidden sm:inline">Ubah Manual</span>
-              </label>
+
+              {/* Manual Toggle Buttons: Dapat Cashback+Parsel / Cashback Saja / Parcel Saja */}
+              <div className="grid grid-cols-3 gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleSelectBenefitType('cashback_parcel')}
+                  className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all text-center ${
+                    benefitType === 'cashback_parcel'
+                      ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-purple-50'
+                  }`}
+                >
+                  Cashback + Parsel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectBenefitType('cashback_only')}
+                  className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all text-center ${
+                    benefitType === 'cashback_only'
+                      ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50'
+                  }`}
+                >
+                  Cashback Saja (Tanpa Parsel)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectBenefitType('parcel_only')}
+                  className={`py-2 px-2 rounded-lg text-[11px] font-bold border transition-all text-center ${
+                    benefitType === 'parcel_only'
+                      ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-amber-50'
+                  }`}
+                >
+                  Parcel Saja
+                </button>
+              </div>
             </div>
           </div>
 

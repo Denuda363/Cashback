@@ -12,7 +12,7 @@ import {
   Upload,
   RotateCcw
 } from 'lucide-react';
-import { ClaimStatus, Invoice, PayoutMethod } from '../types/cashback';
+import { ClaimStatus, CustomerBenefitType, Invoice, PayoutMethod } from '../types/cashback';
 import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
 import { PaginationBar } from './PaginationBar';
@@ -24,6 +24,7 @@ interface InvoiceListProps {
   onDeleteInvoice: (invoiceId: string) => void;
   onViewReceipt: (invoice: Invoice) => void;
   onUpdateStatus: (invoiceId: string, newStatus: ClaimStatus) => void;
+  onUpdateInvoiceBenefit?: (invoice: Invoice, nextBenefit: CustomerBenefitType) => void;
   onExportExcel: () => void;
   onOpenImportExcel?: () => void;
   onResetAllInvoices?: () => void;
@@ -39,6 +40,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   onDeleteInvoice,
   onViewReceipt,
   onUpdateStatus,
+  onUpdateInvoiceBenefit,
   onExportExcel,
   onOpenImportExcel,
   onResetAllInvoices,
@@ -294,8 +296,30 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <h3 className="text-sm font-bold text-slate-900 truncate">{inv.customerName}</h3>
                     {(() => {
-                      const bType = inv.benefitType || (inv.cashbackAmount > 0 ? 'cashback_parcel' : 'parcel_only');
+                      const bType: CustomerBenefitType =
+                        inv.benefitType ||
+                        (inv.getParcel === false
+                          ? 'cashback_only'
+                          : inv.cashbackAmount > 0
+                            ? 'cashback_parcel'
+                            : 'parcel_only');
                       const bClasses = getBenefitBadgeClasses(bType);
+                      if (onUpdateInvoiceBenefit) {
+                        return (
+                          <select
+                            value={bType}
+                            onChange={(e) =>
+                              onUpdateInvoiceBenefit(inv, e.target.value as CustomerBenefitType)
+                            }
+                            aria-label={`Ubah paket diterima untuk ${inv.invoiceNumber}`}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer focus:outline-hidden ${bClasses.bg} ${bClasses.border}`}
+                          >
+                            <option value="cashback_parcel">Cashback + Parsel</option>
+                            <option value="cashback_only">Cashback Saja</option>
+                            <option value="parcel_only">Parcel Saja</option>
+                          </select>
+                        );
+                      }
                       return (
                         <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full border inline-flex items-center gap-1 ${bClasses.bg} ${bClasses.border}`}>
                           <span className={`w-1 h-1 rounded-full ${bClasses.dot}`} />
@@ -425,8 +449,30 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                     {/* Benefit Package */}
                     <td className="py-3 px-3 text-center whitespace-nowrap">
                       {(() => {
-                        const bType = inv.benefitType || (inv.cashbackAmount > 0 ? 'cashback_parcel' : 'parcel_only');
+                        const bType: CustomerBenefitType =
+                          inv.benefitType ||
+                          (inv.getParcel === false
+                            ? 'cashback_only'
+                            : inv.cashbackAmount > 0
+                              ? 'cashback_parcel'
+                              : 'parcel_only');
                         const bClasses = getBenefitBadgeClasses(bType);
+                        if (onUpdateInvoiceBenefit) {
+                          return (
+                            <select
+                              value={bType}
+                              onChange={(e) =>
+                                onUpdateInvoiceBenefit(inv, e.target.value as CustomerBenefitType)
+                              }
+                              title="Ubah paket yang diterima (Cashback + Parsel / Cashback Saja / Parcel Saja)"
+                              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-emerald-500 ${bClasses.bg} ${bClasses.border}`}
+                            >
+                              <option value="cashback_parcel">Cashback + Parsel</option>
+                              <option value="cashback_only">Cashback Saja</option>
+                              <option value="parcel_only">Parcel Saja</option>
+                            </select>
+                          );
+                        }
                         return (
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs ${bClasses.bg} ${bClasses.border}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${bClasses.dot}`} />

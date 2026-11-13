@@ -160,7 +160,8 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
         claimStatus: r.claimStatus,
         payoutMethod: 'tunai',
         disbursedDate: r.claimStatus === 'disbursed' ? r.date : undefined,
-        getParcel: r.purchaseAmount >= (settings.minSpendForParcel || 5000000),
+        getParcel: true,
+        benefitType: 'cashback_parcel',
         createdAt: new Date().toISOString(),
       };
     });

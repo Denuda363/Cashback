@@ -289,6 +289,48 @@ export default function App() {
       await saveInvoiceToFirestore(newInvoice).catch((err) => console.warn('Firestore invoice add:', err));
       showToast(`Faktur ${newInvoice.invoiceNumber} (${invoiceData.customerName}) tersimpan ke Firebase Cloud.`);
     }
+
+    // Clear conflicting customer-level benefit override if invoice's explicit benefit differs
+    const cleanName = (invoiceData.customerName || '').trim().toLowerCase();
+    const existingOverride = cleanName ? settings.customerBenefitOverrides?.[cleanName] : undefined;
+    if (cleanName && existingOverride && invoiceData.benefitType && existingOverride !== invoiceData.benefitType) {
+      const nextOverrides = { ...(settings.customerBenefitOverrides || {}) };
+      delete nextOverrides[cleanName];
+      const nextSettings: CashbackSettings = { ...settings, customerBenefitOverrides: nextOverrides };
+      setSettings(nextSettings);
+      saveStoredSettings(nextSettings);
+      await saveSettingsToFirestore(nextSettings).catch((err) => console.warn('Sync override cleanup:', err));
+    }
+  };
+
+  // Manual toggle benefit package directly from Rekap Faktur
+  const handleUpdateInvoiceBenefit = async (invoice: Invoice, nextBenefit: CustomerBenefitType) => {
+    const calc = calculateCashback(invoice.purchaseAmount, settings);
+    const updatedInv: Invoice = {
+      ...invoice,
+      benefitType: nextBenefit,
+      getParcel: nextBenefit !== 'cashback_only',
+      cashbackPercentage: nextBenefit === 'parcel_only' ? 0 : calc.effectivePercentage,
+      cashbackAmount: nextBenefit === 'parcel_only' ? 0 : calc.cashbackAmount,
+    };
+
+    const updated = invoices.map((inv) => (inv.id === invoice.id ? updatedInv : inv));
+    setInvoices(updated);
+    saveStoredInvoices(updated);
+    await saveInvoiceToFirestore(updatedInv).catch((err) => console.warn('Firestore benefit update:', err));
+
+    const cleanName = (invoice.customerName || '').trim().toLowerCase();
+    const existingOverride = cleanName ? settings.customerBenefitOverrides?.[cleanName] : undefined;
+    if (cleanName && existingOverride && existingOverride !== nextBenefit) {
+      const nextOverrides = { ...(settings.customerBenefitOverrides || {}) };
+      delete nextOverrides[cleanName];
+      const nextSettings: CashbackSettings = { ...settings, customerBenefitOverrides: nextOverrides };
+      setSettings(nextSettings);
+      saveStoredSettings(nextSettings);
+      await saveSettingsToFirestore(nextSettings).catch((err) => console.warn('Sync override cleanup:', err));
+    }
+
+    showToast(`Paket faktur ${invoice.invoiceNumber} diubah menjadi: "${getBenefitLabel(nextBenefit)}"`);
   };
 
   const handleDeleteInvoice = async (invoiceId: string) => {
@@ -544,14 +586,22 @@ export default function App() {
     saveStoredSettings(newSettings);
     saveSettingsToFirestore(newSettings).catch((err) => console.warn('Firestore settings save:', err));
 
-    // Dynamic Recalculation: Jika diatur 2% semua jadi 2%, jika 3% semua jadi 3%!
+    // Dynamic Recalculation: Jika diatur 2% semua jadi 2%, jika 3% semua jadi 3%, tetap pertahankan pilihan manual paket!
     const updatedInvoices = invoices.map((inv) => {
+      const resolvedBenefit: CustomerBenefitType =
+        inv.benefitType ||
+        (inv.getParcel === false
+          ? 'cashback_only'
+          : inv.cashbackAmount > 0
+            ? 'cashback_parcel'
+            : 'parcel_only');
       const calc = calculateCashback(inv.purchaseAmount, newSettings);
       return {
         ...inv,
-        cashbackPercentage: calc.effectivePercentage,
-        cashbackAmount: calc.cashbackAmount,
-        getParcel: inv.purchaseAmount >= (newSettings.minSpendForParcel || 5000000),
+        benefitType: resolvedBenefit,
+        getParcel: resolvedBenefit !== 'cashback_only',
+        cashbackPercentage: resolvedBenefit === 'parcel_only' ? 0 : calc.effectivePercentage,
+        cashbackAmount: resolvedBenefit === 'parcel_only' ? 0 : calc.cashbackAmount,
       };
     });
 
@@ -758,6 +808,7 @@ export default function App() {
             onDeleteInvoice={handleDeleteInvoice}
             onViewReceipt={(inv) => setReceiptInvoice(inv)}
             onUpdateStatus={handleUpdateStatus}
+            onUpdateInvoiceBenefit={handleUpdateInvoiceBenefit}
             onExportExcel={handleExportExcel}
             onOpenImportExcel={() => setIsImportModalOpen(true)}
             onResetAllInvoices={handleResetAllInvoices}

@@ -25,6 +25,7 @@
         "disbursementSignature": { "type": "string" },
         "disbursementNotes": { "type": "string" },
         "getParcel": { "type": "boolean" },
+        "benefitType": { "type": "string", "enum": ["cashback_parcel", "cashback_only", "parcel_only"] },
         "notes": { "type": "string" },
         "createdAt": { "type": "string" }
       },

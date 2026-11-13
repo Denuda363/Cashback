@@ -235,7 +235,8 @@ export function aggregateCustomerSummaries(
     invoiceCount: number;
     dates: string[];
     invoices: Invoice[];
-    hasParcelExplicit?: boolean;
+    hasExplicitBenefit?: boolean;
+    hasParcelTrue?: boolean;
     bankName?: string;
     bankAccountNumber?: string;
     bankAccountHolder?: string;
@@ -268,6 +269,11 @@ export function aggregateCustomerSummaries(
 
     const purchase = Number(inv.purchaseAmount) || 0;
     const cashback = Math.round(Number(inv.cashbackAmount) || 0);
+    const invHasExplicit = inv.benefitType !== undefined || inv.getParcel !== undefined;
+    const invHasParcel =
+      inv.benefitType === 'cashback_parcel' ||
+      inv.benefitType === 'parcel_only' ||
+      inv.getParcel === true;
     const existing = map.get(key);
 
     if (existing) {
@@ -276,8 +282,11 @@ export function aggregateCustomerSummaries(
       existing.invoiceCount += 1;
       existing.invoices.push(inv);
       if (inv.date) existing.dates.push(inv.date);
-      if (inv.getParcel === true) {
-        existing.hasParcelExplicit = true;
+      if (invHasExplicit) {
+        existing.hasExplicitBenefit = true;
+      }
+      if (invHasParcel) {
+        existing.hasParcelTrue = true;
       }
 
       if (inv.claimStatus === 'disbursed') {
@@ -305,7 +314,8 @@ export function aggregateCustomerSummaries(
         invoiceCount: 1,
         dates: inv.date ? [inv.date] : [],
         invoices: [inv],
-        hasParcelExplicit: inv.getParcel === true,
+        hasExplicitBenefit: invHasExplicit,
+        hasParcelTrue: invHasParcel,
         bankName: master?.bankName,
         bankAccountNumber: master?.bankAccountNumber,
         bankAccountHolder: master?.bankAccountHolder,
@@ -336,10 +346,6 @@ export function aggregateCustomerSummaries(
       (ex) => (ex || '').trim().toLowerCase() === cleanName
     );
 
-    // Natural parcel qualification:
-    // If total accumulated purchase >= minSpendForParcel (e.g. 5,000,000) OR marked explicit in invoice
-    const naturalParcel = c.totalPurchase >= minSpendForParcel || Boolean(c.hasParcelExplicit);
-
     // Check customer-specific benefit override:
     const manualBenefit = benefitOverrides[cleanName];
 
@@ -348,36 +354,47 @@ export function aggregateCustomerSummaries(
 
     if (manualBenefit) {
       benefitType = manualBenefit;
-      if (manualBenefit === 'cashback_parcel') {
-        getParcel = true;
-      } else if (manualBenefit === 'parcel_only') {
-        getParcel = true;
-      } else {
-        // cashback_only
-        getParcel = false;
-      }
-    } else {
-      if (c.totalCashback > 0 && naturalParcel) {
-        benefitType = 'cashback_parcel';
-        getParcel = true;
-      } else if (naturalParcel && c.totalCashback <= 0) {
-        benefitType = 'parcel_only';
+      getParcel = manualBenefit !== 'cashback_only';
+    } else if (c.hasExplicitBenefit) {
+      // Respect explicit invoice-level benefit settings (never overwrite manual cashback_only with minSpendForParcel)
+      if (c.hasParcelTrue) {
+        benefitType = c.totalCashback > 0 ? 'cashback_parcel' : 'parcel_only';
         getParcel = true;
       } else {
         benefitType = 'cashback_only';
         getParcel = false;
       }
+    } else {
+      // Legacy undefined invoices default to Cashback + Parsel upfront
+      benefitType = c.totalCashback > 0 ? 'cashback_parcel' : 'parcel_only';
+      getParcel = true;
     }
 
     // Sort itemized invoices newest to oldest
     const sortedInvoices = [...c.invoices].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
-    // Attach benefitType and parcel to each individual invoice
-    const enrichedInvoices = sortedInvoices.map((inv) => ({
-      ...inv,
-      benefitType,
-      getParcel,
-    }));
+    // Attach benefitType and parcel to each individual invoice while preserving explicit invoice settings
+    const enrichedInvoices = sortedInvoices.map((inv) => {
+      if (manualBenefit) {
+        return {
+          ...inv,
+          benefitType: manualBenefit,
+          getParcel: manualBenefit !== 'cashback_only',
+        };
+      }
+      const invBenefit: CustomerBenefitType =
+        inv.benefitType ||
+        (inv.getParcel === false
+          ? 'cashback_only'
+          : (Number(inv.cashbackAmount) || 0) > 0
+            ? 'cashback_parcel'
+            : 'parcel_only');
+      return {
+        ...inv,
+        benefitType: invBenefit,
+        getParcel: invBenefit !== 'cashback_only',
+      };
+    });
 
     // Extract disbursement details if any invoice was disbursed
     const disbursedInvoices = enrichedInvoices.filter((i) => i.claimStatus === 'disbursed');
