@@ -13,15 +13,16 @@ import {
   Plus,
   Gift
 } from 'lucide-react';
-import { CashbackSettings, CustomerSummary, Invoice } from '../types/cashback';
+import { ActiveTab, CashbackSettings, CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
 import { PaginationBar } from './PaginationBar';
+import { CashbackMovementChart } from './CashbackMovementChart';
 
 interface DashboardAnalyticsProps {
   invoices: Invoice[];
   settings: CashbackSettings;
   customerSummaries: CustomerSummary[];
-  onNavigateToTab: (tab: 'dashboard' | 'top10' | 'invoices' | 'customers' | 'settings') => void;
+  onNavigateToTab: (tab: ActiveTab) => void;
   onOpenNewInvoice: () => void;
   onOpenSettings: () => void;
 }
@@ -34,8 +35,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   onOpenNewInvoice,
   onOpenSettings,
 }) => {
-  const [catRowsPerPage, setCatRowsPerPage] = useState<number | 'all'>(5);
-  const [catPage, setCatPage] = useState(1);
   const [trendRowsPerPage, setTrendRowsPerPage] = useState<number | 'all'>(5);
   const [trendPage, setTrendPage] = useState(1);
 
@@ -94,22 +93,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
     };
   }, [customerSummaries]);
 
-  // Breakdown by category
-  const categoryStats = useMemo(() => {
-    const map = new Map<string, { count: number; spend: number; cashback: number }>();
-    for (const inv of invoices) {
-      const cat = inv.category || 'Umum';
-      const cur = map.get(cat) || { count: 0, spend: 0, cashback: 0 };
-      cur.count += 1;
-      cur.spend += inv.purchaseAmount;
-      cur.cashback += inv.cashbackAmount;
-      map.set(cat, cur);
-    }
-    return Array.from(map.entries())
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.cashback - a.cashback);
-  }, [invoices]);
-
   // Monthly breakdown for trend
   const monthlyTrend = useMemo(() => {
     const map = new Map<string, { label: string; spend: number; cashback: number; count: number }>();
@@ -136,14 +119,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   const maxMonthlyCashback = useMemo(() => {
     return Math.max(...monthlyTrend.map((m) => m.cashback), 1);
   }, [monthlyTrend]);
-
-  const paginatedCategories = useMemo(() => {
-    if (catRowsPerPage === 'all') return categoryStats;
-    const totalPages = Math.max(1, Math.ceil(categoryStats.length / catRowsPerPage));
-    const safePage = Math.min(Math.max(1, catPage), totalPages);
-    const start = (safePage - 1) * catRowsPerPage;
-    return categoryStats.slice(start, start + catRowsPerPage);
-  }, [categoryStats, catRowsPerPage, catPage]);
 
   const paginatedTrend = useMemo(() => {
     if (trendRowsPerPage === 'all') return monthlyTrend;
@@ -646,71 +621,16 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
           </button>
         </div>
 
-        {/* Category Breakdown Table */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Performa Cashback Berdasarkan Kategori</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Kontribusi nilai belanja dan cashback per lini produk</p>
-            </div>
-            <span className="text-xs text-slate-500 font-mono tabular-nums">
-              {categoryStats.length} Kategori
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  <th className="py-2.5 px-3">Kategori</th>
-                  <th className="py-2.5 px-3 text-right">Jml Transaksi</th>
-                  <th className="py-2.5 px-3 text-right">Total Belanja</th>
-                  <th className="py-2.5 px-3 text-right">Total Cashback</th>
-                  <th className="py-2.5 px-3 text-right">Rasio Efektif</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {paginatedCategories.map((item) => {
-                  const ratio = item.spend > 0 ? (item.cashback / item.spend) * 100 : 0;
-                  return (
-                    <tr key={item.name} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-2.5 px-3 font-semibold text-slate-800">{item.name}</td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-600">
-                        {item.count}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-800">
-                        {formatRupiah(item.spend)}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums font-bold text-emerald-700">
-                        {formatRupiah(item.cashback)}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-600">
-                        {ratio.toFixed(1)}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {categoryStats.length > 0 && (
-            <div className="mt-3">
-              <PaginationBar
-                totalItems={categoryStats.length}
-                rowsPerPage={catRowsPerPage}
-                currentPage={catPage}
-                onChangeRowsPerPage={(rows) => {
-                  setCatRowsPerPage(rows);
-                  setCatPage(1);
-                }}
-                onChangePage={setCatPage}
-                itemLabel="kategori"
-                options={[5, 10, 20, 50]}
-              />
-            </div>
-          )}
-        </div>
+        {/* Grafik Pergerakan Penerimaan Cashback */}
+        <CashbackMovementChart
+          invoices={invoices}
+          customerSummaries={customerSummaries}
+          totalCashback={stats.totalCashback}
+          disbursedCashback={stats.disbursedCashback}
+          readyCashback={stats.readyCashback}
+          pendingCashback={stats.pendingCashback}
+          onNavigateToTab={onNavigateToTab}
+        />
 
       </div>
 
