@@ -10,7 +10,6 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Trophy,
-  Plus,
   Gift
 } from 'lucide-react';
 import { ActiveTab, CashbackSettings, CustomerSummary, Invoice } from '../types/cashback';
@@ -23,8 +22,6 @@ interface DashboardAnalyticsProps {
   settings: CashbackSettings;
   customerSummaries: CustomerSummary[];
   onNavigateToTab: (tab: ActiveTab) => void;
-  onOpenNewInvoice: () => void;
-  onOpenSettings: () => void;
 }
 
 export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
@@ -32,8 +29,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   settings,
   customerSummaries,
   onNavigateToTab,
-  onOpenNewInvoice,
-  onOpenSettings,
 }) => {
   const [trendRowsPerPage, setTrendRowsPerPage] = useState<number | 'all'>(5);
   const [trendPage, setTrendPage] = useState(1);
@@ -156,22 +151,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 {settings.maxCashbackPerTransaction ? ` Maks. Cap ${formatRupiah(settings.maxCashbackPerTransaction)}.` : ' Tanpa batas maksimal.'}
               </p>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-            <button
-              onClick={onOpenSettings}
-              className="flex-1 sm:flex-initial px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors text-center"
-            >
-              Atur %
-            </button>
-            <button
-              onClick={onOpenNewInvoice}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-lg shadow-xs transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Input Faktur</span>
-            </button>
           </div>
         </div>
       </div>

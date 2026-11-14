@@ -5,7 +5,6 @@ import {
   FileSpreadsheet, 
   Users, 
   Settings as SettingsIcon, 
-  Plus, 
   Download,
   Receipt,
   Contact,
@@ -16,7 +15,6 @@ import { ActiveTab } from '../types/cashback';
 interface NavbarProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
-  onOpenNewInvoice: () => void;
   onExportExcel: () => void;
   totalInvoicesCount: number;
   totalMasterCustomersCount?: number;
@@ -25,7 +23,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
-  onOpenNewInvoice,
   onExportExcel,
   totalInvoicesCount,
   totalMasterCustomersCount,
@@ -101,14 +98,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Export</span> Excel
-            </button>
-
-            <button
-              onClick={onOpenNewInvoice}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-all whitespace-nowrap shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Input Faktur</span>
             </button>
           </div>
 

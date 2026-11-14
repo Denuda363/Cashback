@@ -833,10 +833,6 @@ export default function App() {
       }}
       navPosition={navPosition}
       onChangeNavPosition={handleChangeNavPosition}
-      onOpenNewInvoice={() => {
-        setEditingInvoice(null);
-        setIsInvoiceModalOpen(true);
-      }}
       onExportExcel={handleExportExcel}
       onOpenImportExcel={() => setIsImportModalOpen(true)}
       onOpenAbout={() => setIsAboutModalOpen(true)}
@@ -894,11 +890,6 @@ export default function App() {
                 setActiveTab(tab);
               }
             }}
-            onOpenNewInvoice={() => {
-              setEditingInvoice(null);
-              setIsInvoiceModalOpen(true);
-            }}
-            onOpenSettings={() => setIsSettingsModalOpen(true)}
           />
         )}
 

@@ -6,7 +6,6 @@ import {
   Users, 
   Contact, 
   Settings as SettingsIcon, 
-  Plus, 
   Download, 
   Receipt,
   LayoutTemplate,
@@ -32,7 +31,6 @@ interface SmartNavigationProps {
   setActiveTab: (tab: ActiveTab) => void;
   navPosition: NavPosition;
   onChangeNavPosition: (pos: NavPosition) => void;
-  onOpenNewInvoice: () => void;
   onExportExcel: () => void;
   onOpenImportExcel?: () => void;
   onOpenAbout?: () => void;
@@ -49,7 +47,6 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   setActiveTab,
   navPosition,
   onChangeNavPosition,
-  onOpenNewInvoice,
   onExportExcel,
   onOpenImportExcel,
   onOpenAbout,
@@ -183,15 +180,6 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
               </span>
               <Cloud className="w-3 h-3 text-emerald-600 shrink-0" />
             </div>
-
-            <button
-              onClick={onOpenNewInvoice}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-lg shadow-xs transition-all"
-              title="Input Faktur Baru"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Faktur</span>
-            </button>
           </div>
         </header>
 
@@ -312,21 +300,6 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                 </div>
               </div>
             )}
-
-            {/* Quick Action Button: Input Faktur */}
-            <button
-              onClick={() => {
-                onOpenNewInvoice();
-                setIsMobileMenuOpen(false);
-              }}
-              className={`w-full py-2 px-3 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 ${
-                isSidebarCollapsed ? 'p-2' : ''
-              }`}
-              title="Input Faktur Baru"
-            >
-              <Plus className="w-4 h-4 shrink-0" />
-              {!isSidebarCollapsed && <span>Input Faktur</span>}
-            </button>
 
             {/* PWA Install Button */}
             {!isSidebarCollapsed && (
@@ -545,14 +518,6 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                     <Info className="w-4 h-4 text-emerald-600" />
                   </button>
                 )}
-
-                <button
-                  onClick={onOpenNewInvoice}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-all whitespace-nowrap shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Input Faktur</span>
-                </button>
               </div>
 
             </div>
@@ -693,18 +658,6 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
               </button>
             );
           })}
-
-          <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />
-
-          {/* Center / Right CTA in Dock */}
-          <button
-            onClick={onOpenNewInvoice}
-            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 rounded-xl shadow-md transition-all whitespace-nowrap shrink-0"
-            title="Input Faktur Konsumen"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Faktur Baru</span>
-          </button>
 
         </div>
       </div>

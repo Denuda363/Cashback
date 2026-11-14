@@ -23,6 +23,7 @@ import { formatRupiah } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
 import { OfficialReceiptModal } from './OfficialReceiptModal';
 import { PaginationBar } from './PaginationBar';
+import { DisbursementProgressChart } from './DisbursementProgressChart';
 
 interface CashbackDisbursementRecordsProps {
   customerSummaries: CustomerSummary[];
@@ -299,6 +300,24 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
         </div>
 
       </div>
+
+      {/* Grafik Progres Penerimaan Cashback */}
+      <DisbursementProgressChart
+        customerSummaries={customerSummaries}
+        totalEligibleCashback={metrics.totalEligibleCashback}
+        totalDisbursedCashback={metrics.totalDisbursedCashback}
+        totalUndisbursedCashback={metrics.totalUndisbursedCashback}
+        fullyDisbursedCustomersCount={metrics.fullyDisbursedCustomersCount}
+        partialDisbursedCustomersCount={metrics.partialDisbursedCustomersCount}
+        totalDisbursedCustomers={metrics.totalDisbursedCustomers}
+        undisbursedCustomersCount={metrics.undisbursedCustomersCount}
+        excludedCustomersCount={metrics.excludedCustomersCount}
+        activeFilter={filterMode}
+        onSelectFilter={(mode) => {
+          setFilterMode(mode);
+          setCurrentPage(1);
+        }}
+      />
 
       {/* Main Container */}
       <div className="bg-white rounded-2xl sm:rounded-xl border border-slate-200 p-3.5 sm:p-5 shadow-2xs space-y-3 sm:space-y-4">
