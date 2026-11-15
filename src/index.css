@@ -24,3 +24,74 @@ body {
     print-color-adjust: exact !important;
   }
 }
+
+/* Living Architectural Sidebar Animations (GPU compositor-only properties) */
+@keyframes sidebar-edge-beam {
+  0% {
+    transform: translateY(-25%);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(115%);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(-25%);
+    opacity: 0.45;
+  }
+}
+
+@keyframes sidebar-orbit-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sidebar-aura-breathe {
+  0%, 100% {
+    transform: scale(0.96);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.85;
+  }
+}
+
+@keyframes sidebar-sheen-sweep {
+  0% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  45%, 100% {
+    transform: translateX(220%) skewX(-18deg);
+  }
+}
+
+.animate-sidebar-edge-beam {
+  animation: sidebar-edge-beam 5.5s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.animate-sidebar-orbit {
+  animation: sidebar-orbit-spin 8s linear infinite;
+}
+
+.animate-sidebar-aura {
+  animation: sidebar-aura-breathe 3.6s ease-in-out infinite;
+}
+
+.animate-sidebar-sheen {
+  animation: sidebar-sheen-sweep 5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sidebar-edge-beam,
+  .animate-sidebar-orbit,
+  .animate-sidebar-aura,
+  .animate-sidebar-sheen {
+    animation: none !important;
+  }
+}
+

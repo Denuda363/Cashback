@@ -34,7 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'payout_records', label: 'Penerimaan Cashback', icon: <CheckCircle2 className="w-4 h-4" /> },
     { id: 'customers', label: 'Rekap Konsumen', icon: <Users className="w-4 h-4" /> },
     { id: 'master_customers', label: 'Master Konsumen', icon: <Contact className="w-4 h-4" />, badge: totalMasterCustomersCount },
-    { id: 'settings', label: 'Pengaturan %', icon: <SettingsIcon className="w-4 h-4" /> },
+    { id: 'settings', label: 'Pengaturan', icon: <SettingsIcon className="w-4 h-4" /> },
   ];
 
   return (

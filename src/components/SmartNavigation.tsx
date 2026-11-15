@@ -15,15 +15,12 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
-  Wallet,
   Cloud,
   Upload,
   CheckCircle2,
   Info,
 } from 'lucide-react';
 import { ActiveTab, NavPosition } from '../types/cashback';
-import { formatRupiah } from '../utils/cashbackCalculator';
 import { PWAInstallButton } from './PWAInstallPrompt';
 
 interface SmartNavigationProps {
@@ -52,7 +49,6 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   onOpenAbout,
   totalInvoicesCount,
   totalMasterCustomersCount,
-  totalCashbackSum = 0,
   storeName = 'CashbackPro',
   isFirebaseConnected = true,
   children,
@@ -69,21 +65,27 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
     { id: 'payout_records', label: 'Penerimaan Cashback', shortLabel: 'Penerimaan', icon: <CheckCircle2 className="w-4 h-4" />, description: 'Rekap serah terima & bukti' },
     { id: 'customers', label: 'Rekap Konsumen', shortLabel: 'Konsumen', icon: <Users className="w-4 h-4" />, description: 'Akumulasi saldo per orang' },
     { id: 'master_customers', label: 'Master Konsumen', shortLabel: 'Master', icon: <Contact className="w-4 h-4" />, badge: totalMasterCustomersCount, description: 'Database pelanggan & bank' },
-    { id: 'settings', label: 'Pengaturan %', shortLabel: 'Atur %', icon: <SettingsIcon className="w-4 h-4" />, description: 'Aturan persen cashback' },
+    { id: 'settings', label: 'Pengaturan', shortLabel: 'Pengaturan', icon: <SettingsIcon className="w-4 h-4" />, description: 'Aturan persen cashback & usaha' },
   ];
 
   const activeNavItem = navItems.find((n) => n.id === activeTab);
 
   // Helper for Nav Position Switcher Widget
   const PositionSwitcher = ({ compact = false }: { compact?: boolean }) => (
-    <div className={`flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200/80 ${compact ? 'scale-90' : ''}`}>
+    <div
+      className={
+        compact
+          ? 'grid grid-cols-3 gap-0.5 p-1 w-full bg-slate-100 rounded-xl border border-slate-200/90'
+          : 'flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200/80'
+      }
+    >
       <button
         type="button"
         onClick={() => onChangeNavPosition('sidebar')}
         title="Posisikan navigasi di Samping (Sidebar)"
-        className={`p-1.5 rounded-md transition-all ${
+        className={`flex items-center justify-center rounded-md transition-all ${compact ? 'p-1.5' : 'p-1.5'} ${
           navPosition === 'sidebar'
-            ? 'bg-white text-slate-900 shadow-xs font-semibold'
+            ? 'bg-white text-emerald-700 shadow-xs font-semibold'
             : 'text-slate-500 hover:text-slate-900'
         }`}
       >
@@ -93,9 +95,9 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
         type="button"
         onClick={() => onChangeNavPosition('top')}
         title="Posisikan navigasi di Atas (Top Bar)"
-        className={`p-1.5 rounded-md transition-all ${
+        className={`flex items-center justify-center rounded-md transition-all ${compact ? 'p-1.5' : 'p-1.5'} ${
           navPosition === 'top'
-            ? 'bg-white text-slate-900 shadow-xs font-semibold'
+            ? 'bg-white text-emerald-700 shadow-xs font-semibold'
             : 'text-slate-500 hover:text-slate-900'
         }`}
       >
@@ -105,9 +107,9 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
         type="button"
         onClick={() => onChangeNavPosition('bottom')}
         title="Posisikan navigasi di Bawah (Floating Dock)"
-        className={`p-1.5 rounded-md transition-all ${
+        className={`flex items-center justify-center rounded-md transition-all ${compact ? 'p-1.5' : 'p-1.5'} ${
           navPosition === 'bottom'
-            ? 'bg-white text-slate-900 shadow-xs font-semibold'
+            ? 'bg-white text-emerald-700 shadow-xs font-semibold'
             : 'text-slate-500 hover:text-slate-900'
         }`}
       >
@@ -116,16 +118,16 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
     </div>
   );
 
-  const FirebaseStatusBadge = ({ compact = false }: { compact?: boolean }) => (
+  const FirebaseStatusBadge = () => (
     <div 
       title="Tersambung langsung ke Firebase Firestore Cloud secara otomatis tanpa perlu login"
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+      className={`inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold border transition-all ${
         isFirebaseConnected
-          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-          : 'bg-amber-50 border-amber-200 text-amber-800'
-      } ${compact ? 'text-[10px] px-2 py-0.5' : ''}`}
+          ? 'bg-emerald-50/90 border-emerald-200/90 text-emerald-800'
+          : 'bg-amber-50/90 border-amber-200/90 text-amber-800'
+      }`}
     >
-      <span className="relative flex h-2 w-2">
+      <span className="relative flex h-2 w-2 shrink-0">
         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
           isFirebaseConnected ? 'bg-emerald-400' : 'bg-amber-400'
         }`}></span>
@@ -134,8 +136,8 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
         }`}></span>
       </span>
       <Cloud className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-      <span className="truncate">
-        {compact ? 'Firebase Otomatis' : 'Firebase Terhubung Otomatis'}
+      <span className="whitespace-nowrap">
+        Firebase Terhubung Otomatis
       </span>
     </div>
   );
@@ -191,58 +193,104 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
           />
         )}
 
-        {/* Desktop & Mobile Sidebar Container */}
+        {/* Desktop & Mobile Sidebar Container with Unique Living Architectural Border */}
         <aside
           className={`
-            fixed md:sticky top-0 z-50 md:z-30 h-screen bg-white border-r border-slate-200 flex flex-col justify-between transition-all duration-200 ease-in-out print:hidden
+            fixed md:sticky top-0 z-50 md:z-30 h-screen bg-white/95 backdrop-blur-md flex flex-col justify-between transition-[width,transform] duration-300 ease-out shadow-[4px_0_24px_-8px_rgba(15,23,42,0.08)] print:hidden
             ${isMobileMenuOpen ? 'translate-x-0 w-72' : '-translate-x-full md:translate-x-0'}
-            ${isSidebarCollapsed ? 'md:w-20' : 'md:w-64'}
+            ${isSidebarCollapsed ? 'md:w-[108px]' : 'md:w-64'}
           `}
         >
-          {/* Top Brand & Toggle */}
-          <div>
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold shadow-xs shrink-0">
-                  <Receipt className="w-5 h-5" />
-                </div>
-                {!isSidebarCollapsed && (
-                  <div className="truncate">
-                    <div className="text-sm font-extrabold tracking-tight text-slate-900 truncate">
-                      {storeName}
+          {/* Unique Animated Right Seam Border & Precision Corner Notches */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-[3px] bg-gradient-to-b from-slate-200 via-emerald-200/70 to-slate-200 overflow-hidden">
+            <div className="w-full h-36 bg-gradient-to-b from-transparent via-emerald-500 to-teal-300 animate-sidebar-edge-beam" />
+          </div>
+          <div aria-hidden="true" className="pointer-events-none absolute top-3 right-[5px] w-2.5 h-2.5 border-t-2 border-r-2 border-emerald-500/60 rounded-tr-sm" />
+          <div aria-hidden="true" className="pointer-events-none absolute bottom-3 right-[5px] w-2.5 h-2.5 border-b-2 border-r-2 border-emerald-500/60 rounded-br-sm" />
+
+          {/* Floating Border-Seam Collapse Toggle (Never covers company name or logo) */}
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="hidden md:flex absolute -right-3.5 top-8 z-30 w-7 h-7 rounded-full bg-white border-2 border-emerald-500/80 shadow-md items-center justify-center text-emerald-700 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 hover:scale-110 active:scale-95 transition-all duration-200 group"
+            title={isSidebarCollapsed ? 'Perlebar Sidebar' : 'Kecilkan Sidebar'}
+            aria-label={isSidebarCollapsed ? 'Perlebar Sidebar' : 'Kecilkan Sidebar'}
+          >
+            <span aria-hidden="true" className="absolute -inset-1 rounded-full border border-emerald-400/50 animate-sidebar-aura pointer-events-none" />
+            {isSidebarCollapsed ? (
+              <ChevronRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            ) : (
+              <ChevronLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+            )}
+          </button>
+
+          {/* Top Brand & Navigation Section */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            {/* Brand Header Container */}
+            <div className={`border-b border-slate-100/90 ${isSidebarCollapsed ? 'px-2 pt-3 pb-2.5' : 'p-3.5'}`}>
+              <div className="flex items-start justify-between gap-2">
+                {/* Unique Animated Double-Bezel Conic Border Frame for Brand Identity */}
+                <div
+                  title={storeName}
+                  className="relative flex-1 min-w-0 p-[1.5px] rounded-2xl overflow-hidden shadow-xs group"
+                >
+                  {/* Rotating Conic Gradient Border */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -inset-[80%] bg-[conic-gradient(from_0deg,#10b981_0deg,#0f766e_70deg,#cbd5e1_140deg,#34d399_220deg,#0ea5e9_290deg,#10b981_360deg)] animate-sidebar-orbit opacity-85 group-hover:opacity-100 transition-opacity"
+                  />
+
+                  {/* Inner Crisp Brand Card */}
+                  <div
+                    className={`relative bg-white rounded-[14px] transition-all duration-200 ${
+                      isSidebarCollapsed
+                        ? 'flex flex-col items-center justify-center text-center gap-1.5 px-1.5 py-2.5'
+                        : 'flex items-center gap-2.5 px-2.5 py-2.5'
+                    }`}
+                  >
+                    {/* Subtle Corner Accent Ticks */}
+                    <span aria-hidden="true" className="pointer-events-none absolute top-1 left-1 w-1.5 h-1.5 border-t border-l border-emerald-500/70 rounded-tl-[2px]" />
+                    <span aria-hidden="true" className="pointer-events-none absolute bottom-1 right-1 w-1.5 h-1.5 border-b border-r border-emerald-500/70 rounded-br-[2px]" />
+
+                    {/* Animated Emblem Icon */}
+                    <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 flex items-center justify-center text-white font-bold shadow-sm shrink-0 overflow-hidden transition-transform duration-300 group-hover:scale-105">
+                      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/25 animate-sidebar-sheen" />
+                      <Receipt className="w-4 h-4 relative z-10 transition-transform duration-300 group-hover:-rotate-6" />
                     </div>
-                    <div className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded inline-block">
-                      Rekap Transparan
+
+                    {/* Full Company Name — ALWAYS visible and never truncated/covered */}
+                    <div className={isSidebarCollapsed ? 'w-full min-w-0' : 'flex-1 min-w-0'}>
+                      <div
+                        className={`font-extrabold tracking-tight text-slate-900 break-words whitespace-normal ${
+                          isSidebarCollapsed
+                            ? 'text-[11px] leading-[1.2] text-center'
+                            : 'text-[13px] leading-snug text-left'
+                        }`}
+                      >
+                        {storeName}
+                      </div>
+                      {!isSidebarCollapsed && (
+                        <div className="text-[10px] text-emerald-700 font-semibold mt-0.5 leading-none">
+                          Rekap Transparan
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
+
+                {/* Mobile Close Button (shown only inside mobile drawer) */}
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="md:hidden p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg shrink-0 mt-1"
+                  aria-label="Tutup Menu"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-
-              {/* Desktop Collapse Button */}
-              <button
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                className="hidden md:flex p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
-                title={isSidebarCollapsed ? 'Perlebar Sidebar' : 'Kecilkan Sidebar'}
-              >
-                {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-              </button>
-
-              {/* Mobile Close Button */}
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="md:hidden p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Firebase Live Cloud Status */}
-            <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/60 flex items-center justify-center">
-              <FirebaseStatusBadge compact={isSidebarCollapsed} />
             </div>
 
             {/* Navigation Items List */}
-            <nav className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-280px)]">
+            <nav className={`flex-1 min-h-0 overflow-y-auto scrollbar-none ${isSidebarCollapsed ? 'px-2 py-2.5 space-y-1.5' : 'p-3 space-y-1'}`}>
               {navItems.map((item) => {
                 const isActive = activeTab === item.id;
                 return (
@@ -252,24 +300,74 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                       setActiveTab(item.id);
                       setIsMobileMenuOpen(false);
                     }}
-                    title={item.label}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
+                    title={`${item.label}${item.description ? ` — ${item.description}` : ''}`}
+                    className={`relative w-full overflow-hidden rounded-xl font-semibold transition-all duration-200 group border ${
+                      isSidebarCollapsed
+                        ? 'flex flex-col items-center justify-center gap-1 px-1.5 py-2'
+                        : 'flex items-center gap-3 px-3 py-2.5 text-xs'
+                    } ${
                       isActive
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    } ${isSidebarCollapsed ? 'justify-center px-2' : ''}`}
+                        ? 'bg-slate-900 text-white border-emerald-400/70 shadow-sm'
+                        : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/90 hover:border-slate-200/80'
+                    }`}
                   >
-                    <span className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-900'}`}>
+                    {/* Living Light Sheen on Active Nav Tile */}
+                    {isActive && (
+                      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/10 animate-sidebar-sheen" />
+                    )}
+
+                    {/* Active Edge Accent Strip */}
+                    {isActive && (
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none absolute bg-emerald-400 rounded-full ${
+                          isSidebarCollapsed
+                            ? 'top-0 inset-x-4 h-[2.5px]'
+                            : 'left-0 inset-y-2 w-[3px]'
+                        }`}
+                      />
+                    )}
+
+                    {/* Icon Container with Optional Corner Badge in Collapsed Mode */}
+                    <span
+                      className={`relative flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-105 ${
+                        isSidebarCollapsed
+                          ? `w-8 h-8 rounded-lg ${isActive ? 'bg-white/15 text-emerald-300' : 'bg-slate-100/80 text-slate-600 group-hover:bg-emerald-50 group-hover:text-emerald-700'}`
+                          : isActive
+                          ? 'text-emerald-300'
+                          : 'text-slate-500 group-hover:text-emerald-700'
+                      }`}
+                    >
                       {item.icon}
+                      {isSidebarCollapsed && typeof item.badge === 'number' && (
+                        <span
+                          className={`absolute -top-1 -right-2 min-w-[18px] h-4 px-1 rounded-full text-[9px] font-mono font-bold tabular-nums flex items-center justify-center border shadow-2xs ${
+                            isActive
+                              ? 'bg-emerald-500 text-white border-slate-900'
+                              : 'bg-slate-800 text-white border-white'
+                          }`}
+                        >
+                          {item.badge > 99 ? '99+' : item.badge}
+                        </span>
+                      )}
                     </span>
 
-                    {!isSidebarCollapsed && (
-                      <div className="flex-1 text-left truncate flex items-center justify-between">
+                    {/* Collapsed Micro Label vs Expanded Label */}
+                    {isSidebarCollapsed ? (
+                      <span
+                        className={`text-[10px] leading-tight text-center w-full truncate ${
+                          isActive ? 'text-white font-bold' : 'text-slate-600 group-hover:text-slate-900 font-semibold'
+                        }`}
+                      >
+                        {item.shortLabel}
+                      </span>
+                    ) : (
+                      <div className="flex-1 text-left truncate flex items-center justify-between gap-2">
                         <span className="truncate">{item.label}</span>
                         {typeof item.badge === 'number' && (
                           <span
-                            className={`text-[11px] px-1.5 py-0.2 rounded-full font-mono tabular-nums ${
-                              isActive ? 'bg-slate-700 text-slate-200' : 'bg-slate-200 text-slate-700'
+                            className={`text-[11px] px-1.5 py-0.5 rounded-full font-mono tabular-nums ${
+                              isActive ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-slate-200/80 text-slate-700'
                             }`}
                           >
                             {item.badge}
@@ -283,84 +381,39 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
             </nav>
           </div>
 
-          {/* Bottom Sidebar Widgets & Quick Actions */}
-          <div className="p-3 border-t border-slate-100 space-y-3 bg-slate-50/50">
-            
-            {/* Quick Stats Box (if expanded) */}
-            {!isSidebarCollapsed && (
-              <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-xs">
-                <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                  <span className="flex items-center gap-1 font-medium">
-                    <Wallet className="w-3 h-3 text-emerald-600" /> Total Cashback
-                  </span>
-                  <span className="text-emerald-700 font-bold">Aktif</span>
+          {/* Bottom Sidebar Footer */}
+          {(!isSidebarCollapsed || onOpenAbout) && (
+            <div className={`border-t border-slate-100 bg-slate-50/70 ${isSidebarCollapsed ? 'p-2 space-y-2' : 'p-3 space-y-2'}`}>
+              {/* PWA Install Button */}
+              {!isSidebarCollapsed && (
+                <div>
+                  <PWAInstallButton className="w-full justify-center" variant="chip" />
                 </div>
-                <div className="text-sm font-bold font-mono tabular-nums text-slate-900">
-                  {formatRupiah(totalCashbackSum)}
-                </div>
-              </div>
-            )}
+              )}
 
-            {/* PWA Install Button */}
-            {!isSidebarCollapsed && (
-              <div className="pt-1">
-                <PWAInstallButton className="w-full justify-center" variant="chip" />
-              </div>
-            )}
-
-            {/* Position Selector Widget & Excel Actions */}
-            <div className={`flex items-center justify-between gap-1 pt-1 ${isSidebarCollapsed ? 'flex-col' : ''}`}>
-              {onOpenImportExcel && (
+              {onOpenAbout && (
                 <button
-                  onClick={onOpenImportExcel}
-                  title="Import data faktur dari file Excel (.xlsx)"
-                  className={`p-2 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center justify-center gap-1 ${
-                    isSidebarCollapsed ? 'w-full' : 'flex-1'
+                  type="button"
+                  onClick={() => {
+                    onOpenAbout();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  title="Tentang Aplikasi & Hak Cipta (Denuda)"
+                  className={`w-full py-1.5 px-2 text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors flex items-center ${
+                    isSidebarCollapsed ? 'justify-center gap-1 text-[10px]' : 'justify-between px-2.5'
                   }`}
                 >
-                  <Upload className="w-3.5 h-3.5 shrink-0" />
-                  {!isSidebarCollapsed && <span className="text-[11px]">Import</span>}
+                  <span className="flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{isSidebarCollapsed ? 'Info' : 'Tentang Aplikasi'}</span>
+                  </span>
+                  {!isSidebarCollapsed && (
+                    <span className="text-[10px] text-slate-400 font-medium">&copy; Denuda</span>
+                  )}
                 </button>
               )}
-              <button
-                onClick={onExportExcel}
-                title="Export data ke file Excel (.xlsx)"
-                className={`p-2 text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors flex items-center justify-center gap-1 ${
-                  isSidebarCollapsed ? 'w-full' : 'flex-1'
-                }`}
-              >
-                <Download className="w-3.5 h-3.5 shrink-0" />
-                {!isSidebarCollapsed && <span className="text-[11px]">Export</span>}
-              </button>
-
-              <div title="Pindah posisi navigasi (Samping / Atas / Bawah)">
-                <PositionSwitcher compact={isSidebarCollapsed} />
-              </div>
             </div>
-
-            {onOpenAbout && (
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenAbout();
-                  setIsMobileMenuOpen(false);
-                }}
-                title="Tentang Aplikasi & Hak Cipta (Denuda)"
-                className={`w-full py-1.5 px-2.5 text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors flex items-center ${
-                  isSidebarCollapsed ? 'justify-center' : 'justify-between'
-                }`}
-              >
-                <span className="flex items-center gap-1.5">
-                  <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  {!isSidebarCollapsed && <span>Tentang Aplikasi</span>}
-                </span>
-                {!isSidebarCollapsed && (
-                  <span className="text-[10px] text-slate-400 font-medium">&copy; Denuda</span>
-                )}
-              </button>
-            )}
-
-          </div>
+          )}
         </aside>
 
         {/* Main Content Area */}

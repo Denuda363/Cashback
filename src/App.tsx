@@ -839,7 +839,7 @@ export default function App() {
       totalInvoicesCount={invoices.length}
       totalMasterCustomersCount={customers.length}
       totalCashbackSum={totalCashbackSum}
-      storeName={settings.storeName}
+      storeName={settings.companyProfile?.companyName || settings.storeName}
       isFirebaseConnected={isFirebaseConnected}
     >
       {/* Main Viewport Container */}
