@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Printer,
@@ -6,13 +6,11 @@ import {
   ShieldCheck,
   Gift,
   Coins,
-  ChevronLeft,
-  ChevronRight,
   Sparkles,
   Copy,
 } from 'lucide-react';
-import { CustomerSummary, Invoice, CompanyProfile, CustomerBenefitType } from '../types/cashback';
-import { formatRupiah, getBenefitLabel } from '../utils/cashbackCalculator';
+import { CustomerSummary, CompanyProfile, CustomerBenefitType } from '../types/cashback';
+import { formatRupiah } from '../utils/cashbackCalculator';
 
 interface OfficialReceiptModalProps {
   customer: CustomerSummary | null;
@@ -42,38 +40,12 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
   companyProfile,
   storeName = 'CashbackPro',
 }) => {
-  // Configuration: number of invoice rows per page (user adjustable)
-  const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(5);
-  const [currentPage, setCurrentPage] = useState<number>(1);
   const [activeRangkap, setActiveRangkap] = useState<1 | 2>(1);
 
-  // Reset pagination when customer changes
+  // Reset active copy preview when customer changes
   useEffect(() => {
-    setCurrentPage(1);
     setActiveRangkap(1);
   }, [customer?.customerCode, customer?.customerName]);
-
-  const invoicesList: Invoice[] = useMemo(() => customer?.invoices || [], [customer]);
-  const totalInvoices = invoicesList.length;
-
-  const effectiveRowsPerPage = rowsPerPage === 'all' ? Math.max(1, totalInvoices) : rowsPerPage;
-  const totalPages = Math.max(1, Math.ceil(Math.max(1, totalInvoices) / effectiveRowsPerPage));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-
-  // Generate chunks for printing so all pages print cleanly when multi-page
-  const printChunks = useMemo(() => {
-    if (totalInvoices === 0) {
-      return [[]];
-    }
-    if (rowsPerPage === 'all' || totalInvoices <= effectiveRowsPerPage) {
-      return [invoicesList];
-    }
-    const chunks: Invoice[][] = [];
-    for (let i = 0; i < totalInvoices; i += effectiveRowsPerPage) {
-      chunks.push(invoicesList.slice(i, i + effectiveRowsPerPage));
-    }
-    return chunks;
-  }, [invoicesList, effectiveRowsPerPage, rowsPerPage, totalInvoices]);
 
   // All React hooks MUST be called before conditional early return!
   if (!customer) return null;
@@ -168,44 +140,6 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
               ))}
             </div>
 
-            {/* Setting: Banyak Baris per Halaman */}
-            <div className="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700 text-xs">
-              <span className="text-slate-400 text-[11px] whitespace-nowrap">Baris/Hal:</span>
-              <div className="flex items-center gap-1">
-                {[5, 10, 15, 20].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => {
-                      setRowsPerPage(num);
-                      setCurrentPage(1);
-                    }}
-                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all ${
-                      rowsPerPage === num
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-300 hover:bg-slate-700'
-                    }`}
-                  >
-                    {num}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRowsPerPage('all');
-                    setCurrentPage(1);
-                  }}
-                  className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all ${
-                    rowsPerPage === 'all'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-300 hover:bg-slate-700'
-                  }`}
-                >
-                  Semua
-                </button>
-              </div>
-            </div>
-
             {/* Print Button (2 Rangkap) */}
             <button
               type="button"
@@ -231,28 +165,21 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
         {/* Printable Document Paper Area (Strictly 2 Rangkap) */}
         <div className="p-5 sm:p-8 overflow-y-auto flex-1 font-sans text-xs space-y-6 print:p-0 print:overflow-visible print:block print:space-y-0">
           
-          {RANGKAP_CONFIG.map((rangkap, rangkapIndex) =>
-            printChunks.map((chunk, pageIndex) => {
-              const pageNum = pageIndex + 1;
-              const isLastPageOfCopy = pageIndex === printChunks.length - 1;
-              const isVeryLastPage = rangkapIndex === RANGKAP_CONFIG.length - 1 && isLastPageOfCopy;
+          {RANGKAP_CONFIG.map((rangkap, rangkapIndex) => {
+            const isVeryLastPage = rangkapIndex === RANGKAP_CONFIG.length - 1;
+            const isVisibleOnScreen = rangkap.copyNum === activeRangkap;
 
-              // On screen: only show the currently selected Rangkap & page (or all pages if rowsPerPage === 'all')
-              const isVisibleOnScreen =
-                rangkap.copyNum === activeRangkap &&
-                (rowsPerPage === 'all' || pageNum === safeCurrentPage);
-
-              return (
-                <div
-                  key={`rangkap-${rangkap.copyNum}-page-${pageIndex}`}
-                  className={`space-y-4 print:block ${
-                    isVisibleOnScreen ? 'block' : 'hidden'
-                  }`}
-                  style={{
-                    breakAfter: isVeryLastPage ? 'auto' : 'page',
-                    pageBreakAfter: isVeryLastPage ? 'auto' : 'always',
-                  }}
-                >
+            return (
+              <div
+                key={`rangkap-${rangkap.copyNum}`}
+                className={`space-y-4 print:block ${
+                  isVisibleOnScreen ? 'block' : 'hidden'
+                }`}
+                style={{
+                  breakAfter: isVeryLastPage ? 'auto' : 'page',
+                  pageBreakAfter: isVeryLastPage ? 'auto' : 'always',
+                }}
+              >
                   {/* Copy / Rangkap Header Strip */}
                   <div className="flex items-center justify-between gap-2 pb-1">
                     <span className={`inline-block px-2.5 py-0.5 rounded text-[10px] font-black tracking-wider uppercase border ${rangkap.badgeClass}`}>
@@ -303,7 +230,7 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
                         Tanggal: <strong>{docDate}</strong>
                       </div>
                       <div className="text-[9px] text-slate-500 font-mono mt-0.5">
-                        Rangkap {rangkap.copyNum}/2 • Hal. {pageNum}/{printChunks.length}
+                        Rangkap {rangkap.copyNum} dari 2
                       </div>
                     </div>
                   </div>
@@ -411,131 +338,23 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
                     </div>
                   </div>
 
-                  {/* 5. TABEL RINCIAN FAKTUR TRANSAKSI */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-bold text-slate-800">
-                        Rincian Faktur Belanja Acuan Cashback (Halaman {pageNum} dari {printChunks.length}):
-                      </span>
-                      <span className="text-slate-500 font-mono">
-                        Menampilkan {chunk.length} dari {totalInvoices} faktur
-                      </span>
+                  {/* 5. REKAPITULASI TOTAL & TANDA TANGAN */}
+                  <div className="p-3.5 bg-emerald-50/80 border border-emerald-300 rounded-xl space-y-1 text-center print:bg-emerald-50">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-900 block">
+                      TOTAL DANA CASHBACK TUNAI YANG DISERAHKAN
+                    </span>
+                    <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-900 tracking-tight">
+                      {formatRupiah(totalCashbackAmount)}
                     </div>
-
-                    <div className="border border-slate-300 rounded-lg overflow-hidden">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-slate-100 text-slate-800 font-bold text-[10px] uppercase border-b border-slate-300">
-                          <tr>
-                            <th className="py-2 px-2.5 text-center w-8 border-r border-slate-200">No</th>
-                            <th className="py-2 px-3 border-r border-slate-200">No. Faktur</th>
-                            <th className="py-2 px-3 border-r border-slate-200">Tanggal</th>
-                            <th className="py-2 px-3 border-r border-slate-200">Kategori & Uraian Barang</th>
-                            <th className="py-2 px-3 text-right border-r border-slate-200">Nilai Belanja</th>
-                            <th className="py-2 px-2.5 text-center w-14 border-r border-slate-200">% Rate</th>
-                            <th className="py-2 px-3 text-right border-r border-slate-200">Nilai Cashback</th>
-                            <th className="py-2 px-2.5 text-center w-28">Paket Diterima</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 font-mono text-[11px]">
-                          {chunk.length === 0 ? (
-                            <tr>
-                              <td colSpan={8} className="py-4 px-3 text-center font-sans text-slate-500 italic">
-                                Tidak ada rincian faktur pada periode filter ini.
-                              </td>
-                            </tr>
-                          ) : (
-                            chunk.map((inv, idx) => {
-                              const globalIdx = (pageIndex * effectiveRowsPerPage) + idx + 1;
-                              return (
-                                <tr key={inv.id} className="hover:bg-slate-50/70">
-                                  <td className="py-1.5 px-2.5 text-center border-r border-slate-200 text-slate-600">
-                                    {globalIdx}
-                                  </td>
-                                  <td className="py-1.5 px-3 font-semibold text-slate-900 border-r border-slate-200 whitespace-nowrap">
-                                    {inv.invoiceNumber}
-                                  </td>
-                                  <td className="py-1.5 px-3 text-slate-700 border-r border-slate-200 whitespace-nowrap">
-                                    {inv.date}
-                                  </td>
-                                  <td className="py-1.5 px-3 font-sans text-slate-800 border-r border-slate-200">
-                                    <div className="font-semibold">{inv.category}</div>
-                                    {inv.itemsDescription && (
-                                      <div className="text-[10px] text-slate-500 truncate max-w-xs">{inv.itemsDescription}</div>
-                                    )}
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-semibold text-slate-900 border-r border-slate-200 whitespace-nowrap">
-                                    {formatRupiah(inv.purchaseAmount)}
-                                  </td>
-                                  <td className="py-1.5 px-2.5 text-center text-slate-700 border-r border-slate-200 whitespace-nowrap">
-                                    {inv.cashbackPercentage}%
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-bold text-emerald-800 border-r border-slate-200 whitespace-nowrap">
-                                    {formatRupiah(inv.cashbackAmount)}
-                                  </td>
-                                  <td className="py-1.5 px-2.5 text-center font-sans whitespace-nowrap">
-                                    {benefitType === 'cashback_parcel' ? (
-                                      <span className="text-[10px] font-bold text-purple-800 bg-purple-100 px-1.5 py-0.5 rounded">
-                                        Cashback + Parsel
-                                      </span>
-                                    ) : benefitType === 'parcel_only' ? (
-                                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
-                                        Parcel
-                                      </span>
-                                    ) : (
-                                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
-                                        Cashback
-                                      </span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                        {isLastPageOfCopy && (
-                          <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-xs">
-                            <tr>
-                              <td colSpan={4} className="py-2.5 px-3 text-slate-900 font-sans text-right">
-                                TOTAL AKUMULASI TRANSAKSI:
-                              </td>
-                              <td className="py-2.5 px-3 text-right font-mono text-slate-900 border-r border-slate-200">
-                                {formatRupiah(customer.totalPurchase)}
-                              </td>
-                              <td className="py-2.5 px-2.5 text-center font-mono text-slate-600 border-r border-slate-200">
-                                -
-                              </td>
-                              <td className="py-2.5 px-3 text-right font-mono text-emerald-800 font-black border-r border-slate-200 text-sm">
-                                {formatRupiah(totalCashbackAmount)}
-                              </td>
-                              <td className="py-2.5 px-2.5 text-center font-sans text-slate-900">
-                                {getBenefitLabel(benefitType)}
-                              </td>
-                            </tr>
-                          </tfoot>
-                        )}
-                      </table>
+                    <div className="text-xs italic text-slate-700 font-serif">
+                      Terbilang: #{terbilang(totalCashbackAmount)} Rupiah#
                     </div>
                   </div>
 
-                  {/* 6. REKAPITULASI TOTAL & TANDA TANGAN (Hanya pada Halaman Terakhir setiap Rangkap) */}
-                  {isLastPageOfCopy && (
-                    <>
-                      <div className="p-3.5 bg-emerald-50/80 border border-emerald-300 rounded-xl space-y-1 text-center print:bg-emerald-50">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-900 block">
-                          TOTAL DANA CASHBACK TUNAI YANG DISERAHKAN
-                        </span>
-                        <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-900 tracking-tight">
-                          {formatRupiah(totalCashbackAmount)}
-                        </div>
-                        <div className="text-xs italic text-slate-700 font-serif">
-                          Terbilang: #{terbilang(totalCashbackAmount)} Rupiah#
-                        </div>
-                      </div>
-
-                      {/* Klausul Legal Berita Acara */}
-                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-[10px] sm:text-[11px] text-slate-600 leading-relaxed print:bg-white print:border-slate-300">
-                        <strong>Pernyataan Berita Acara ({rangkap.shortLabel}):</strong> Dengan ditandatanganinya Berita Acara & Tanda Terima ini, Pihak Pertama telah menyerahkan secara tunai (cash) dan Pihak Kedua telah menerima dana reward cashback belanja dan/atau bingkisan parsel sesuai data rincian di atas dalam keadaan baik, lengkap, dan sah. Dokumen ini diterbitkan dalam 2 (dua) rangkap resmi yang memiliki kekuatan hukum yang sama.
-                      </div>
+                  {/* Klausul Legal Berita Acara */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-[10px] sm:text-[11px] text-slate-600 leading-relaxed print:bg-white print:border-slate-300">
+                    <strong>Pernyataan Berita Acara ({rangkap.shortLabel}):</strong> Dengan ditandatanganinya Berita Acara & Tanda Terima ini, Pihak Pertama telah menyerahkan secara tunai (cash) dan Pihak Kedua telah menerima dana reward cashback belanja dan/atau bingkisan parsel sebagaimana tercantum pada tanda terima ini dalam keadaan baik, lengkap, dan sah. Dokumen ini diterbitkan dalam 2 (dua) rangkap resmi yang memiliki kekuatan hukum yang sama.
+                  </div>
 
                       {/* 7. KOTAK TANDA TANGAN & DOKUMENTASI FOTO */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
@@ -621,72 +440,20 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
 
                       </div>
 
-                      {/* Catatan Kaki / Kebijakan */}
-                      <div className="pt-2.5 border-t border-slate-200 text-center space-y-0.5">
-                        <p className="text-[10px] text-slate-500 italic">
-                          {companyProfile?.footerNotes || 'Tanda terima resmi ini dicetak otomatis oleh sistem dalam 2 rangkap sebagai bukti sah serah terima cashback tunai.'}
-                        </p>
-                        <p className="text-[9px] text-slate-400 font-mono">
-                          {rangkap.badge} • Dicetak pada: {new Date().toLocaleString('id-ID')}
-                        </p>
-                      </div>
-                    </>
-                  )}
+                  {/* Catatan Kaki / Kebijakan */}
+                  <div className="pt-2.5 border-t border-slate-200 text-center space-y-0.5">
+                    <p className="text-[10px] text-slate-500 italic">
+                      {companyProfile?.footerNotes || 'Tanda terima resmi ini dicetak otomatis oleh sistem dalam 2 rangkap sebagai bukti sah serah terima cashback tunai.'}
+                    </p>
+                    <p className="text-[9px] text-slate-400 font-mono">
+                      {rangkap.badge} • Dicetak pada: {new Date().toLocaleString('id-ID')}
+                    </p>
+                  </div>
                 </div>
               );
-            })
-          )}
+            })}
 
         </div>
-
-        {/* Screen Pagination Controls (Hidden on Print) */}
-        {rowsPerPage !== 'all' && totalPages > 1 && (
-          <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0 print:hidden text-xs">
-            <span className="text-slate-600 text-[11px]">
-              Pratinjau <strong>Rangkap {activeRangkap}/2</strong> — Halaman <strong>{safeCurrentPage}</strong> dari <strong>{totalPages}</strong> ({totalInvoices} faktur)
-            </span>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={safeCurrentPage <= 1}
-                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 transition-colors"
-                title="Halaman Sebelumnya"
-              >
-                <ChevronLeft className="w-4 h-4 text-slate-700" />
-              </button>
-
-              {Array.from({ length: totalPages }).map((_, i) => {
-                const p = i + 1;
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setCurrentPage(p)}
-                    className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-colors ${
-                      safeCurrentPage === p
-                        ? 'bg-slate-900 text-white'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safeCurrentPage >= totalPages}
-                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 transition-colors"
-                title="Halaman Berikutnya"
-              >
-                <ChevronRight className="w-4 h-4 text-slate-700" />
-              </button>
-            </div>
-          </div>
-        )}
 
       </div>
     </div>
