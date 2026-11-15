@@ -840,6 +840,7 @@ export default function App() {
       totalMasterCustomersCount={customers.length}
       totalCashbackSum={totalCashbackSum}
       storeName={settings.companyProfile?.companyName || settings.storeName}
+      companyLogoUrl={settings.companyProfile?.logoUrl}
       isFirebaseConnected={isFirebaseConnected}
     >
       {/* Main Viewport Container */}

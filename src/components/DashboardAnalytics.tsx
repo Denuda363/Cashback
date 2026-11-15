@@ -140,7 +140,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <h1 className="text-sm sm:text-lg font-bold text-slate-900 truncate">
-                  Dashboard Analitik
+                  Dashboard
                 </h1>
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800">
                   {settings.mode === 'flat' ? `${settings.flatPercentage}% Flat` : 'Tiered'}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart3,
   Trophy,
@@ -29,6 +29,7 @@ interface SmartNavigationProps {
   totalMasterCustomersCount: number;
   totalCashbackSum?: number;
   storeName?: string;
+  companyLogoUrl?: string;
   isFirebaseConnected?: boolean;
   children: React.ReactNode;
 }
@@ -41,18 +42,55 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   totalInvoicesCount,
   totalMasterCustomersCount,
   storeName = 'CashbackPro',
+  companyLogoUrl,
   children,
 }) => {
   // Mobile drawer state (for sidebar mode on mobile)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // Collapsible sidebar state on desktop (md+)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [companyLogoUrl]);
+
+  const hasValidLogo = Boolean(companyLogoUrl && !logoError);
+
+  const renderBrandEmblem = (sizeClass: string, iconClass: string, withHoverTilt = false) => (
+    <div
+      className={`relative ${sizeClass} rounded-xl flex items-center justify-center font-bold shadow-sm shrink-0 overflow-hidden transition-transform duration-300 ${
+        hasValidLogo
+          ? 'bg-white border border-slate-100 p-1'
+          : 'bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 text-white'
+      } ${withHoverTilt ? 'group-hover:scale-105' : ''}`}
+    >
+      {!hasValidLogo && (
+        <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/25 animate-sidebar-sheen" />
+      )}
+      {hasValidLogo ? (
+        <img
+          src={companyLogoUrl}
+          alt={`Logo ${storeName}`}
+          referrerPolicy="no-referrer"
+          onError={() => setLogoError(true)}
+          className="w-full h-full object-contain relative z-10"
+        />
+      ) : (
+        <Receipt
+          className={`${iconClass} relative z-10 ${
+            withHoverTilt ? 'transition-transform duration-300 group-hover:-rotate-6' : ''
+          }`}
+        />
+      )}
+    </div>
+  );
 
   // Mobile drawer always uses full neat expanded layout
   const showCollapsed = isSidebarCollapsed && !isMobileMenuOpen;
 
   const navItems: { id: ActiveTab; label: string; shortLabel: string; icon: React.ReactNode; badge?: number; description?: string }[] = [
-    { id: 'dashboard', label: 'Dashboard Analitik', shortLabel: 'Dashboard', icon: <BarChart3 className="w-4 h-4" />, description: 'Ringkasan & tren omset' },
+    { id: 'dashboard', label: 'Dashboard', shortLabel: 'Dashboard', icon: <BarChart3 className="w-4 h-4" />, description: 'Ringkasan & tren omset' },
     { id: 'top10', label: '10 Besar Tertinggi', shortLabel: 'Top 10', icon: <Trophy className="w-4 h-4" />, description: 'Podium reward konsumen' },
     { id: 'invoices', label: 'Rekap Faktur', shortLabel: 'Faktur', icon: <FileSpreadsheet className="w-4 h-4" />, badge: totalInvoicesCount, description: 'Riwayat data pembelian' },
     { id: 'payout_records', label: 'Penerimaan Cashback', shortLabel: 'Penerimaan', icon: <CheckCircle2 className="w-4 h-4" />, description: 'Rekap serah terima & bukti' },
@@ -90,10 +128,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                     aria-hidden="true"
                     className="pointer-events-none absolute -inset-[80%] bg-[conic-gradient(from_0deg,#10b981_0deg,#0f766e_70deg,#cbd5e1_140deg,#34d399_220deg,#0ea5e9_290deg,#10b981_360deg)] animate-sidebar-orbit opacity-90"
                   />
-                  <div className="relative w-8 h-8 rounded-[10px] bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 flex items-center justify-center text-white overflow-hidden">
-                    <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/25 animate-sidebar-sheen" />
-                    <Receipt className="w-4 h-4 relative z-10" />
-                  </div>
+                  {renderBrandEmblem('w-8 h-8 rounded-[10px]', 'w-4 h-4')}
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -195,11 +230,8 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                     <span aria-hidden="true" className="pointer-events-none absolute top-1 left-1 w-1.5 h-1.5 border-t border-l border-emerald-500/70 rounded-tl-[2px]" />
                     <span aria-hidden="true" className="pointer-events-none absolute bottom-1 right-1 w-1.5 h-1.5 border-b border-r border-emerald-500/70 rounded-br-[2px]" />
 
-                    {/* Animated Emblem Icon */}
-                    <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 flex items-center justify-center text-white font-bold shadow-sm shrink-0 overflow-hidden transition-transform duration-300 group-hover:scale-105">
-                      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/25 animate-sidebar-sheen" />
-                      <Receipt className="w-4 h-4 relative z-10 transition-transform duration-300 group-hover:-rotate-6" />
-                    </div>
+                    {/* Animated Emblem Icon / Uploaded Company Logo */}
+                    {renderBrandEmblem('w-9 h-9', 'w-4 h-4', true)}
 
                     {/* Full Company Name — ALWAYS visible and never truncated/covered */}
                     <div className={showCollapsed ? 'w-full min-w-0' : 'flex-1 min-w-0'}>
@@ -453,10 +485,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                     aria-hidden="true"
                     className="pointer-events-none absolute -inset-[80%] bg-[conic-gradient(from_0deg,#10b981_0deg,#0f766e_70deg,#cbd5e1_140deg,#34d399_220deg,#0ea5e9_290deg,#10b981_360deg)] animate-sidebar-orbit opacity-90"
                   />
-                  <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-[10px] bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 flex items-center justify-center text-white overflow-hidden">
-                    <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/25 animate-sidebar-sheen" />
-                    <Receipt className="w-4 h-4 relative z-10" />
-                  </div>
+                  {renderBrandEmblem('w-8 h-8 sm:w-9 sm:h-9 rounded-[10px]', 'w-4 h-4')}
                 </div>
                 <div className="min-w-0">
                   <span className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 break-words leading-tight block">
@@ -576,10 +605,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                 aria-hidden="true"
                 className="pointer-events-none absolute -inset-[80%] bg-[conic-gradient(from_0deg,#10b981_0deg,#0f766e_70deg,#cbd5e1_140deg,#34d399_220deg,#0ea5e9_290deg,#10b981_360deg)] animate-sidebar-orbit opacity-90"
               />
-              <div className="relative w-8 h-8 rounded-[10px] bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 flex items-center justify-center text-white overflow-hidden">
-                <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/25 animate-sidebar-sheen" />
-                <Receipt className="w-4 h-4 relative z-10" />
-              </div>
+              {renderBrandEmblem('w-8 h-8 rounded-[10px]', 'w-4 h-4')}
             </div>
             <div className="min-w-0">
               <span className="font-extrabold text-slate-900 text-[13px] sm:text-sm leading-tight break-words block">

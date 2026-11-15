@@ -14,6 +14,7 @@ export interface TierRule {
 
 export interface CompanyProfile {
   companyName: string;
+  logoUrl?: string;
   tagline?: string;
   address?: string;
   city?: string;

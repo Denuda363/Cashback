@@ -74,6 +74,7 @@
           "type": "object",
           "properties": {
             "companyName": { "type": "string" },
+            "logoUrl": { "type": "string", "description": "Data URL logo perusahaan terkompresi" },
             "tagline": { "type": "string" },
             "address": { "type": "string" },
             "city": { "type": "string" },

@@ -97,6 +97,16 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         <div className="p-6 text-xs font-sans space-y-4 print:p-0">
           
           <div className="text-center pb-3 border-b border-dashed border-slate-300">
+            {settings.companyProfile?.logoUrl && (
+              <div className="w-14 h-14 mx-auto mb-2 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center overflow-hidden shadow-2xs">
+                <img
+                  src={settings.companyProfile.logoUrl}
+                  alt={`Logo ${settings.companyProfile.companyName || settings.storeName}`}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            )}
             <h3 className="font-extrabold text-base text-slate-900 tracking-tight">
               {settings.companyProfile?.companyName || settings.storeName}
             </h3>

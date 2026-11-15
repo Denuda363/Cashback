@@ -28,7 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   totalMasterCustomersCount,
 }) => {
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: 'dashboard', label: 'Dashboard Analitik', icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'top10', label: '10 Besar Tertinggi', icon: <Trophy className="w-4 h-4" /> },
     { id: 'invoices', label: 'Rekap Faktur', icon: <FileSpreadsheet className="w-4 h-4" />, badge: totalInvoicesCount },
     { id: 'payout_records', label: 'Penerimaan Cashback', icon: <CheckCircle2 className="w-4 h-4" /> },

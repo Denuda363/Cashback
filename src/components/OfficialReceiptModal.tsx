@@ -194,9 +194,20 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
                   <div className="pb-3 border-b-4 border-double border-slate-900 flex items-start justify-between gap-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-lg bg-emerald-700 text-white flex items-center justify-center font-black text-lg shadow-xs print:border print:border-slate-800 shrink-0">
-                          {(companyProfile?.companyName || storeName).charAt(0).toUpperCase()}
-                        </div>
+                        {companyProfile?.logoUrl ? (
+                          <div className="w-12 h-12 rounded-lg border border-slate-200 bg-white p-1 flex items-center justify-center shrink-0 overflow-hidden print:border-slate-400">
+                            <img
+                              src={companyProfile.logoUrl}
+                              alt={`Logo ${companyProfile.companyName || storeName}`}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-emerald-700 text-white flex items-center justify-center font-black text-lg shadow-xs print:border print:border-slate-800 shrink-0">
+                            {(companyProfile?.companyName || storeName).charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <div>
                           <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-tight uppercase">
                             {companyProfile?.companyName || storeName}

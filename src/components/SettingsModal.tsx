@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, 
   Settings as SettingsIcon, 
@@ -32,7 +32,8 @@ import {
   CreditCard,
   User,
   Shield,
-  FileText
+  FileText,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { CashbackSettings, CustomerMaster, Invoice, NavPosition, TierRule, CompanyProfile } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
@@ -106,6 +107,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const [companyName, setCompanyName] = useState<string>(initialCompany.companyName || settings.storeName || '');
+  const [logoUrl, setLogoUrl] = useState<string>(initialCompany.logoUrl || '');
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
   const [tagline, setTagline] = useState<string>(initialCompany.tagline || '');
   const [address, setAddress] = useState<string>(initialCompany.address || '');
   const [city, setCity] = useState<string>(initialCompany.city || '');
@@ -132,7 +136,120 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [simSpend, setSimSpend] = useState<number>(1500000);
   const [isPwaModalOpen, setIsPwaModalOpen] = useState(false);
 
+  // Sync draft logo & company profile whenever modal opens with latest Firestore settings
+  useEffect(() => {
+    if (!isOpen) return;
+    setLogoUrl(settings.companyProfile?.logoUrl || '');
+    setLogoError(null);
+    if (settings.companyProfile) {
+      setCompanyName(settings.companyProfile.companyName || settings.storeName || '');
+      setTagline(settings.companyProfile.tagline || '');
+      setAddress(settings.companyProfile.address || '');
+      setCity(settings.companyProfile.city || '');
+      setPhone(settings.companyProfile.phone || '');
+      setEmail(settings.companyProfile.email || '');
+      setWebsite(settings.companyProfile.website || '');
+      setTaxNumber(settings.companyProfile.taxNumber || '');
+      setPicName(settings.companyProfile.picName || '');
+      setPicTitle(settings.companyProfile.picTitle || '');
+      setBankName(settings.companyProfile.bankName || 'BCA');
+      setBankAccountNumber(settings.companyProfile.bankAccountNumber || '');
+      setBankAccountHolder(settings.companyProfile.bankAccountHolder || '');
+      setFooterNotes(settings.companyProfile.footerNotes || '');
+    }
+  }, [isOpen, settings]);
+
   if (!isOpen) return null;
+
+  const handleLogoFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError(null);
+
+    if (!file.type.startsWith('image/')) {
+      setLogoError('File harus berupa gambar (PNG, JPG, WebP, atau SVG).');
+      if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setLogoError('Ukuran file gambar maksimal 5 MB.');
+      if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (!dataUrl) {
+        setLogoError('Gagal membaca file gambar.');
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxDim = 240;
+          let width = img.naturalWidth || 240;
+          let height = img.naturalHeight || 240;
+
+          if (width > maxDim || height > maxDim) {
+            const ratio = Math.min(maxDim / width, maxDim / height);
+            width = Math.max(1, Math.round(width * ratio));
+            height = Math.max(1, Math.round(height * ratio));
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            setLogoError('Browser tidak mendukung pemrosesan gambar logo.');
+            return;
+          }
+
+          ctx.clearRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Preserve transparency with PNG first; fall back to WebP/JPEG if payload exceeds 120KB
+          let compressed = canvas.toDataURL('image/png');
+          if (compressed.length > 120_000) {
+            compressed = canvas.toDataURL('image/webp', 0.85);
+          }
+          if (compressed.length > 120_000) {
+            // Draw white backdrop before JPEG fallback
+            const jpegCanvas = document.createElement('canvas');
+            jpegCanvas.width = width;
+            jpegCanvas.height = height;
+            const jCtx = jpegCanvas.getContext('2d');
+            if (jCtx) {
+              jCtx.fillStyle = '#ffffff';
+              jCtx.fillRect(0, 0, width, height);
+              jCtx.drawImage(img, 0, 0, width, height);
+              compressed = jpegCanvas.toDataURL('image/jpeg', 0.82);
+            }
+          }
+
+          setLogoUrl(compressed);
+        } catch (err) {
+          console.error('Logo compression error:', err);
+          setLogoError('Gagal memproses logo perusahaan.');
+        } finally {
+          if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+        }
+      };
+      img.onerror = () => {
+        setLogoError('Format gambar tidak dapat dimuat.');
+        if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+      };
+      img.src = dataUrl;
+    };
+    reader.onerror = () => {
+      setLogoError('Gagal membaca file dari perangkat.');
+      if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleRestoreFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -241,6 +358,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const updatedCompanyProfile: CompanyProfile = {
       companyName: finalCompanyName,
+      logoUrl: logoUrl || '',
       tagline: tagline.trim(),
       address: address.trim(),
       city: city.trim(),
@@ -706,6 +824,77 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Grid Form Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 
+                {/* Upload Logo Perusahaan */}
+                <div className="sm:col-span-2 p-3.5 rounded-xl border border-slate-200 bg-slate-50/80 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3.5">
+                    <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                      {logoUrl ? (
+                        <img
+                          src={logoUrl}
+                          alt="Preview Logo Perusahaan"
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-contain p-1.5"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-400 text-center px-1">
+                          <ImageIcon className="w-6 h-6 mb-0.5 text-slate-300" />
+                          <span className="text-[9px] font-semibold leading-tight">Tanpa Logo</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div>
+                        <label className="block font-bold text-slate-800 text-xs">
+                          Logo Perusahaan / Usaha (Opsional)
+                        </label>
+                        <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
+                          Tampil di sidebar, header aplikasi, kop surat Tanda Terima Resmi, dan struk bukti konsumen. Format PNG, JPG, SVG, atau WebP.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          ref={logoFileInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                          onChange={handleLogoFileSelected}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => logoFileInputRef.current?.click()}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs transition-colors"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{logoUrl ? 'Ganti Logo' : 'Upload Logo'}</span>
+                        </button>
+
+                        {logoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLogoUrl('');
+                              setLogoError(null);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Hapus Logo</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {logoError && (
+                    <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-medium flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{logoError}</span>
+                    </div>
+                  )}
+                </div>
+
                 {/* Nama Perusahaan / Toko */}
                 <div className="sm:col-span-2">
                   <label className="block font-bold text-slate-700 mb-1">
