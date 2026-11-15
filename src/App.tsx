@@ -643,6 +643,7 @@ export default function App() {
       disbursedAt: string;
       payoutMethod: any;
       recipientName: string;
+      disbursedBy?: string;
       disbursementProofPhoto?: string;
       disbursementSignature?: string;
       disbursementNotes?: string;
@@ -657,6 +658,7 @@ export default function App() {
       disbursedAt: data.disbursedAt,
       payoutMethod: data.payoutMethod,
       recipientName: data.recipientName,
+      disbursedBy: data.disbursedBy,
       disbursementProofPhoto: data.disbursementProofPhoto,
       disbursementSignature: data.disbursementSignature,
       disbursementNotes: data.disbursementNotes,
@@ -683,6 +685,7 @@ export default function App() {
             disbursedAt: data.disbursedAt,
             payoutMethod: data.payoutMethod,
             recipientName: data.recipientName,
+            disbursedBy: data.disbursedBy,
             disbursementProofPhoto: data.disbursementProofPhoto,
             disbursementSignature: data.disbursementSignature,
             disbursementNotes: data.disbursementNotes,
@@ -717,6 +720,7 @@ export default function App() {
             claimStatus: 'ready' as const,
             disbursedDate: undefined,
             disbursedAt: undefined,
+            disbursedBy: undefined,
             disbursementProofPhoto: undefined,
             disbursementSignature: undefined,
             disbursementNotes: undefined,

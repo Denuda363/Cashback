@@ -267,7 +267,7 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
                         {companyProfile?.companyName || storeName}
                       </div>
                       <div className="text-[11px] text-slate-600">
-                        Petugas: <span className="font-semibold text-slate-800">{companyProfile?.picName || 'Kasir / Staf Keuangan'}</span> ({companyProfile?.picTitle || 'Finance / Store Officer'})
+                        Petugas: <span className="font-semibold text-slate-800">{customer.disbursedBy || companyProfile?.picName || 'Kasir / Staf Keuangan'}</span> ({companyProfile?.picTitle || 'Finance / Store Officer'})
                       </div>
                       <div className="text-[11px] text-slate-600">
                         Metode Penyerahan: <span className="font-bold text-emerald-800">Tunai (Cash)</span>
@@ -441,7 +441,7 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
                           </div>
                           <div className="text-center mt-1">
                             <span className="text-[11px] font-bold text-slate-900 block">
-                              {companyProfile?.picName || 'Kasir / Bagian Keuangan'}
+                              {customer.disbursedBy || companyProfile?.picName || 'Kasir / Bagian Keuangan'}
                             </span>
                             <span className="text-[9px] text-slate-500">
                               {companyProfile?.picTitle || 'Store / Finance Officer'}

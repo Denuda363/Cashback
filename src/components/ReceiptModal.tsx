@@ -51,6 +51,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     `Persentase Cashback: ${invoice.cashbackPercentage}%\n` +
     `*TOTAL CASHBACK: ${formatRupiah(invoice.cashbackAmount)}*\n` +
     `Status Pencairan: ${getStatusText()}\n` +
+    (invoice.claimStatus === 'disbursed' && invoice.disbursedBy ? `Petugas Penyerah: ${invoice.disbursedBy}\n` : '') +
     `--------------------------------\n` +
     `Terima kasih atas kepercayaan Anda berbelanja di ${settings.storeName}!`;
 
@@ -161,6 +162,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <span>Metode Pencairan:</span>
               <span className="font-semibold text-emerald-700">Tunai (Cash)</span>
             </div>
+            {invoice.claimStatus === 'disbursed' && invoice.disbursedBy && (
+              <div className="flex justify-between">
+                <span>Petugas Penyerah:</span>
+                <span className="font-semibold text-slate-900">{invoice.disbursedBy}</span>
+              </div>
+            )}
             {invoice.itemsDescription && (
               <div className="flex justify-between text-[11px]">
                 <span>Item:</span>

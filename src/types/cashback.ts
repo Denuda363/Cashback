@@ -63,6 +63,7 @@ export interface Invoice {
   disbursedDate?: string;
   disbursedAt?: string;
   recipientName?: string;
+  disbursedBy?: string; // Nama petugas yang menyerahkan cashback
   disbursementProofPhoto?: string; // Base64 data URL of proof of payment / handover photo
   disbursementSignature?: string; // Base64 data URL of digital electronic signature
   disbursementNotes?: string;
@@ -98,6 +99,7 @@ export interface CustomerSummary {
   lastDisbursedDate?: string;
   lastDisbursedAt?: string;
   recipientName?: string;
+  disbursedBy?: string;
   disbursementProofPhoto?: string;
   disbursementSignature?: string;
   disbursementNotes?: string;

@@ -10,6 +10,7 @@ import {
   RotateCcw,
   Calendar,
   User,
+  UserCheck,
   AlertCircle,
   Eye,
   Check,
@@ -25,6 +26,8 @@ import {
   loadDisbursementDraft,
   saveDisbursementDraft,
   clearDisbursementDraft,
+  loadStoredDisbursementOfficer,
+  saveStoredDisbursementOfficer,
 } from '../utils/storage';
 
 export interface CustomerDisbursementData {
@@ -32,6 +35,7 @@ export interface CustomerDisbursementData {
   disbursedAt: string;
   payoutMethod: PayoutMethod;
   recipientName: string;
+  disbursedBy: string;
   disbursementProofPhoto?: string;
   disbursementSignature?: string;
   disbursementNotes?: string;
@@ -54,6 +58,7 @@ interface DisbursementModalProps {
       disbursedAt: string;
       payoutMethod: PayoutMethod;
       recipientName: string;
+      disbursedBy: string;
       disbursementProofPhoto?: string;
       disbursementSignature?: string;
       disbursementNotes?: string;
@@ -91,6 +96,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
   const payoutMethod: PayoutMethod = 'tunai';
 
   const [recipientName, setRecipientName] = useState(initialRecipient);
+  const [disbursedBy, setDisbursedBy] = useState(() => loadStoredDisbursementOfficer());
   const [disbursedDate, setDisbursedDate] = useState(
     customer?.lastDisbursedDate || invoice?.disbursedDate || new Date().toISOString().split('T')[0]
   );
@@ -292,6 +298,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
 
   const persistCurrentDraft = (overrides?: {
     recipientName?: string;
+    disbursedBy?: string;
     disbursedDate?: string;
     disbursementNotes?: string;
     disbursementProofPhoto?: string | null;
@@ -301,6 +308,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
     if (!targetKey) return;
     saveDisbursementDraft(targetKey, {
       recipientName: overrides?.recipientName !== undefined ? overrides.recipientName : recipientName,
+      disbursedBy: overrides?.disbursedBy !== undefined ? overrides.disbursedBy : disbursedBy,
       disbursedDate: overrides?.disbursedDate !== undefined ? overrides.disbursedDate : disbursedDate,
       disbursementNotes: overrides?.disbursementNotes !== undefined ? overrides.disbursementNotes : disbursementNotes,
       disbursementProofPhoto: overrides?.disbursementProofPhoto !== undefined ? overrides.disbursementProofPhoto : proofPhoto,
@@ -384,12 +392,23 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
 
     const draft = loadDisbursementDraft(targetKey);
     const baseRec = customer?.recipientName || customer?.customerName || invoice?.recipientName || invoice?.customerName || '';
+    const storedDeviceOfficer = loadStoredDisbursementOfficer();
+    const hasRemainingUndisbursed = customer
+      ? (customer.pendingCashback + customer.readyCashback) > 0
+      : invoice?.claimStatus !== 'disbursed';
+    const baseOfficer = hasRemainingUndisbursed
+      ? (storedDeviceOfficer || customer?.disbursedBy || invoice?.disbursedBy || '')
+      : (customer?.disbursedBy || invoice?.disbursedBy || storedDeviceOfficer || '');
     const baseDt = customer?.lastDisbursedDate || invoice?.disbursedDate || new Date().toISOString().split('T')[0];
     const baseNotes = customer?.disbursementNotes || invoice?.disbursementNotes || '';
     const basePhoto = customer?.disbursementProofPhoto || invoice?.disbursementProofPhoto || null;
     const baseSig = customer?.disbursementSignature || invoice?.disbursementSignature;
 
     const rec = draft?.recipientName !== undefined ? draft.recipientName : baseRec;
+    const officer =
+      draft?.disbursedBy !== undefined && draft.disbursedBy.trim() !== ''
+        ? draft.disbursedBy
+        : baseOfficer;
     const dt = draft?.disbursedDate !== undefined ? draft.disbursedDate : baseDt;
     const notes = draft?.disbursementNotes !== undefined ? draft.disbursementNotes : baseNotes;
     const photo = draft?.disbursementProofPhoto !== undefined ? draft.disbursementProofPhoto : basePhoto;
@@ -397,6 +416,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
     const restoreFullscreen = Boolean(draft?.isSignatureFullscreen);
 
     setRecipientName(rec);
+    setDisbursedBy(officer);
     setDisbursedDate(dt);
     setDisbursementNotes(notes);
     setProofPhoto(photo);
@@ -457,7 +477,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
   useEffect(() => {
     if (!isOpen || !targetKey || initializedTargetRef.current !== targetKey) return;
     persistCurrentDraft();
-  }, [isOpen, targetKey, recipientName, disbursedDate, disbursementNotes, proofPhoto, isSignatureFullscreen]);
+  }, [isOpen, targetKey, recipientName, disbursedBy, disbursedDate, disbursementNotes, proofPhoto, isSignatureFullscreen]);
 
   // Canvas Mouse & Touch Drawing Handlers
   const getCoordinates = (
@@ -615,10 +635,19 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
       return;
     }
 
+    if (!disbursedBy.trim()) {
+      setErrorMsg('Nama petugas yang menyerahkan cashback wajib diisi.');
+      return;
+    }
+
     if (!disbursedDate) {
       setErrorMsg('Tanggal penerimaan cashback wajib diisi.');
       return;
     }
+
+    // Save officer name on this device so future disbursements auto-fill automatically
+    const trimmedOfficer = disbursedBy.trim();
+    saveStoredDisbursementOfficer(trimmedOfficer);
 
     // Get signature data URL if drawn
     let signatureDataUrl: string | undefined = undefined;
@@ -638,6 +667,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
         disbursedAt: nowISO,
         payoutMethod,
         recipientName: recipientName.trim(),
+        disbursedBy: trimmedOfficer,
         disbursementProofPhoto: proofPhoto || undefined,
         disbursementSignature: signatureDataUrl,
         disbursementNotes: disbursementNotes.trim(),
@@ -652,6 +682,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
         disbursedAt: nowISO,
         payoutMethod,
         recipientName: recipientName.trim(),
+        disbursedBy: trimmedOfficer,
         disbursementProofPhoto: proofPhoto || undefined,
         disbursementSignature: signatureDataUrl,
         disbursementNotes: disbursementNotes.trim(),
@@ -813,6 +844,53 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
                 </div>
               </div>
 
+              {/* Officer / Petugas yang Menyerahkan Cashback (Auto-saved per device) */}
+              <div>
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    Petugas Penyerah Cashback <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] font-medium text-emerald-700">
+                    Otomatis per perangkat
+                  </span>
+                </div>
+                <div className="relative">
+                  <UserCheck className="w-4 h-4 text-emerald-600 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={disbursedBy}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDisbursedBy(val);
+                      if (val.trim()) {
+                        saveStoredDisbursementOfficer(val);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (disbursedBy.trim()) {
+                        saveStoredDisbursementOfficer(disbursedBy);
+                      }
+                    }}
+                    placeholder="Contoh: Maman / Agus..."
+                    className="w-full pl-9 pr-8 py-2 bg-emerald-50/50 border border-emerald-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-emerald-600"
+                  />
+                  {disbursedBy && (
+                    <button
+                      type="button"
+                      onClick={() => setDisbursedBy('')}
+                      title="Ganti nama petugas di perangkat ini"
+                      aria-label="Hapus atau ganti nama petugas"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 rounded"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Sekali diisi, nama petugas otomatis terisi di perangkat ini untuk pencairan berikutnya.
+                </p>
+              </div>
+
               {/* Disbursed Date */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -830,11 +908,11 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
               </div>
 
               {/* Payout Method (Cash Only) */}
-              <div className="sm:col-span-2">
+              <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                   Metode Penyerahan / Pencairan
                 </label>
-                <div className="py-2.5 px-3 rounded-lg border border-emerald-500 bg-emerald-50 text-emerald-900 flex items-center justify-between">
+                <div className="py-2 px-3 rounded-lg border border-emerald-500 bg-emerald-50 text-emerald-900 flex items-center justify-between">
                   <div className="flex items-center gap-2 font-bold text-xs">
                     <Wallet className="w-4 h-4 text-emerald-600" />
                     <span>Tunai (Cash)</span>

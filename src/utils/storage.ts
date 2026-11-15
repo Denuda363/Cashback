@@ -8,6 +8,7 @@ const NAV_POSITION_KEY = 'cashback_app_nav_position_v1';
 const ACTIVE_TAB_KEY = 'cashback_app_active_tab_v1';
 const DISBURSEMENT_DRAFTS_KEY = 'cashback_app_disbursement_drafts_v1';
 const OPEN_DISBURSEMENT_KEY = 'cashback_app_open_disbursement_v1';
+const DISBURSEMENT_OFFICER_KEY = 'cashback_app_disbursement_officer_v1';
 
 const VALID_TABS: ActiveTab[] = [
   'dashboard',
@@ -40,8 +41,30 @@ export function saveStoredActiveTab(tab: ActiveTab): void {
   }
 }
 
+export function loadStoredDisbursementOfficer(): string {
+  try {
+    return (localStorage.getItem(DISBURSEMENT_OFFICER_KEY) || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+export function saveStoredDisbursementOfficer(name: string): void {
+  try {
+    const trimmed = name.trim();
+    if (trimmed) {
+      localStorage.setItem(DISBURSEMENT_OFFICER_KEY, trimmed);
+    } else {
+      localStorage.removeItem(DISBURSEMENT_OFFICER_KEY);
+    }
+  } catch (e) {
+    console.error('Failed to save disbursement officer to localStorage', e);
+  }
+}
+
 export interface DisbursementDraft {
   recipientName?: string;
+  disbursedBy?: string;
   disbursedDate?: string;
   disbursementNotes?: string;
   disbursementProofPhoto?: string | null;
@@ -809,6 +832,7 @@ export function aggregateCustomerSummaries(
     const proofPhoto = disbursedInvoices.find((i) => Boolean(i.disbursementProofPhoto))?.disbursementProofPhoto;
     const signature = disbursedInvoices.find((i) => Boolean(i.disbursementSignature))?.disbursementSignature;
     const recipient = disbursedInvoices.find((i) => Boolean(i.recipientName))?.recipientName || c.customerName;
+    const disbursedBy = disbursedInvoices.find((i) => Boolean(i.disbursedBy))?.disbursedBy;
     const notes = disbursedInvoices.find((i) => Boolean(i.disbursementNotes))?.disbursementNotes;
     const payoutMethod = 'tunai';
 
@@ -837,6 +861,7 @@ export function aggregateCustomerSummaries(
       lastDisbursedDate: latestDisbursed?.disbursedDate,
       lastDisbursedAt: latestDisbursed?.disbursedAt,
       recipientName: recipient,
+      disbursedBy,
       disbursementProofPhoto: proofPhoto,
       disbursementSignature: signature,
       disbursementNotes: notes,

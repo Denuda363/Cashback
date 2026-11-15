@@ -21,6 +21,7 @@
         "disbursedDate": { "type": "string" },
         "disbursedAt": { "type": "string" },
         "recipientName": { "type": "string" },
+        "disbursedBy": { "type": "string", "description": "Nama petugas yang menyerahkan cashback" },
         "disbursementProofPhoto": { "type": "string" },
         "disbursementSignature": { "type": "string" },
         "disbursementNotes": { "type": "string" },

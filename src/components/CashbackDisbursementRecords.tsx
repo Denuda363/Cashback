@@ -123,7 +123,8 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
         const matchPhone = (c.customerPhone || '').toLowerCase().includes(q);
         const matchCode = (c.customerCode || '').toLowerCase().includes(q);
         const matchRecipient = (c.recipientName || '').toLowerCase().includes(q);
-        if (!matchName && !matchPhone && !matchCode && !matchRecipient) return false;
+        const matchOfficer = (c.disbursedBy || '').toLowerCase().includes(q);
+        if (!matchName && !matchPhone && !matchCode && !matchRecipient && !matchOfficer) return false;
       }
 
       return true;
@@ -546,8 +547,8 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                     </div>
                   </div>
 
-                  {/* Proof & Signature Strip (if available) */}
-                  {(cust.disbursementProofPhoto || cust.disbursementSignature) && (
+                  {/* Proof, Signature & Officer Strip (if available) */}
+                  {(cust.disbursementProofPhoto || cust.disbursementSignature || cust.disbursedCashback > 0 || Boolean(cust.disbursedBy)) && (
                     <button
                       type="button"
                       onClick={() => setViewingReceiptCustomer(cust)}
@@ -574,8 +575,9 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                           <div className="text-[11px] font-semibold text-slate-800 truncate">
                             {cust.recipientName || cust.customerName}
                           </div>
-                          <div className="text-[10px] text-slate-500 font-mono">
+                          <div className="text-[10px] text-slate-500 font-mono truncate">
                             {cust.lastDisbursedDate || 'Bukti tersimpan'}
+                            {cust.disbursedBy ? ` · Petugas: ${cust.disbursedBy}` : ''}
                           </div>
                         </div>
                       </div>
@@ -829,9 +831,9 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                           {formatRupiah(remainingCashback)}
                         </td>
 
-                        {/* Bukti Serah Terima (Foto & TTD) */}
+                        {/* Bukti Serah Terima (Foto, TTD & Petugas) */}
                         <td className="py-3 px-3">
-                          {cust.disbursementProofPhoto || cust.disbursementSignature ? (
+                          {cust.disbursementProofPhoto || cust.disbursementSignature || cust.disbursedCashback > 0 || Boolean(cust.disbursedBy) ? (
                             <div className="flex items-center gap-2">
                               {cust.disbursementProofPhoto ? (
                                 <img
@@ -861,9 +863,14 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                                 <span className="block font-mono text-slate-700">
                                   {cust.lastDisbursedDate || 'Tercatat'}
                                 </span>
-                                <span className="text-[9px] text-emerald-700 font-semibold">
-                                  {cust.recipientName || cust.customerName}
+                                <span className="block text-[9px] text-emerald-700 font-semibold">
+                                  Penerima: {cust.recipientName || cust.customerName}
                                 </span>
+                                {cust.disbursedBy && (
+                                  <span className="block text-[9px] text-slate-600">
+                                    Petugas: <strong className="text-slate-800">{cust.disbursedBy}</strong>
+                                  </span>
+                                )}
                               </div>
                             </div>
                           ) : (
