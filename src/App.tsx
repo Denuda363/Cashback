@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   loadStoredInvoices, 
   saveStoredInvoices, 
@@ -13,7 +13,12 @@ import {
   loadOpenDisbursementTarget,
   saveOpenDisbursementTarget,
   clearOpenDisbursementTarget,
-  aggregateCustomerSummaries, 
+  aggregateCustomerSummaries,
+  reconcileMasterCustomersWithInvoices,
+  normalizeCustomerName,
+  normalizePhone,
+  isValidRealPhone,
+  getNextCustomerCode,
   exportBackupJSON,
   wipeAllLocalData,
   AppBackupData
@@ -77,11 +82,24 @@ export default function App() {
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(true);
   const [isSyncingWithCloud, setIsSyncingWithCloud] = useState<boolean>(false);
 
+  // Track initial cloud load readiness & manually deleted names in this session
+  const [isReadyForAutoReconcile, setIsReadyForAutoReconcile] = useState<boolean>(false);
+  const suppressedCustomerNamesRef = useRef<Set<string>>(new Set());
+  const isReconcilingRef = useRef<boolean>(false);
+
   // Firestore Real-time synchronization lifecycle
   useEffect(() => {
     let unsubInvoices = () => {};
     let unsubCustomers = () => {};
     let unsubSettings = () => {};
+    let invoicesSnapReady = false;
+    let customersSnapReady = false;
+
+    const markReadyIfBothLoaded = () => {
+      if (invoicesSnapReady && customersSnapReady) {
+        setIsReadyForAutoReconcile(true);
+      }
+    };
 
     // 1. Test Firestore Cloud connection automatically on mount
     testFirestoreConnection().then(async (connected) => {
@@ -113,6 +131,8 @@ export default function App() {
               saveStoredInvoices([]);
             }
           }
+          invoicesSnapReady = true;
+          markReadyIfBothLoaded();
         });
 
         unsubCustomers = subscribeFirestoreCustomers((liveCustomers) => {
@@ -129,6 +149,8 @@ export default function App() {
               saveStoredCustomers([]);
             }
           }
+          customersSnapReady = true;
+          markReadyIfBothLoaded();
         });
 
         unsubSettings = subscribeFirestoreSettings((liveSettings) => {
@@ -137,6 +159,8 @@ export default function App() {
             saveStoredSettings(liveSettings);
           }
         });
+      } else {
+        setIsReadyForAutoReconcile(true);
       }
     });
 
@@ -146,6 +170,36 @@ export default function App() {
       unsubSettings();
     };
   }, []);
+
+  // Keep Master Konsumen automatically aligned with real invoice data & deduplicated
+  useEffect(() => {
+    if (!isReadyForAutoReconcile || isReconcilingRef.current) return;
+    if (invoices.length === 0 && customers.length === 0) return;
+
+    const result = reconcileMasterCustomersWithInvoices(
+      customers,
+      invoices,
+      suppressedCustomerNamesRef.current
+    );
+
+    if (!result.hasChanges) return;
+
+    isReconcilingRef.current = true;
+    setCustomers(result.syncedCustomers);
+    saveStoredCustomers(result.syncedCustomers);
+
+    const toSave = [...result.newCustomers, ...result.updatedCustomers];
+    Promise.all([
+      toSave.length > 0
+        ? batchUpdateCustomersInFirestore(toSave).catch((err) => console.warn('Auto-reconcile customer save:', err))
+        : Promise.resolve(),
+      ...result.duplicateIdsToDelete.map((id) =>
+        deleteCustomerFromFirestore(id).catch((err) => console.warn('Auto-reconcile duplicate delete:', err))
+      ),
+    ]).finally(() => {
+      isReconcilingRef.current = false;
+    });
+  }, [isReadyForAutoReconcile, invoices, customers]);
 
   // Modals state
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -256,55 +310,129 @@ export default function App() {
 
   // Import Invoices from Excel Handler
   const handleImportSuccess = async (importedInvoices: Invoice[], newCustomers: CustomerMaster[]) => {
+    for (const inv of importedInvoices) {
+      const clean = normalizeCustomerName(inv.customerName);
+      if (clean) suppressedCustomerNamesRef.current.delete(clean);
+    }
+
     const updatedInvoices = [...importedInvoices, ...invoices];
     setInvoices(updatedInvoices);
     saveStoredInvoices(updatedInvoices);
     await batchUpdateInvoicesInFirestore(updatedInvoices).catch((err) => console.warn('Firestore import sync:', err));
 
-    if (newCustomers.length > 0) {
-      const updatedCustomers = [...newCustomers, ...customers];
-      setCustomers(updatedCustomers);
-      saveStoredCustomers(updatedCustomers);
-      await batchUpdateCustomersInFirestore(updatedCustomers).catch((err) => console.warn('Firestore new cust import:', err));
+    // Reconcile customers with existing + newly imported ones to prevent duplicates
+    const combinedRawCustomers = [...customers, ...newCustomers];
+    const reconciled = reconcileMasterCustomersWithInvoices(
+      combinedRawCustomers,
+      updatedInvoices,
+      suppressedCustomerNamesRef.current
+    );
+    setCustomers(reconciled.syncedCustomers);
+    saveStoredCustomers(reconciled.syncedCustomers);
+    const createdOrUpdated = [...reconciled.newCustomers, ...reconciled.updatedCustomers, ...newCustomers];
+    if (createdOrUpdated.length > 0) {
+      await batchUpdateCustomersInFirestore(reconciled.syncedCustomers).catch((err) =>
+        console.warn('Firestore new cust import:', err)
+      );
     }
 
     showToast(
       `Berhasil mengimpor ${importedInvoices.length} faktur dari Excel ke Firebase Cloud & lokal! ${
-        newCustomers.length > 0 ? `(${newCustomers.length} konsumen baru didaftarkan)` : ''
+        reconciled.newCustomers.length + newCustomers.length > 0 ? `(Master konsumen tersinkronisasi)` : ''
       }`
     );
   };
 
-  // Import Master Customers from Excel Handler
+  // Import Master Customers from Excel Handler (upserts & avoids duplicates)
   const handleImportCustomersSuccess = async (importedCustomers: CustomerMaster[]) => {
-    const updatedCustomers = [...importedCustomers, ...customers];
-    setCustomers(updatedCustomers);
-    saveStoredCustomers(updatedCustomers);
+    const workingList = [...customers];
+    const indexByName = new Map<string, number>();
+    const indexByPhone = new Map<string, number>();
+
+    workingList.forEach((c, idx) => {
+      const clean = normalizeCustomerName(c.name);
+      if (clean) indexByName.set(clean, idx);
+      if (isValidRealPhone(c.phone)) {
+        const norm = normalizePhone(c.phone);
+        if (norm.length >= 7 && !indexByPhone.has(norm)) indexByPhone.set(norm, idx);
+      }
+    });
+
+    let addedCount = 0;
+    let updatedCount = 0;
+
+    for (const imp of importedCustomers) {
+      const cleanName = normalizeCustomerName(imp.name);
+      if (cleanName) suppressedCustomerNamesRef.current.delete(cleanName);
+
+      const normPhone = isValidRealPhone(imp.phone) ? normalizePhone(imp.phone) : '';
+      const existingIdx =
+        (cleanName && indexByName.has(cleanName) ? indexByName.get(cleanName) : undefined) ??
+        (normPhone && indexByPhone.has(normPhone) ? indexByPhone.get(normPhone) : undefined);
+
+      if (existingIdx !== undefined) {
+        const current = workingList[existingIdx];
+        workingList[existingIdx] = {
+          ...current,
+          phone: isValidRealPhone(imp.phone) ? imp.phone : current.phone,
+          email: imp.email || current.email,
+          city: imp.city || current.city,
+          address: imp.address || current.address,
+          notes: imp.notes || current.notes,
+        };
+        updatedCount += 1;
+      } else {
+        const uniqueCode = getNextCustomerCode(workingList);
+        const newItem: CustomerMaster = {
+          ...imp,
+          customerCode: imp.customerCode?.trim() || uniqueCode,
+        };
+        const newIdx = workingList.length;
+        workingList.push(newItem);
+        if (cleanName) indexByName.set(cleanName, newIdx);
+        if (normPhone) indexByPhone.set(normPhone, newIdx);
+        addedCount += 1;
+      }
+    }
+
+    setCustomers(workingList);
+    saveStoredCustomers(workingList);
 
     // Sync imported customers in efficient batch to Firestore Cloud
-    await batchUpdateCustomersInFirestore(updatedCustomers).catch((err) =>
+    await batchUpdateCustomersInFirestore(workingList).catch((err) =>
       console.warn('Firestore customer import sync error:', err)
     );
 
     showToast(
-      `Berhasil mengimpor ${importedCustomers.length} data konsumen ke Master Data & Firebase Cloud!`
+      `Import selesai: ${addedCount} konsumen baru ditambahkan${updatedCount > 0 ? `, ${updatedCount} diperbarui` : ''} ke Master Data & Firebase Cloud!`
     );
   };
 
   // Invoice Handlers
   const handleSaveInvoice = async (invoiceData: Omit<Invoice, 'id' | 'createdAt'>, invoiceId?: string) => {
-    // Check if customer exists in Master Data; if not, automatically add them!
-    const existingCust = customers.find(
-      (c) => c.phone.trim() === invoiceData.customerPhone.trim() || c.name.toLowerCase() === invoiceData.customerName.toLowerCase()
-    );
+    const cleanTargetName = normalizeCustomerName(invoiceData.customerName);
+    if (cleanTargetName) {
+      suppressedCustomerNamesRef.current.delete(cleanTargetName);
+    }
+
+    // Match customer strictly by normalized name first, or by real unique phone if name matches none
+    const targetNormPhone = isValidRealPhone(invoiceData.customerPhone)
+      ? normalizePhone(invoiceData.customerPhone)
+      : '';
+
+    const existingCust =
+      customers.find((c) => normalizeCustomerName(c.name) === cleanTargetName) ||
+      (targetNormPhone
+        ? customers.find((c) => isValidRealPhone(c.phone) && normalizePhone(c.phone) === targetNormPhone)
+        : undefined);
 
     if (!existingCust) {
-      const nextCode = `CUST-${String(customers.length + 1).padStart(3, '0')}`;
+      const nextCode = getNextCustomerCode(customers);
       const newCust: CustomerMaster = {
         id: `cust-${Date.now()}`,
         customerCode: nextCode,
-        name: invoiceData.customerName,
-        phone: invoiceData.customerPhone,
+        name: invoiceData.customerName.trim().replace(/\s+/g, ' '),
+        phone: invoiceData.customerPhone.trim(),
         email: invoiceData.customerEmail,
         preferredPayoutMethod: invoiceData.payoutMethod,
         joinedDate: invoiceData.date,
@@ -314,6 +442,17 @@ export default function App() {
       setCustomers(updatedCustomers);
       saveStoredCustomers(updatedCustomers);
       await saveCustomerToFirestore(newCust).catch((err) => console.warn('Firestore customer sync:', err));
+    } else if (!isValidRealPhone(existingCust.phone) && isValidRealPhone(invoiceData.customerPhone)) {
+      // Upgrade placeholder phone on existing master customer with real phone from invoice
+      const upgradedCust: CustomerMaster = {
+        ...existingCust,
+        phone: invoiceData.customerPhone.trim(),
+        email: existingCust.email || invoiceData.customerEmail,
+      };
+      const updatedCustomers = customers.map((c) => (c.id === existingCust.id ? upgradedCust : c));
+      setCustomers(updatedCustomers);
+      saveStoredCustomers(updatedCustomers);
+      await saveCustomerToFirestore(upgradedCust).catch((err) => console.warn('Firestore customer phone upgrade:', err));
     }
 
     if (invoiceId) {
@@ -661,11 +800,50 @@ export default function App() {
 
   const handleDeleteCustomer = async (customerId: string) => {
     const target = customers.find((c) => c.id === customerId);
+    if (target?.name) {
+      const clean = normalizeCustomerName(target.name);
+      if (clean) suppressedCustomerNamesRef.current.add(clean);
+    }
     const updated = customers.filter((c) => c.id !== customerId);
     setCustomers(updated);
     saveStoredCustomers(updated);
     await deleteCustomerFromFirestore(customerId).catch((err) => console.warn('Firestore customer delete:', err));
     showToast(`Konsumen ${target?.name || ''} berhasil dihapus dari Firebase Cloud.`);
+  };
+
+  // Manual full reconciliation between Master Konsumen & real Rekap Faktur
+  const handleSyncMasterWithInvoices = async () => {
+    suppressedCustomerNamesRef.current.clear();
+    const result = reconcileMasterCustomersWithInvoices(customers, invoices);
+    if (!result.hasChanges) {
+      showToast('Master Konsumen sudah 100% sinkron dengan data real Rekap Faktur.');
+      return;
+    }
+
+    setIsSyncingWithCloud(true);
+    try {
+      setCustomers(result.syncedCustomers);
+      saveStoredCustomers(result.syncedCustomers);
+
+      const toSave = [...result.newCustomers, ...result.updatedCustomers];
+      if (toSave.length > 0) {
+        await batchUpdateCustomersInFirestore(toSave);
+      }
+      for (const dupId of result.duplicateIdsToDelete) {
+        await deleteCustomerFromFirestore(dupId);
+      }
+
+      const parts: string[] = [];
+      if (result.newCustomers.length > 0) parts.push(`${result.newCustomers.length} konsumen ditambahkan dari faktur`);
+      if (result.updatedCustomers.length > 0) parts.push(`${result.updatedCustomers.length} profil kontak/tanggal dilengkapi`);
+      if (result.duplicateIdsToDelete.length > 0) parts.push(`${result.duplicateIdsToDelete.length} duplikat dirapikan`);
+      showToast(`Sinkronisasi selesai: ${parts.join(', ')}.`);
+    } catch (err: any) {
+      console.error('Manual master sync error:', err);
+      showToast('Gagal sinkronisasi master konsumen ke cloud: ' + (err?.message || 'Error'));
+    } finally {
+      setIsSyncingWithCloud(false);
+    }
   };
 
   const handleToggleCustomerStatus = async (customerId: string) => {
@@ -989,6 +1167,7 @@ export default function App() {
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
             onExportExcel={handleExportExcel}
             onOpenImportExcel={() => setIsImportCustomerModalOpen(true)}
+            onSyncWithInvoices={handleSyncMasterWithInvoices}
           />
         )}
 

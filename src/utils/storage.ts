@@ -346,6 +346,257 @@ export function normalizePhone(phone?: string): string {
 }
 
 /**
+ * Normalizes customer names by collapsing extra whitespace and lowercasing.
+ */
+export function normalizeCustomerName(name?: string): string {
+  return (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * Returns true only when a phone number looks like a real contact number rather than a blank/placeholder.
+ */
+export function isValidRealPhone(phone?: string): boolean {
+  if (!phone) return false;
+  const trimmed = phone.trim().toLowerCase();
+  if (!trimmed || trimmed === '-' || trimmed === '08' || /^08x+$/i.test(trimmed) || trimmed === 'tanpa kontak') {
+    return false;
+  }
+  const norm = normalizePhone(trimmed);
+  if (norm.length < 7) return false;
+  if (/^(\d)\1+$/.test(norm)) return false;
+  return true;
+}
+
+/**
+ * Generates the next unique sequential CUST-XXX code without colliding with existing codes.
+ */
+export function getNextCustomerCode(existingCustomers: CustomerMaster[], offset = 0): string {
+  let maxNum = 0;
+  const existingCodes = new Set<string>();
+
+  for (const c of existingCustomers) {
+    const code = (c.customerCode || '').trim().toUpperCase();
+    if (code) {
+      existingCodes.add(code);
+      const match = code.match(/^CUST-(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+
+  let candidateNum = maxNum + 1 + offset;
+  let candidate = `CUST-${String(candidateNum).padStart(3, '0')}`;
+  while (existingCodes.has(candidate)) {
+    candidateNum += 1;
+    candidate = `CUST-${String(candidateNum).padStart(3, '0')}`;
+  }
+  return candidate;
+}
+
+export interface CustomerReconciliationResult {
+  syncedCustomers: CustomerMaster[];
+  newCustomers: CustomerMaster[];
+  updatedCustomers: CustomerMaster[];
+  duplicateIdsToDelete: string[];
+  hasChanges: boolean;
+}
+
+/**
+ * Reconciles Master Konsumen with real invoice data:
+ * 1. Deduplicates master records sharing the same normalized name (merging metadata).
+ * 2. Upgrades placeholder/missing phones and joined dates from real invoices.
+ * 3. Registers any real customers present in invoices that are missing from master data.
+ */
+export function reconcileMasterCustomersWithInvoices(
+  customers: CustomerMaster[],
+  invoices: Invoice[],
+  suppressedNames?: Set<string>
+): CustomerReconciliationResult {
+  // Index real invoice metadata per normalized customer name
+  const invoiceStatsByName = new Map<
+    string,
+    {
+      displayName: string;
+      bestPhone: string;
+      email?: string;
+      earliestDate: string;
+    }
+  >();
+
+  for (const inv of invoices) {
+    const cleanName = normalizeCustomerName(inv.customerName);
+    if (!cleanName) continue;
+
+    const rawName = (inv.customerName || '').trim().replace(/\s+/g, ' ');
+    const rawPhone = (inv.customerPhone || '').trim();
+    const invDate = (inv.date || '').trim();
+    const existing = invoiceStatsByName.get(cleanName);
+
+    if (!existing) {
+      invoiceStatsByName.set(cleanName, {
+        displayName: rawName,
+        bestPhone: isValidRealPhone(rawPhone) ? rawPhone : '',
+        email: inv.customerEmail?.trim() || undefined,
+        earliestDate: invDate || new Date().toISOString().split('T')[0],
+      });
+    } else {
+      if (!isValidRealPhone(existing.bestPhone) && isValidRealPhone(rawPhone)) {
+        existing.bestPhone = rawPhone;
+      }
+      if (!existing.email && inv.customerEmail?.trim()) {
+        existing.email = inv.customerEmail.trim();
+      }
+      if (invDate && (!existing.earliestDate || invDate < existing.earliestDate)) {
+        existing.earliestDate = invDate;
+      }
+    }
+  }
+
+  // Group existing master customers by normalized name to detect and merge duplicates
+  const groupedMaster = new Map<string, CustomerMaster[]>();
+  const passthroughCustomers: CustomerMaster[] = [];
+
+  for (const cust of customers) {
+    const cleanName = normalizeCustomerName(cust.name);
+    if (!cleanName) {
+      passthroughCustomers.push(cust);
+      continue;
+    }
+    const list = groupedMaster.get(cleanName) || [];
+    list.push(cust);
+    groupedMaster.set(cleanName, list);
+  }
+
+  const dedupedList: CustomerMaster[] = [...passthroughCustomers];
+  const updatedCustomers: CustomerMaster[] = [];
+  const duplicateIdsToDelete: string[] = [];
+  let hasChanges = false;
+
+  for (const [cleanName, group] of groupedMaster.entries()) {
+    // Prefer entry with valid phone, then city/address, then earliest code
+    const sorted = [...group].sort((a, b) => {
+      const aScore =
+        (isValidRealPhone(a.phone) ? 4 : 0) +
+        (a.city ? 2 : 0) +
+        (a.address ? 1 : 0) +
+        (a.email ? 1 : 0);
+      const bScore =
+        (isValidRealPhone(b.phone) ? 4 : 0) +
+        (b.city ? 2 : 0) +
+        (b.address ? 1 : 0) +
+        (b.email ? 1 : 0);
+      if (bScore !== aScore) return bScore - aScore;
+      return (a.customerCode || '').localeCompare(b.customerCode || '');
+    });
+
+    const primary = { ...sorted[0] };
+    let primaryChanged = false;
+
+    // Merge richer info from duplicates and mark extras for deletion
+    for (let i = 1; i < sorted.length; i++) {
+      const dup = sorted[i];
+      duplicateIdsToDelete.push(dup.id);
+      hasChanges = true;
+
+      if (!isValidRealPhone(primary.phone) && isValidRealPhone(dup.phone)) {
+        primary.phone = dup.phone.trim();
+        primaryChanged = true;
+      }
+      if (!primary.email && dup.email) {
+        primary.email = dup.email;
+        primaryChanged = true;
+      }
+      if (!primary.city && dup.city) {
+        primary.city = dup.city;
+        primaryChanged = true;
+      }
+      if (!primary.address && dup.address) {
+        primary.address = dup.address;
+        primaryChanged = true;
+      }
+      if (!primary.notes && dup.notes) {
+        primary.notes = dup.notes;
+        primaryChanged = true;
+      }
+      if (dup.joinedDate && (!primary.joinedDate || dup.joinedDate < primary.joinedDate)) {
+        primary.joinedDate = dup.joinedDate;
+        primaryChanged = true;
+      }
+    }
+
+    // Reconcile primary customer against real invoice data
+    const invMeta = invoiceStatsByName.get(cleanName);
+    if (invMeta) {
+      if (!isValidRealPhone(primary.phone) && isValidRealPhone(invMeta.bestPhone)) {
+        primary.phone = invMeta.bestPhone;
+        primaryChanged = true;
+      }
+      if (!primary.email && invMeta.email) {
+        primary.email = invMeta.email;
+        primaryChanged = true;
+      }
+      if (invMeta.earliestDate && (!primary.joinedDate || invMeta.earliestDate < primary.joinedDate)) {
+        primary.joinedDate = invMeta.earliestDate;
+        primaryChanged = true;
+      }
+    }
+
+    if (!primary.customerCode || !primary.customerCode.trim()) {
+      primary.customerCode = getNextCustomerCode(dedupedList);
+      primaryChanged = true;
+    }
+
+    if (primaryChanged) {
+      updatedCustomers.push(primary);
+      hasChanges = true;
+    }
+
+    dedupedList.push(primary);
+  }
+
+  // Register any real customer from invoices missing from master data
+  const newCustomers: CustomerMaster[] = [];
+  const nowBase = Date.now();
+  let addIdx = 0;
+
+  for (const [cleanName, invMeta] of invoiceStatsByName.entries()) {
+    if (groupedMaster.has(cleanName)) continue;
+    if (suppressedNames && suppressedNames.has(cleanName)) continue;
+
+    const nextCode = getNextCustomerCode([...dedupedList, ...newCustomers]);
+    const newCust: CustomerMaster = {
+      id: `cust-${nowBase}-${addIdx}-${Math.random().toString(36).slice(2, 6)}`,
+      customerCode: nextCode,
+      name: invMeta.displayName,
+      phone: invMeta.bestPhone || '-',
+      email: invMeta.email,
+      preferredPayoutMethod: 'tunai',
+      joinedDate: invMeta.earliestDate || new Date().toISOString().split('T')[0],
+      isActive: true,
+    };
+    newCustomers.push(newCust);
+    addIdx += 1;
+    hasChanges = true;
+  }
+
+  const syncedCustomers = [...dedupedList, ...newCustomers].sort((a, b) =>
+    (a.customerCode || '').localeCompare(b.customerCode || '')
+  );
+
+  return {
+    syncedCustomers,
+    newCustomers,
+    updatedCustomers,
+    duplicateIdsToDelete,
+    hasChanges,
+  };
+}
+
+/**
  * Aggregates invoices by customer to generate summaries and rankings.
  * Matches against master customers when available to link customer codes and payment profiles.
  */
@@ -361,12 +612,14 @@ export function aggregateCustomerSummaries(
   const masterByName = new Map<string, CustomerMaster>();
 
   for (const mc of masterCustomers) {
-    const norm = normalizePhone(mc.phone);
-    if (norm.length >= 7) {
-      masterByPhone.set(norm, mc);
+    if (isValidRealPhone(mc.phone)) {
+      const norm = normalizePhone(mc.phone);
+      if (norm.length >= 7 && !masterByPhone.has(norm)) {
+        masterByPhone.set(norm, mc);
+      }
     }
-    const cleanName = mc.name.trim().toLowerCase();
-    if (cleanName) {
+    const cleanName = normalizeCustomerName(mc.name);
+    if (cleanName && !masterByName.has(cleanName)) {
       masterByName.set(cleanName, mc);
     }
   }
@@ -395,8 +648,8 @@ export function aggregateCustomerSummaries(
 
   for (const inv of invoices) {
     const invPhone = (inv.customerPhone || '').trim();
-    const rawName = (inv.customerName || '').trim();
-    const cleanName = rawName.toLowerCase();
+    const rawName = (inv.customerName || '').trim().replace(/\s+/g, ' ');
+    const cleanName = normalizeCustomerName(rawName);
     const normPhone = normalizePhone(invPhone);
 
     // Grouping is based directly on the customer name from Rekap Faktur.
@@ -404,7 +657,7 @@ export function aggregateCustomerSummaries(
     let key = '';
     if (cleanName) {
       key = `name:${cleanName}`;
-    } else if (normPhone.length >= 7) {
+    } else if (isValidRealPhone(invPhone)) {
       key = `phone:${normPhone}`;
     } else {
       key = `inv:${inv.id}`;
@@ -413,7 +666,13 @@ export function aggregateCustomerSummaries(
     // Enrich with master customer profile if name matches
     const master = cleanName
       ? masterByName.get(cleanName)
-      : (normPhone.length >= 7 ? masterByPhone.get(normPhone) : undefined);
+      : (isValidRealPhone(invPhone) ? masterByPhone.get(normPhone) : undefined);
+
+    const bestInitialPhone = isValidRealPhone(invPhone)
+      ? invPhone
+      : isValidRealPhone(master?.phone)
+        ? master!.phone
+        : (invPhone || master?.phone || '');
 
     const purchase = Number(inv.purchaseAmount) || 0;
     const cashback = Math.round(Number(inv.cashbackAmount) || 0);
@@ -445,15 +704,15 @@ export function aggregateCustomerSummaries(
         existing.pendingCashback += cashback;
       }
 
-      // If existing had blank phone or less complete name, adopt better values
-      if (!existing.customerPhone && invPhone) {
+      // Upgrade placeholder/blank phone if a real phone appears on a subsequent invoice
+      if (!isValidRealPhone(existing.customerPhone) && isValidRealPhone(invPhone)) {
         existing.customerPhone = invPhone;
       }
     } else {
       map.set(key, {
         customerCode: master?.customerCode,
         customerName: rawName || master?.name || 'Tanpa Nama',
-        customerPhone: invPhone || master?.phone || '',
+        customerPhone: bestInitialPhone,
         totalPurchase: purchase,
         totalCashback: cashback,
         disbursedCashback: inv.claimStatus === 'disbursed' ? cashback : 0,
@@ -489,13 +748,13 @@ export function aggregateCustomerSummaries(
       tier = 'Silver';
     }
 
-    const cleanName = (c.customerName || '').trim().toLowerCase();
+    const cleanName = normalizeCustomerName(c.customerName);
     const isExcluded = excludedCustomerNames.some(
-      (ex) => (ex || '').trim().toLowerCase() === cleanName
+      (ex) => normalizeCustomerName(ex) === cleanName
     );
 
     // Check customer-specific benefit override:
-    const manualBenefit = benefitOverrides[cleanName];
+    const manualBenefit = benefitOverrides[cleanName] || benefitOverrides[(c.customerName || '').trim().toLowerCase()];
 
     let benefitType: CustomerBenefitType;
     let getParcel: boolean;

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { CustomerMaster } from '../types/cashback';
 import { exportCustomerImportTemplate, parseCustomersFromExcel, ParsedImportCustomer } from '../utils/excelExport';
+import { getNextCustomerCode, isValidRealPhone, normalizeCustomerName, normalizePhone } from '../utils/storage';
 import { PaginationBar } from './PaginationBar';
 
 interface ImportCustomerModalProps {
@@ -104,35 +105,42 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
 
   const validRows = parsedRows.filter((r) => r.isValid);
 
-  // Check duplicates with existing customers
-  const existingPhoneSet = new Set(existingCustomers.map((c) => c.phone.trim().replace(/[\s-]/g, '')));
-  const existingNameSet = new Set(existingCustomers.map((c) => c.name.toLowerCase().trim()));
+  // Check duplicates with existing customers accurately
+  const existingPhoneSet = new Set(
+    existingCustomers
+      .filter((c) => isValidRealPhone(c.phone))
+      .map((c) => normalizePhone(c.phone))
+  );
+  const existingNameSet = new Set(
+    existingCustomers
+      .map((c) => normalizeCustomerName(c.name))
+      .filter(Boolean)
+  );
 
   const duplicateCount = validRows.filter(
-    (r) => existingPhoneSet.has(r.phone) || existingNameSet.has(r.name.toLowerCase())
+    (r) =>
+      existingNameSet.has(normalizeCustomerName(r.name)) ||
+      (isValidRealPhone(r.phone) && existingPhoneSet.has(normalizePhone(r.phone)))
   ).length;
 
   const handleConfirmImport = () => {
     if (validRows.length === 0) return;
 
     const customersToAdd: CustomerMaster[] = [];
-    let nextIndex = existingCustomers.length + 1;
 
     for (let i = 0; i < validRows.length; i++) {
       const r = validRows[i];
 
-      // If code is not provided or duplicated, generate sequentially
-      const code = r.customerCode && r.customerCode.trim() 
-        ? r.customerCode.trim() 
-        : `CUST-${String(nextIndex).padStart(3, '0')}`;
-
-      nextIndex++;
+      // Generate collision-free sequential code if not provided
+      const code = r.customerCode && r.customerCode.trim()
+        ? r.customerCode.trim()
+        : getNextCustomerCode([...existingCustomers, ...customersToAdd]);
 
       const newCust: CustomerMaster = {
         id: `cust-${Date.now()}-${i}`,
         customerCode: code,
-        name: r.name,
-        phone: r.phone,
+        name: r.name.trim().replace(/\s+/g, ' '),
+        phone: r.phone.trim(),
         email: r.email,
         city: r.city,
         address: r.address,
@@ -318,7 +326,9 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {paginatedRows.map((row, idx) => {
-                        const isDuplicate = existingPhoneSet.has(row.phone) || existingNameSet.has(row.name.toLowerCase());
+                        const isDuplicate =
+                          existingNameSet.has(normalizeCustomerName(row.name)) ||
+                          (isValidRealPhone(row.phone) && existingPhoneSet.has(normalizePhone(row.phone)));
                         return (
                           <tr key={`${row.phone}_${idx}`} className={row.isValid ? (isDuplicate ? 'bg-amber-50/40 hover:bg-amber-50/70' : 'hover:bg-slate-50') : 'bg-red-50/50'}>
                             <td className="py-1.5 px-3 font-mono font-semibold text-slate-700">{row.customerCode || 'Auto'}</td>

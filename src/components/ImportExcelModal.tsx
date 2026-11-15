@@ -12,6 +12,7 @@ import {
 import { CashbackSettings, CustomerMaster, Invoice } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
 import { exportInvoiceImportTemplate, parseInvoicesFromExcel, ParsedImportInvoice } from '../utils/excelExport';
+import { getNextCustomerCode, isValidRealPhone, normalizeCustomerName, normalizePhone } from '../utils/storage';
 import { PaginationBar } from './PaginationBar';
 
 interface ImportExcelModalProps {
@@ -118,31 +119,42 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     if (validRows.length === 0) return;
 
     const newCustomersToAdd: CustomerMaster[] = [];
-    const customerMap = new Map<string, CustomerMaster>();
+    const customerByName = new Map<string, CustomerMaster>();
+    const customerByPhone = new Map<string, CustomerMaster>();
     masterCustomers.forEach((c) => {
-      customerMap.set(c.phone.trim(), c);
-      customerMap.set(c.name.toLowerCase().trim(), c);
+      const clean = normalizeCustomerName(c.name);
+      if (clean) customerByName.set(clean, c);
+      if (isValidRealPhone(c.phone)) {
+        const norm = normalizePhone(c.phone);
+        if (norm.length >= 7 && !customerByPhone.has(norm)) {
+          customerByPhone.set(norm, c);
+        }
+      }
     });
 
     const newInvoices: Invoice[] = validRows.map((r, index) => {
       const calc = calculateCashback(r.purchaseAmount, settings);
 
-      // Check if customer already exists, if not, prepare to add to master data!
-      const phoneKey = r.customerPhone.trim();
-      const nameKey = r.customerName.toLowerCase().trim();
-      if (!customerMap.has(phoneKey) && !customerMap.has(nameKey)) {
-        const nextCode = `CUST-${String(masterCustomers.length + newCustomersToAdd.length + 1).padStart(3, '0')}`;
+      // Check if customer already exists by normalized name or valid real phone
+      const nameKey = normalizeCustomerName(r.customerName);
+      const normPhoneKey = isValidRealPhone(r.customerPhone) ? normalizePhone(r.customerPhone) : '';
+      const matched =
+        (nameKey ? customerByName.get(nameKey) : undefined) ||
+        (normPhoneKey ? customerByPhone.get(normPhoneKey) : undefined);
+
+      if (!matched && nameKey) {
+        const nextCode = getNextCustomerCode([...masterCustomers, ...newCustomersToAdd]);
         const newCust: CustomerMaster = {
           id: `cust-${Date.now()}-${index}`,
           customerCode: nextCode,
-          name: r.customerName,
-          phone: r.customerPhone,
+          name: r.customerName.trim().replace(/\s+/g, ' '),
+          phone: isValidRealPhone(r.customerPhone) ? r.customerPhone.trim() : '-',
           preferredPayoutMethod: 'tunai',
           joinedDate: r.date,
           isActive: true,
         };
-        customerMap.set(phoneKey, newCust);
-        customerMap.set(nameKey, newCust);
+        customerByName.set(nameKey, newCust);
+        if (normPhoneKey) customerByPhone.set(normPhoneKey, newCust);
         newCustomersToAdd.push(newCust);
       }
 

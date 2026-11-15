@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { CashbackSettings, ClaimStatus, CustomerMaster, Invoice, PayoutMethod, CustomerBenefitType } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
+import { getNextCustomerCode, isValidRealPhone, normalizeCustomerName, normalizePhone } from '../utils/storage';
 
 interface InvoiceModalProps {
   isOpen: boolean;
@@ -132,10 +133,16 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       setBenefitType(resolvedEditBenefit);
       setGetParcel(resolvedEditBenefit === 'cashback_parcel' || resolvedEditBenefit === 'parcel_only');
 
-      // Check if matches master customer
-      const matched = masterCustomers.find(
-        (c) => c.phone.trim() === editingInvoice.customerPhone.trim() || c.name.toLowerCase() === editingInvoice.customerName.toLowerCase()
-      );
+      // Check if matches master customer by normalized name first, then valid phone
+      const cleanEditName = normalizeCustomerName(editingInvoice.customerName);
+      const editNormPhone = isValidRealPhone(editingInvoice.customerPhone)
+        ? normalizePhone(editingInvoice.customerPhone)
+        : '';
+      const matched =
+        masterCustomers.find((c) => normalizeCustomerName(c.name) === cleanEditName) ||
+        (editNormPhone
+          ? masterCustomers.find((c) => isValidRealPhone(c.phone) && normalizePhone(c.phone) === editNormPhone)
+          : undefined);
       if (matched) {
         setSelectedMasterCustomer(matched);
       } else {
@@ -200,11 +207,11 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       setError('Masukkan nama konsumen yang ingin didaftarkan.');
       return;
     }
-    const newCustomerCode = `CUST-${String(masterCustomers.length + 1).padStart(3, '0')}`;
+    const newCustomerCode = getNextCustomerCode(masterCustomers);
     const newCust: Omit<CustomerMaster, 'id'> = {
       customerCode: newCustomerCode,
-      name: customerSearchQuery.trim(),
-      phone: customerPhone.trim() || '08',
+      name: customerSearchQuery.trim().replace(/\s+/g, ' '),
+      phone: customerPhone.trim() || '-',
       email: customerEmail.trim() || undefined,
       city: quickCustomerCity.trim() || undefined,
       joinedDate: new Date().toISOString().split('T')[0],

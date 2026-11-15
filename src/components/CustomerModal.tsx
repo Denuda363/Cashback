@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserPlus, CheckCircle2, AlertCircle, Wallet } from 'lucide-react';
 import { CustomerMaster, PayoutMethod } from '../types/cashback';
+import { getNextCustomerCode, isValidRealPhone, normalizeCustomerName, normalizePhone } from '../utils/storage';
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -29,8 +30,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const generateNextCode = () => {
-    const count = existingCustomers.length + 1;
-    return `CUST-${String(count).padStart(3, '0')}`;
+    return getNextCustomerCode(existingCustomers);
   };
 
   useEffect(() => {
@@ -62,7 +62,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
     e.preventDefault();
     setError(null);
 
-    if (!name.trim()) {
+    const cleanedName = name.trim().replace(/\s+/g, ' ');
+    if (!cleanedName) {
       setError('Nama konsumen wajib diisi.');
       return;
     }
@@ -71,18 +72,34 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       return;
     }
 
-    // Check duplicate phone or code for other customers
-    const duplicatePhone = existingCustomers.find(
-      (c) => c.phone.trim() === phone.trim() && (!editingCustomer || c.id !== editingCustomer.id)
+    // Check duplicate normalized name for other customers
+    const normName = normalizeCustomerName(cleanedName);
+    const duplicateName = existingCustomers.find(
+      (c) => normalizeCustomerName(c.name) === normName && (!editingCustomer || c.id !== editingCustomer.id)
     );
-    if (duplicatePhone) {
-      setError(`Nomor telepon ini sudah terdaftar atas nama ${duplicatePhone.name} (${duplicatePhone.customerCode}).`);
+    if (duplicateName) {
+      setError(`Nama konsumen "${duplicateName.name}" sudah terdaftar (${duplicateName.customerCode}).`);
       return;
+    }
+
+    // Check duplicate real phone for other customers
+    if (isValidRealPhone(phone)) {
+      const normInputPhone = normalizePhone(phone);
+      const duplicatePhone = existingCustomers.find(
+        (c) =>
+          isValidRealPhone(c.phone) &&
+          normalizePhone(c.phone) === normInputPhone &&
+          (!editingCustomer || c.id !== editingCustomer.id)
+      );
+      if (duplicatePhone) {
+        setError(`Nomor telepon ini sudah terdaftar atas nama ${duplicatePhone.name} (${duplicatePhone.customerCode}).`);
+        return;
+      }
     }
 
     const payload: Omit<CustomerMaster, 'id'> = {
       customerCode: customerCode.trim() || generateNextCode(),
-      name: name.trim(),
+      name: cleanedName,
       phone: phone.trim(),
       email: email.trim() || undefined,
       city: city.trim() || undefined,
