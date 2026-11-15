@@ -1,22 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  BarChart3, 
-  Trophy, 
-  FileSpreadsheet, 
-  Users, 
-  Contact, 
-  Settings as SettingsIcon, 
-  Download, 
+import {
+  BarChart3,
+  Trophy,
+  FileSpreadsheet,
+  Users,
+  Contact,
+  Settings as SettingsIcon,
   Receipt,
-  LayoutTemplate,
-  Sidebar as SidebarIcon,
-  AlignVerticalSpaceAround,
   Menu,
   X,
   ChevronLeft,
   ChevronRight,
-  Cloud,
-  Upload,
   CheckCircle2,
   Info,
 } from 'lucide-react';
@@ -27,8 +21,8 @@ interface SmartNavigationProps {
   activeTab: ActiveTab;
   setActiveTab: (tab: ActiveTab) => void;
   navPosition: NavPosition;
-  onChangeNavPosition: (pos: NavPosition) => void;
-  onExportExcel: () => void;
+  onChangeNavPosition?: (pos: NavPosition) => void;
+  onExportExcel?: () => void;
   onOpenImportExcel?: () => void;
   onOpenAbout?: () => void;
   totalInvoicesCount: number;
@@ -43,20 +37,19 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   activeTab,
   setActiveTab,
   navPosition,
-  onChangeNavPosition,
-  onExportExcel,
-  onOpenImportExcel,
   onOpenAbout,
   totalInvoicesCount,
   totalMasterCustomersCount,
   storeName = 'CashbackPro',
-  isFirebaseConnected = true,
   children,
 }) => {
-  // Mobile drawer state (for sidebar mode on mobile or mobile hamburger)
+  // Mobile drawer state (for sidebar mode on mobile)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  // Collapsible sidebar state on desktop
+  // Collapsible sidebar state on desktop (md+)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Mobile drawer always uses full neat expanded layout
+  const showCollapsed = isSidebarCollapsed && !isMobileMenuOpen;
 
   const navItems: { id: ActiveTab; label: string; shortLabel: string; icon: React.ReactNode; badge?: number; description?: string }[] = [
     { id: 'dashboard', label: 'Dashboard Analitik', shortLabel: 'Dashboard', icon: <BarChart3 className="w-4 h-4" />, description: 'Ringkasan & tren omset' },
@@ -70,130 +63,80 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
 
   const activeNavItem = navItems.find((n) => n.id === activeTab);
 
-  // Helper for Nav Position Switcher Widget
-  const PositionSwitcher = ({ compact = false }: { compact?: boolean }) => (
-    <div
-      className={
-        compact
-          ? 'grid grid-cols-3 gap-0.5 p-1 w-full bg-slate-100 rounded-xl border border-slate-200/90'
-          : 'flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200/80'
-      }
-    >
-      <button
-        type="button"
-        onClick={() => onChangeNavPosition('sidebar')}
-        title="Posisikan navigasi di Samping (Sidebar)"
-        className={`flex items-center justify-center rounded-md transition-all ${compact ? 'p-1.5' : 'p-1.5'} ${
-          navPosition === 'sidebar'
-            ? 'bg-white text-emerald-700 shadow-xs font-semibold'
-            : 'text-slate-500 hover:text-slate-900'
-        }`}
-      >
-        <SidebarIcon className="w-3.5 h-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onChangeNavPosition('top')}
-        title="Posisikan navigasi di Atas (Top Bar)"
-        className={`flex items-center justify-center rounded-md transition-all ${compact ? 'p-1.5' : 'p-1.5'} ${
-          navPosition === 'top'
-            ? 'bg-white text-emerald-700 shadow-xs font-semibold'
-            : 'text-slate-500 hover:text-slate-900'
-        }`}
-      >
-        <LayoutTemplate className="w-3.5 h-3.5" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onChangeNavPosition('bottom')}
-        title="Posisikan navigasi di Bawah (Floating Dock)"
-        className={`flex items-center justify-center rounded-md transition-all ${compact ? 'p-1.5' : 'p-1.5'} ${
-          navPosition === 'bottom'
-            ? 'bg-white text-emerald-700 shadow-xs font-semibold'
-            : 'text-slate-500 hover:text-slate-900'
-        }`}
-      >
-        <AlignVerticalSpaceAround className="w-3.5 h-3.5" />
-      </button>
-    </div>
-  );
-
-  const FirebaseStatusBadge = () => (
-    <div 
-      title="Tersambung langsung ke Firebase Firestore Cloud secara otomatis tanpa perlu login"
-      className={`inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold border transition-all ${
-        isFirebaseConnected
-          ? 'bg-emerald-50/90 border-emerald-200/90 text-emerald-800'
-          : 'bg-amber-50/90 border-amber-200/90 text-amber-800'
-      }`}
-    >
-      <span className="relative flex h-2 w-2 shrink-0">
-        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-          isFirebaseConnected ? 'bg-emerald-400' : 'bg-amber-400'
-        }`}></span>
-        <span className={`relative inline-flex rounded-full h-2 w-2 ${
-          isFirebaseConnected ? 'bg-emerald-500' : 'bg-amber-500'
-        }`}></span>
-      </span>
-      <Cloud className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-      <span className="whitespace-nowrap">
-        Firebase Terhubung Otomatis
-      </span>
-    </div>
-  );
-
   /* -------------------------------------------------------------
    * RENDER MODE 1: SIDEBAR NAVIGATION (DI SAMPING)
    * ----------------------------------------------------------- */
   if (navPosition === 'sidebar') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col md:flex-row font-sans">
-        
-        {/* Minimalist Mobile Header when in sidebar mode */}
-        <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 py-2 flex items-center justify-between gap-2 shadow-xs print:hidden">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="p-1.5 -ml-1 text-slate-700 hover:bg-slate-100 rounded-lg active:scale-95 transition-transform shrink-0"
-              aria-label="Buka Menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <div className="w-6 h-6 rounded-md bg-emerald-600 flex items-center justify-center text-white font-bold shadow-xs shrink-0">
-                <Receipt className="w-3.5 h-3.5" />
-              </div>
-              <div className="min-w-0">
-                <span className="font-bold text-slate-900 text-xs tracking-tight block truncate">
-                  {activeNavItem?.shortLabel || storeName}
-                </span>
+
+        {/* Mobile Header (synced with Desktop Sidebar design: uncovered storeName, living border, no Firebase/Export/Import/Style switcher) */}
+        <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md px-3 py-2 shadow-xs print:hidden relative">
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="w-10 h-10 -ml-1 flex items-center justify-center text-slate-700 hover:text-emerald-700 hover:bg-emerald-50/80 border border-slate-200/80 rounded-xl active:scale-95 transition-all shrink-0"
+                aria-label="Buka Menu Navigasi"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+
+              {/* Compact Animated Conic Brand Lockup — Full Company Name Always Visible */}
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="relative p-[1.5px] rounded-xl overflow-hidden shrink-0 shadow-2xs">
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -inset-[80%] bg-[conic-gradient(from_0deg,#10b981_0deg,#0f766e_70deg,#cbd5e1_140deg,#34d399_220deg,#0ea5e9_290deg,#10b981_360deg)] animate-sidebar-orbit opacity-90"
+                  />
+                  <div className="relative w-8 h-8 rounded-[10px] bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 flex items-center justify-center text-white overflow-hidden">
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/25 animate-sidebar-sheen" />
+                    <Receipt className="w-4 h-4 relative z-10" />
+                  </div>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12.5px] font-extrabold tracking-tight text-slate-900 leading-tight break-words whitespace-normal">
+                    {storeName}
+                  </div>
+                  <div className="text-[10px] font-semibold text-emerald-700 leading-tight mt-0.5 truncate">
+                    {activeNavItem?.label || 'Rekap Transparan'}
+                  </div>
+                </div>
               </div>
             </div>
+
+            {onOpenAbout && (
+              <button
+                type="button"
+                onClick={onOpenAbout}
+                title="Tentang Aplikasi & Hak Cipta (Denuda)"
+                aria-label="Tentang Aplikasi"
+                className="w-10 h-10 flex items-center justify-center text-slate-600 hover:text-emerald-700 bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 rounded-xl active:scale-95 transition-all shrink-0"
+              >
+                <Info className="w-4 h-4 text-emerald-600" />
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div 
-              title="Firebase Firestore Cloud Terhubung Otomatis"
-              className="flex items-center gap-1 px-1.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-800"
-            >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-              </span>
-              <Cloud className="w-3 h-3 text-emerald-600 shrink-0" />
-            </div>
+          {/* Living Horizontal Architectural Bottom Seam */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-[2.5px] bg-gradient-to-r from-slate-200 via-emerald-200/70 to-slate-200 overflow-hidden">
+            <div className="h-full w-32 bg-gradient-to-r from-transparent via-emerald-500 to-teal-300 animate-header-edge-beam" />
           </div>
+          <div aria-hidden="true" className="pointer-events-none absolute bottom-[4px] left-2 w-2 h-2 border-b-2 border-l-2 border-emerald-500/60 rounded-bl-[2px]" />
+          <div aria-hidden="true" className="pointer-events-none absolute bottom-[4px] right-2 w-2 h-2 border-b-2 border-r-2 border-emerald-500/60 rounded-br-[2px]" />
         </header>
 
         {/* Backdrop for Mobile Drawer */}
         {isMobileMenuOpen && (
-          <div 
+          <div
             onClick={() => setIsMobileMenuOpen(false)}
             className="md:hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs transition-opacity print:hidden"
           />
         )}
 
-        {/* Desktop & Mobile Sidebar Container with Unique Living Architectural Border */}
+        {/* Desktop Sidebar & Mobile Slide-Out Drawer with Unique Living Architectural Border */}
         <aside
           className={`
             fixed md:sticky top-0 z-50 md:z-30 h-screen bg-white/95 backdrop-blur-md flex flex-col justify-between transition-[width,transform] duration-300 ease-out shadow-[4px_0_24px_-8px_rgba(15,23,42,0.08)] print:hidden
@@ -208,7 +151,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
           <div aria-hidden="true" className="pointer-events-none absolute top-3 right-[5px] w-2.5 h-2.5 border-t-2 border-r-2 border-emerald-500/60 rounded-tr-sm" />
           <div aria-hidden="true" className="pointer-events-none absolute bottom-3 right-[5px] w-2.5 h-2.5 border-b-2 border-r-2 border-emerald-500/60 rounded-br-sm" />
 
-          {/* Floating Border-Seam Collapse Toggle (Never covers company name or logo) */}
+          {/* Floating Border-Seam Collapse Toggle on Desktop (Never covers company name or logo) */}
           <button
             type="button"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -227,7 +170,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
           {/* Top Brand & Navigation Section */}
           <div className="flex-1 min-h-0 flex flex-col">
             {/* Brand Header Container */}
-            <div className={`border-b border-slate-100/90 ${isSidebarCollapsed ? 'px-2 pt-3 pb-2.5' : 'p-3.5'}`}>
+            <div className={`border-b border-slate-100/90 ${showCollapsed ? 'px-2 pt-3 pb-2.5' : 'p-3.5'}`}>
               <div className="flex items-start justify-between gap-2">
                 {/* Unique Animated Double-Bezel Conic Border Frame for Brand Identity */}
                 <div
@@ -243,7 +186,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                   {/* Inner Crisp Brand Card */}
                   <div
                     className={`relative bg-white rounded-[14px] transition-all duration-200 ${
-                      isSidebarCollapsed
+                      showCollapsed
                         ? 'flex flex-col items-center justify-center text-center gap-1.5 px-1.5 py-2.5'
                         : 'flex items-center gap-2.5 px-2.5 py-2.5'
                     }`}
@@ -259,17 +202,17 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                     </div>
 
                     {/* Full Company Name — ALWAYS visible and never truncated/covered */}
-                    <div className={isSidebarCollapsed ? 'w-full min-w-0' : 'flex-1 min-w-0'}>
+                    <div className={showCollapsed ? 'w-full min-w-0' : 'flex-1 min-w-0'}>
                       <div
                         className={`font-extrabold tracking-tight text-slate-900 break-words whitespace-normal ${
-                          isSidebarCollapsed
+                          showCollapsed
                             ? 'text-[11px] leading-[1.2] text-center'
                             : 'text-[13px] leading-snug text-left'
                         }`}
                       >
                         {storeName}
                       </div>
-                      {!isSidebarCollapsed && (
+                      {!showCollapsed && (
                         <div className="text-[10px] text-emerald-700 font-semibold mt-0.5 leading-none">
                           Rekap Transparan
                         </div>
@@ -280,8 +223,9 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
 
                 {/* Mobile Close Button (shown only inside mobile drawer) */}
                 <button
+                  type="button"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="md:hidden p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg shrink-0 mt-1"
+                  className="md:hidden w-9 h-9 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl shrink-0 mt-1 active:scale-95 transition-all"
                   aria-label="Tutup Menu"
                 >
                   <X className="w-5 h-5" />
@@ -290,19 +234,20 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
             </div>
 
             {/* Navigation Items List */}
-            <nav className={`flex-1 min-h-0 overflow-y-auto scrollbar-none ${isSidebarCollapsed ? 'px-2 py-2.5 space-y-1.5' : 'p-3 space-y-1'}`}>
+            <nav className={`flex-1 min-h-0 overflow-y-auto scrollbar-none ${showCollapsed ? 'px-2 py-2.5 space-y-1.5' : 'p-3 space-y-1'}`}>
               {navItems.map((item) => {
                 const isActive = activeTab === item.id;
                 return (
                   <button
                     key={item.id}
+                    type="button"
                     onClick={() => {
                       setActiveTab(item.id);
                       setIsMobileMenuOpen(false);
                     }}
                     title={`${item.label}${item.description ? ` — ${item.description}` : ''}`}
                     className={`relative w-full overflow-hidden rounded-xl font-semibold transition-all duration-200 group border ${
-                      isSidebarCollapsed
+                      showCollapsed
                         ? 'flex flex-col items-center justify-center gap-1 px-1.5 py-2'
                         : 'flex items-center gap-3 px-3 py-2.5 text-xs'
                     } ${
@@ -321,7 +266,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                       <span
                         aria-hidden="true"
                         className={`pointer-events-none absolute bg-emerald-400 rounded-full ${
-                          isSidebarCollapsed
+                          showCollapsed
                             ? 'top-0 inset-x-4 h-[2.5px]'
                             : 'left-0 inset-y-2 w-[3px]'
                         }`}
@@ -331,7 +276,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                     {/* Icon Container with Optional Corner Badge in Collapsed Mode */}
                     <span
                       className={`relative flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-105 ${
-                        isSidebarCollapsed
+                        showCollapsed
                           ? `w-8 h-8 rounded-lg ${isActive ? 'bg-white/15 text-emerald-300' : 'bg-slate-100/80 text-slate-600 group-hover:bg-emerald-50 group-hover:text-emerald-700'}`
                           : isActive
                           ? 'text-emerald-300'
@@ -339,7 +284,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                       }`}
                     >
                       {item.icon}
-                      {isSidebarCollapsed && typeof item.badge === 'number' && (
+                      {showCollapsed && typeof item.badge === 'number' && (
                         <span
                           className={`absolute -top-1 -right-2 min-w-[18px] h-4 px-1 rounded-full text-[9px] font-mono font-bold tabular-nums flex items-center justify-center border shadow-2xs ${
                             isActive
@@ -353,7 +298,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                     </span>
 
                     {/* Collapsed Micro Label vs Expanded Label */}
-                    {isSidebarCollapsed ? (
+                    {showCollapsed ? (
                       <span
                         className={`text-[10px] leading-tight text-center w-full truncate ${
                           isActive ? 'text-white font-bold' : 'text-slate-600 group-hover:text-slate-900 font-semibold'
@@ -382,10 +327,10 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
           </div>
 
           {/* Bottom Sidebar Footer */}
-          {(!isSidebarCollapsed || onOpenAbout) && (
-            <div className={`border-t border-slate-100 bg-slate-50/70 ${isSidebarCollapsed ? 'p-2 space-y-2' : 'p-3 space-y-2'}`}>
+          {(!showCollapsed || onOpenAbout) && (
+            <div className={`border-t border-slate-100 bg-slate-50/70 ${showCollapsed ? 'p-2 space-y-2' : 'p-3 space-y-2'}`}>
               {/* PWA Install Button */}
-              {!isSidebarCollapsed && (
+              {!showCollapsed && (
                 <div>
                   <PWAInstallButton className="w-full justify-center" variant="chip" />
                 </div>
@@ -400,14 +345,14 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                   }}
                   title="Tentang Aplikasi & Hak Cipta (Denuda)"
                   className={`w-full py-1.5 px-2 text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors flex items-center ${
-                    isSidebarCollapsed ? 'justify-center gap-1 text-[10px]' : 'justify-between px-2.5'
+                    showCollapsed ? 'justify-center gap-1 text-[10px]' : 'justify-between px-2.5'
                   }`}
                 >
                   <span className="flex items-center gap-1.5">
                     <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>{isSidebarCollapsed ? 'Info' : 'Tentang Aplikasi'}</span>
+                    <span>{showCollapsed ? 'Info' : 'Tentang Aplikasi'}</span>
                   </span>
-                  {!isSidebarCollapsed && (
+                  {!showCollapsed && (
                     <span className="text-[10px] text-slate-400 font-medium">&copy; Denuda</span>
                   )}
                 </button>
@@ -421,8 +366,15 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
           {children}
         </div>
 
-        {/* Minimalist Mobile Bottom Quick-Nav Bar */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1.5 py-1 grid grid-cols-5 gap-0.5 shadow-[0_-4px_16px_rgba(15,23,42,0.06)] print:hidden">
+        {/* Mobile Bottom Quick-Nav Bar (Living Top Architectural Border + Matching Active Tile Design) */}
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md px-1.5 pt-2 pb-1.5 grid grid-cols-5 gap-1 shadow-[0_-6px_24px_rgba(15,23,42,0.08)] print:hidden">
+          {/* Living Horizontal Top Seam */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[2.5px] bg-gradient-to-r from-slate-200 via-emerald-200/70 to-slate-200 overflow-hidden">
+            <div className="h-full w-32 bg-gradient-to-r from-transparent via-emerald-500 to-teal-300 animate-header-edge-beam" />
+          </div>
+          <div aria-hidden="true" className="pointer-events-none absolute top-[4px] left-2 w-2 h-2 border-t-2 border-l-2 border-emerald-500/60 rounded-tl-[2px]" />
+          <div aria-hidden="true" className="pointer-events-none absolute top-[4px] right-2 w-2 h-2 border-t-2 border-r-2 border-emerald-500/60 rounded-tr-[2px]" />
+
           {(
             [
               { id: 'dashboard', label: 'Beranda', icon: <BarChart3 className="w-4 h-4" /> },
@@ -437,28 +389,44 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-colors ${
+                className={`relative overflow-hidden flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[44px] rounded-xl border transition-all duration-200 ${
                   isActive
-                    ? 'text-emerald-700 bg-emerald-50/90 font-bold'
-                    : 'text-slate-500 hover:text-slate-900 font-medium'
+                    ? 'bg-slate-900 text-white border-emerald-400/70 shadow-sm font-bold'
+                    : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-medium'
                 }`}
               >
-                {tab.icon}
-                <span className="text-[10px] leading-none">{tab.label}</span>
+                {isActive && (
+                  <>
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/10 animate-sidebar-sheen" />
+                    <span aria-hidden="true" className="pointer-events-none absolute top-0 inset-x-3 h-[2px] bg-emerald-400 rounded-full" />
+                  </>
+                )}
+                <span className={`relative transition-transform duration-200 ${isActive ? 'text-emerald-300 -translate-y-0.5' : ''}`}>
+                  {tab.icon}
+                </span>
+                <span className="text-[10px] leading-none relative">{tab.label}</span>
               </button>
             );
           })}
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(true)}
-            className={`flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-colors ${
+            className={`relative overflow-hidden flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[44px] rounded-xl border transition-all duration-200 ${
               activeTab === 'top10' || activeTab === 'master_customers' || activeTab === 'settings'
-                ? 'text-emerald-700 bg-emerald-50/90 font-bold'
-                : 'text-slate-500 hover:text-slate-900 font-medium'
+                ? 'bg-slate-900 text-white border-emerald-400/70 shadow-sm font-bold'
+                : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-medium'
             }`}
           >
-            <Menu className="w-4 h-4" />
-            <span className="text-[10px] leading-none">Menu</span>
+            {(activeTab === 'top10' || activeTab === 'master_customers' || activeTab === 'settings') && (
+              <>
+                <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/10 animate-sidebar-sheen" />
+                <span aria-hidden="true" className="pointer-events-none absolute top-0 inset-x-3 h-[2px] bg-emerald-400 rounded-full" />
+              </>
+            )}
+            <span className={`relative ${activeTab === 'top10' || activeTab === 'master_customers' || activeTab === 'settings' ? 'text-emerald-300 -translate-y-0.5' : ''}`}>
+              <Menu className="w-4 h-4" />
+            </span>
+            <span className="text-[10px] leading-none relative">Menu</span>
           </button>
         </nav>
 
@@ -472,26 +440,28 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   if (navPosition === 'top') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-        
-        {/* Top Navbar */}
-        <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-xs print:hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16 gap-4">
-              
+
+        {/* Top Navbar (Consistent on Desktop & Mobile) */}
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-xs print:hidden relative">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between min-h-14 sm:h-16 py-2 sm:py-0 gap-3">
+
               {/* Brand Zone */}
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold shadow-xs">
-                  <Receipt className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-base font-bold tracking-tight text-slate-900 whitespace-nowrap">
-                      {storeName}
-                    </span>
-                    <span className="text-xs text-emerald-800 font-medium bg-emerald-50 px-2 py-0.5 rounded">
-                      Navigasi Atas
-                    </span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="relative p-[1.5px] rounded-xl overflow-hidden shrink-0 shadow-2xs">
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -inset-[80%] bg-[conic-gradient(from_0deg,#10b981_0deg,#0f766e_70deg,#cbd5e1_140deg,#34d399_220deg,#0ea5e9_290deg,#10b981_360deg)] animate-sidebar-orbit opacity-90"
+                  />
+                  <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-[10px] bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 flex items-center justify-center text-white overflow-hidden">
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/25 animate-sidebar-sheen" />
+                    <Receipt className="w-4 h-4 relative z-10" />
                   </div>
+                </div>
+                <div className="min-w-0">
+                  <span className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 break-words leading-tight block">
+                    {storeName}
+                  </span>
                 </div>
               </div>
 
@@ -502,19 +472,23 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                   return (
                     <button
                       key={item.id}
+                      type="button"
                       onClick={() => setActiveTab(item.id)}
-                      className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
+                      className={`relative overflow-hidden flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl border transition-all whitespace-nowrap shrink-0 ${
                         isActive
-                          ? 'bg-slate-900 text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                          ? 'bg-slate-900 text-white border-emerald-400/70 shadow-xs'
+                          : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
-                      {item.icon}
+                      {isActive && (
+                        <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/10 animate-sidebar-sheen" />
+                      )}
+                      <span className={isActive ? 'text-emerald-300' : ''}>{item.icon}</span>
                       <span>{item.label}</span>
                       {typeof item.badge === 'number' && (
                         <span
                           className={`text-[11px] px-1.5 py-0.2 rounded-full tabular-nums ${
-                            isActive ? 'bg-slate-700 text-slate-200' : 'bg-slate-200 text-slate-700'
+                            isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-200 text-slate-700'
                           }`}
                         >
                           {item.badge}
@@ -525,40 +499,11 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                 })}
               </nav>
 
-              {/* Action Zone & Position Switcher */}
+              {/* Action Zone */}
               <div className="flex items-center gap-2 shrink-0">
-                <div className="hidden sm:block">
-                  <FirebaseStatusBadge />
-                </div>
-                
-                {/* Position Switcher Widget */}
-                <div className="hidden sm:block" title="Ubah posisi bar navigasi">
-                  <PositionSwitcher />
-                </div>
-
                 <div className="hidden sm:block">
                   <PWAInstallButton variant="chip" />
                 </div>
-
-                {onOpenImportExcel && (
-                  <button
-                    onClick={onOpenImportExcel}
-                    title="Import data faktur dari Excel (.xlsx)"
-                    className="hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Import Excel</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={onExportExcel}
-                  title="Export data ke file Excel (.xlsx)"
-                  className="hidden md:flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors whitespace-nowrap shrink-0"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export</span>
-                </button>
 
                 {onOpenAbout && (
                   <button
@@ -576,31 +521,34 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
             </div>
 
             {/* Mobile / Tablet Scrollable Sub-bar */}
-            <div className="flex lg:hidden items-center justify-between gap-2 overflow-x-auto py-2 border-t border-slate-100 scrollbar-none">
-              <div className="flex items-center gap-1 overflow-x-auto">
-                {navItems.map((item) => {
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveTab(item.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md whitespace-nowrap shrink-0 ${
-                        isActive
-                          ? 'bg-slate-900 text-white'
-                          : 'text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="sm:hidden shrink-0">
-                <PositionSwitcher compact />
-              </div>
+            <div className="flex lg:hidden items-center gap-1 overflow-x-auto py-2 border-t border-slate-100 scrollbar-none">
+              {navItems.map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveTab(item.id)}
+                    className={`relative overflow-hidden flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border whitespace-nowrap shrink-0 ${
+                      isActive
+                        ? 'bg-slate-900 text-white border-emerald-400/70'
+                        : 'border-transparent text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {isActive && (
+                      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/10 animate-sidebar-sheen" />
+                    )}
+                    <span className={isActive ? 'text-emerald-300' : ''}>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
 
+          {/* Living Horizontal Bottom Seam */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-[2.5px] bg-gradient-to-r from-slate-200 via-emerald-200/70 to-slate-200 overflow-hidden">
+            <div className="h-full w-32 bg-gradient-to-r from-transparent via-emerald-500 to-teal-300 animate-header-edge-beam" />
           </div>
         </header>
 
@@ -617,46 +565,36 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
    * RENDER MODE 3: FLOATING BOTTOM DOCK (DI BAWAH)
    * ----------------------------------------------------------- */
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative pb-28 print:pb-0 print:bg-white">
-      
-      {/* Quiet Top Sub-Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 px-4 sm:px-6 py-3 shadow-xs print:hidden">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold shadow-xs">
-              <Receipt className="w-4 h-4" />
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative pb-24 print:pb-0 print:bg-white">
+
+      {/* Quiet Top Sub-Header (Consistent on Desktop & Mobile) */}
+      <header className="bg-white/95 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6 py-2.5 shadow-xs print:hidden relative">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative p-[1.5px] rounded-xl overflow-hidden shrink-0 shadow-2xs">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-[80%] bg-[conic-gradient(from_0deg,#10b981_0deg,#0f766e_70deg,#cbd5e1_140deg,#34d399_220deg,#0ea5e9_290deg,#10b981_360deg)] animate-sidebar-orbit opacity-90"
+              />
+              <div className="relative w-8 h-8 rounded-[10px] bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 flex items-center justify-center text-white overflow-hidden">
+                <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/2 bg-white/25 animate-sidebar-sheen" />
+                <Receipt className="w-4 h-4 relative z-10" />
+              </div>
             </div>
-            <div>
-              <span className="font-bold text-slate-900 text-sm">{storeName}</span>
-              <span className="text-[10px] text-slate-500 block">Mode Dock Bawah Aktif</span>
+            <div className="min-w-0">
+              <span className="font-extrabold text-slate-900 text-[13px] sm:text-sm leading-tight break-words block">
+                {storeName}
+              </span>
+              <span className="text-[10px] text-emerald-700 font-semibold block truncate">
+                {activeNavItem?.label || 'Rekap Transparan'}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:block">
-              <FirebaseStatusBadge />
-            </div>
-            <PositionSwitcher />
+          <div className="flex items-center gap-2 shrink-0">
             <div className="hidden sm:block">
               <PWAInstallButton variant="chip" />
             </div>
-            {onOpenImportExcel && (
-              <button
-                onClick={onOpenImportExcel}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
-                title="Import data faktur dari Excel"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Import Excel</span>
-              </button>
-            )}
-            <button
-              onClick={onExportExcel}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export Excel</span>
-            </button>
             {onOpenAbout && (
               <button
                 type="button"
@@ -671,6 +609,11 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
             )}
           </div>
         </div>
+
+        {/* Living Horizontal Bottom Seam */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-[2.5px] bg-gradient-to-r from-slate-200 via-emerald-200/70 to-slate-200 overflow-hidden">
+          <div className="h-full w-32 bg-gradient-to-r from-transparent via-emerald-500 to-teal-300 animate-header-edge-beam" />
+        </div>
       </header>
 
       {/* Main Content Area */}
@@ -680,21 +623,24 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
 
       {/* Modern Bottom Dock (Fixed native bottom bar on mobile, floating dock on desktop) */}
       <div className="fixed bottom-0 sm:bottom-4 inset-x-0 z-50 flex justify-center pointer-events-none sm:px-3 print:hidden">
-        <div className="pointer-events-auto w-full sm:w-auto bg-white/95 backdrop-blur-xl border-t sm:border border-slate-200/90 shadow-2xl sm:rounded-2xl px-1.5 py-1.5 sm:p-1.5 flex items-center justify-start sm:justify-center gap-1 max-w-full overflow-x-auto scrollbar-none ring-1 ring-black/5 animate-in slide-in-from-bottom-3 duration-200">
-          
+        <div className="pointer-events-auto relative overflow-hidden w-full sm:w-auto bg-white/95 backdrop-blur-xl border-t sm:border border-slate-200/90 shadow-2xl sm:rounded-2xl px-1.5 py-1.5 sm:p-1.5 flex items-center justify-start sm:justify-center gap-1 max-w-full overflow-x-auto scrollbar-none ring-1 ring-black/5">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => setActiveTab(item.id)}
-                className={`relative flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 group ${
+                className={`relative overflow-hidden flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold border transition-all whitespace-nowrap shrink-0 group ${
                   isActive
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-slate-900 text-white border-emerald-400/70 shadow-sm'
+                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
               >
-                <span className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-900'}`}>
+                {isActive && (
+                  <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/10 animate-sidebar-sheen" />
+                )}
+                <span className={`shrink-0 ${isActive ? 'text-emerald-300' : 'text-slate-500 group-hover:text-slate-900'}`}>
                   {item.icon}
                 </span>
                 <span className="text-[10px] sm:text-xs font-medium sm:hidden">{item.shortLabel}</span>
@@ -702,7 +648,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                 {typeof item.badge === 'number' && (
                   <span
                     className={`hidden sm:inline text-[10px] px-1.5 py-0.2 rounded-full tabular-nums ${
-                      isActive ? 'bg-slate-700 text-slate-200' : 'bg-slate-200 text-slate-700'
+                      isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-200 text-slate-700'
                     }`}
                   >
                     {item.badge}
@@ -711,7 +657,6 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
               </button>
             );
           })}
-
         </div>
       </div>
 

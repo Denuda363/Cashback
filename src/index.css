@@ -41,6 +41,21 @@ body {
   }
 }
 
+@keyframes sidebar-edge-beam-x {
+  0% {
+    transform: translateX(-35%);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateX(135%);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateX(-35%);
+    opacity: 0.45;
+  }
+}
+
 @keyframes sidebar-orbit-spin {
   0% {
     transform: rotate(0deg);
@@ -74,6 +89,10 @@ body {
   animation: sidebar-edge-beam 5.5s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
+.animate-header-edge-beam {
+  animation: sidebar-edge-beam-x 5.5s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
 .animate-sidebar-orbit {
   animation: sidebar-orbit-spin 8s linear infinite;
 }
@@ -88,6 +107,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-sidebar-edge-beam,
+  .animate-header-edge-beam,
   .animate-sidebar-orbit,
   .animate-sidebar-aura,
   .animate-sidebar-sheen {
