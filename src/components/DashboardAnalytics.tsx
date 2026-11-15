@@ -8,7 +8,6 @@ import {
   Clock, 
   AlertCircle, 
   ArrowUpRight,
-  ShieldCheck,
   Trophy,
   Gift
 } from 'lucide-react';
@@ -26,7 +25,6 @@ interface DashboardAnalyticsProps {
 
 export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   invoices,
-  settings,
   customerSummaries,
   onNavigateToTab,
 }) => {
@@ -129,31 +127,6 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      
-      {/* Top Banner: Minimalist & Clean on Mobile */}
-      <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
-          <div className="flex items-center sm:items-start gap-2.5 sm:gap-3">
-            <div className="p-2 sm:p-2.5 rounded-lg bg-emerald-50 text-emerald-700 shrink-0">
-              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h1 className="text-sm sm:text-lg font-bold text-slate-900 truncate">
-                  Dashboard
-                </h1>
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800">
-                  {settings.mode === 'flat' ? `${settings.flatPercentage}% Flat` : 'Tiered'}
-                </span>
-              </div>
-              <p className="hidden sm:block text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
-                Setiap rupiah cashback dihitung otomatis berdasarkan faktur resmi dengan pencairan Tunai (Cash).
-                {settings.maxCashbackPerTransaction ? ` Maks. Cap ${formatRupiah(settings.maxCashbackPerTransaction)}.` : ' Tanpa batas maksimal.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* KPI Stat Cards (2x2 Grid on Mobile, 4 columns on Desktop) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
