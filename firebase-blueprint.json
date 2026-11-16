@@ -90,7 +90,8 @@
             "bankAccountHolder": { "type": "string" },
             "footerNotes": { "type": "string" }
           }
-        }
+        },
+        "adminPin": { "type": "string", "description": "PIN rahasia untuk akses mode admin" }
       },
       "required": ["mode", "flatPercentage", "minPurchaseAmount", "rounding", "claimValidityDays", "storeName", "currency"]
     },
@@ -107,6 +108,26 @@
         "tables": { "type": "array" }
       },
       "required": ["appName", "status", "lastSyncAt"]
+    },
+    "DisbursementCancelRequest": {
+      "title": "DisbursementCancelRequest",
+      "description": "Pengajuan pembatalan pencairan cashback dari petugas kepada admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerCode": { "type": "string" },
+        "amount": { "type": "number" },
+        "requestedBy": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "executed"] },
+        "requestedAt": { "type": "string" },
+        "reviewedAt": { "type": "string" },
+        "reviewedBy": { "type": "string" },
+        "adminNote": { "type": "string" },
+        "executedAt": { "type": "string" }
+      },
+      "required": ["id", "customerName", "amount", "requestedBy", "reason", "status", "requestedAt"]
     }
   },
   "firestore": {
@@ -125,6 +146,10 @@
     "/system/{docId}": {
       "schema": { "$ref": "#/entities/SystemInfo" },
       "description": "Informasi inisialisasi dan verifikasi sistem database"
+    },
+    "/cancel_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/DisbursementCancelRequest" },
+      "description": "Koleksi pengajuan pembatalan pencairan cashback dari petugas"
     }
   }
 }

@@ -21,6 +21,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Disbursement cancel requests collection
+    match /cancel_requests/{requestId} {
+      allow read, write: if true;
+    }
+
     // Connection testing
     match /test/{docId} {
       allow read, write: if true;

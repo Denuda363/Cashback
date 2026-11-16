@@ -21,7 +21,8 @@ import {
   Layers, 
   UserX,
   UserCheck,
-  Printer
+  Printer,
+  Eye
 } from 'lucide-react';
 import { CustomerSummary, Invoice, CustomerBenefitType, CompanyProfile } from '../types/cashback';
 import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
@@ -39,9 +40,10 @@ interface CustomerSummaryViewProps {
   onToggleExcludeCustomer?: (customerName: string) => void;
   onOpenCustomerDisbursement?: (customer: CustomerSummary) => void;
   onSelectCustomerForInvoices: (customerName: string) => void;
-  onExportExcel: () => void;
+  onExportExcel?: () => void;
   companyProfile?: CompanyProfile;
   storeName?: string;
+  isReadOnly?: boolean;
 }
 
 export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
@@ -56,6 +58,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   onExportExcel,
   companyProfile,
   storeName = 'CashbackPro',
+  isReadOnly = false,
 }) => {
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState<'all' | 'Platinum' | 'Gold' | 'Silver' | 'Bronze'>('all');
@@ -329,6 +332,15 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   return (
     <div>
       <div className="space-y-4 print:hidden">
+
+      {isReadOnly && (
+        <div className="px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 flex items-center gap-2 text-xs text-slate-700">
+          <Eye className="w-4 h-4 text-emerald-700 shrink-0" />
+          <span>
+            <strong>Mode Lihat Saja (Petugas)</strong> — Anda dapat melihat ringkasan, mencetak tanda terima resmi, menyalin teks, dan membuka faktur. Pengaturan paket hak atau pencoretan konsumen hanya tersedia di Mode Admin.
+          </span>
+        </div>
+      )}
       
       {/* Focused Header for Per-Customer Data */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-4">
@@ -353,7 +365,9 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
               )}
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Data akumulasi per tiap konsumen dari <strong>Rekap Faktur</strong>. Anda dapat mengatur siapa saja konsumen yang <strong>dicoret</strong> dari hak penerimaan cashback.
+              {isReadOnly
+                ? <>Data akumulasi per tiap konsumen dari <strong>Rekap Faktur</strong> (tampilan lihat saja).</>
+                : <>Data akumulasi per tiap konsumen dari <strong>Rekap Faktur</strong>. Anda dapat mengatur siapa saja konsumen yang <strong>dicoret</strong> dari hak penerimaan cashback.</>}
             </p>
           </div>
 
@@ -426,14 +440,16 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
             </button>
 
             {/* Export Excel */}
-            <button
-              onClick={onExportExcel}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg shadow-2xs transition-colors shrink-0"
-              title="Export rekap lengkap konsumen ke Excel"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Export Excel</span>
-            </button>
+            {!isReadOnly && onExportExcel && (
+              <button
+                onClick={onExportExcel}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg shadow-2xs transition-colors shrink-0"
+                title="Export rekap lengkap konsumen ke Excel"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Export Excel</span>
+              </button>
+            )}
 
           </div>
         </div>
@@ -643,7 +659,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                           </div>
 
                           {/* Quick Benefit Package Setting */}
-                          {onSetCustomerBenefit && !isExcluded && (
+                          {!isReadOnly && onSetCustomerBenefit && !isExcluded && (
                             <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">
                                 Atur Hak Diterima:
@@ -706,7 +722,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                         </button>
 
                         {/* Coret / Pulihkan Toggle Button */}
-                        {onToggleExcludeCustomer && (
+                        {!isReadOnly && onToggleExcludeCustomer && (
                           isExcluded ? (
                             <button
                               type="button"
@@ -768,7 +784,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                           <Receipt className="w-4 h-4" />
                         </button>
 
-                        {onOpenCustomerDisbursement && !isExcluded && unclaimed > 0 && (
+                        {!isReadOnly && onOpenCustomerDisbursement && !isExcluded && unclaimed > 0 && (
                           <button
                             onClick={() => onOpenCustomerDisbursement(cust)}
                             className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs transition-colors shrink-0"
@@ -1026,7 +1042,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                           
                           {/* Paket Diterima (Dropdown / Badge) */}
                           <td className="py-3 px-3 text-center">
-                            {onSetCustomerBenefit && !isExcluded ? (
+                            {!isReadOnly && onSetCustomerBenefit && !isExcluded ? (
                               <select
                                 value={cust.benefitType || 'cashback_only'}
                                 onChange={(e) => onSetCustomerBenefit(cust.customerName, e.target.value as CustomerBenefitType)}
@@ -1099,7 +1115,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                                 <Printer className="w-3.5 h-3.5" />
                               </button>
 
-                              {onToggleExcludeCustomer && (
+                              {!isReadOnly && onToggleExcludeCustomer && (
                                 isExcluded ? (
                                   <button
                                     onClick={() => onToggleExcludeCustomer(cust.customerName)}
@@ -1208,21 +1224,23 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
       </div>
 
       {/* Confirmation Dialog to Disqualify / Strike-through Customer */}
-      <ConfirmDialog
-        isOpen={customerToExclude !== null}
-        title="Coret Konsumen dari Penerima Cashback?"
-        message={`Apakah Anda yakin ingin mencoret "${customerToExclude}" dari daftar konsumen yang berhak menerima cashback? Hak cashback konsumen ini akan dinonaktifkan dari daftar penerima.`}
-        confirmLabel="Ya, Coret Konsumen"
-        cancelLabel="Batal"
-        isDestructive={true}
-        onConfirm={() => {
-          if (customerToExclude && onToggleExcludeCustomer) {
-            onToggleExcludeCustomer(customerToExclude);
-          }
-          setCustomerToExclude(null);
-        }}
-        onCancel={() => setCustomerToExclude(null)}
-      />
+      {!isReadOnly && (
+        <ConfirmDialog
+          isOpen={customerToExclude !== null}
+          title="Coret Konsumen dari Penerima Cashback?"
+          message={`Apakah Anda yakin ingin mencoret "${customerToExclude}" dari daftar konsumen yang berhak menerima cashback? Hak cashback konsumen ini akan dinonaktifkan dari daftar penerima.`}
+          confirmLabel="Ya, Coret Konsumen"
+          cancelLabel="Batal"
+          isDestructive={true}
+          onConfirm={() => {
+            if (customerToExclude && onToggleExcludeCustomer) {
+              onToggleExcludeCustomer(customerToExclude);
+            }
+            setCustomerToExclude(null);
+          }}
+          onCancel={() => setCustomerToExclude(null)}
+        />
+      )}
 
       {/* Official Handover Receipt Modal */}
       {viewingReceiptCustomer && (

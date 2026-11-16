@@ -34,6 +34,10 @@ import {
   Shield,
   FileText,
   Image as ImageIcon,
+  Lock,
+  KeyRound,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { CashbackSettings, CustomerMaster, Invoice, NavPosition, TierRule, CompanyProfile } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
@@ -136,11 +140,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [simSpend, setSimSpend] = useState<number>(1500000);
   const [isPwaModalOpen, setIsPwaModalOpen] = useState(false);
 
+  // Hidden Admin PIN Configuration State
+  const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
+  const [adminPinDraft, setAdminPinDraft] = useState<string>(settings.adminPin || '');
+  const [confirmAdminPinDraft, setConfirmAdminPinDraft] = useState<string>(settings.adminPin || '');
+  const [showAdminPinInput, setShowAdminPinInput] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+
   // Sync draft logo & company profile whenever modal opens with latest Firestore settings
   useEffect(() => {
     if (!isOpen) return;
     setLogoUrl(settings.companyProfile?.logoUrl || '');
     setLogoError(null);
+    setIsSecurityExpanded(false);
+    setAdminPinDraft(settings.adminPin || '');
+    setConfirmAdminPinDraft(settings.adminPin || '');
+    setShowAdminPinInput(false);
+    setPinError(null);
     if (settings.companyProfile) {
       setCompanyName(settings.companyProfile.companyName || settings.storeName || '');
       setTagline(settings.companyProfile.tagline || '');
@@ -353,6 +369,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const cleanedPin = adminPinDraft.trim();
+    const cleanedConfirmPin = confirmAdminPinDraft.trim();
+    if (cleanedPin) {
+      if (cleanedPin.length < 4) {
+        setPinError('PIN Admin minimal 4 digit/karakter.');
+        setActiveTab('database');
+        setIsSecurityExpanded(true);
+        return;
+      }
+      if (cleanedPin !== cleanedConfirmPin) {
+        setPinError('Konfirmasi PIN Admin tidak cocok.');
+        setActiveTab('database');
+        setIsSecurityExpanded(true);
+        return;
+      }
+    }
+    setPinError(null);
     
     const finalCompanyName = companyName.trim() || storeName.trim();
 
@@ -385,6 +419,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       claimValidityDays,
       storeName: finalCompanyName,
       companyProfile: updatedCompanyProfile,
+      adminPin: cleanedPin,
     };
 
     onSaveSettings(finalSettings);
@@ -1310,6 +1345,111 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span>Hapus Semua Data Permanen</span>
                   </button>
                 </div>
+              </div>
+
+              {/* Discreet / Collapsible Secret Admin PIN Configuration */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSecurityExpanded((prev) => !prev)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[11px] font-medium text-slate-400 hover:text-slate-700 hover:bg-slate-100/70 transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>Keamanan Akses Lanjutan</span>
+                  </span>
+                  <span className="text-[10px] font-mono">
+                    {isSecurityExpanded ? 'Tutup ▲' : 'Atur PIN ▼'}
+                  </span>
+                </button>
+
+                {isSecurityExpanded && (
+                  <div className="mt-2 p-3.5 rounded-xl border border-slate-200 bg-slate-50/90 space-y-3 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-800 text-xs">
+                        <Lock className="w-3.5 h-3.5 text-slate-700" />
+                        <span>Atur PIN Admin Rahasia</span>
+                      </div>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                        {settings.adminPin ? 'PIN Kustom Aktif' : 'Belum Diatur'}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      PIN ini digunakan untuk membuka <strong>Mode Admin</strong> dari Mode Petugas di seluruh perangkat yang terhubung ke cloud.
+                    </p>
+
+                    {pinError && (
+                      <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-medium">
+                        {pinError}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                          PIN Admin Baru (Min. 4 Digit)
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showAdminPinInput ? 'text' : 'password'}
+                            inputMode="numeric"
+                            autoComplete="new-password"
+                            value={adminPinDraft}
+                            onChange={(e) => {
+                              setAdminPinDraft(e.target.value);
+                              if (pinError) setPinError(null);
+                            }}
+                            placeholder="Kosongkan jika tanpa PIN kustom"
+                            className="w-full px-3 pr-9 py-2 bg-white border border-slate-200 rounded-lg text-xs font-mono tracking-wider focus:outline-hidden focus:ring-1 focus:ring-slate-900"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowAdminPinInput((v) => !v)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"
+                            aria-label="Toggle lihat PIN"
+                          >
+                            {showAdminPinInput ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                          Konfirmasi PIN Admin Baru
+                        </label>
+                        <input
+                          type={showAdminPinInput ? 'text' : 'password'}
+                          inputMode="numeric"
+                          autoComplete="new-password"
+                          value={confirmAdminPinDraft}
+                          onChange={(e) => {
+                            setConfirmAdminPinDraft(e.target.value);
+                            if (pinError) setPinError(null);
+                          }}
+                          placeholder="Ulangi PIN Admin..."
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-mono tracking-wider focus:outline-hidden focus:ring-1 focus:ring-slate-900"
+                        />
+                      </div>
+                    </div>
+
+                    {adminPinDraft && (
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdminPinDraft('');
+                            setConfirmAdminPinDraft('');
+                            setPinError(null);
+                          }}
+                          className="text-[11px] font-semibold text-rose-600 hover:text-rose-700"
+                        >
+                          Hapus PIN Kustom
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
             </div>

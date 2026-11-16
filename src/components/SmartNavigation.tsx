@@ -13,8 +13,12 @@ import {
   ChevronRight,
   CheckCircle2,
   Info,
+  Lock,
+  ShieldCheck,
+  UserCheck,
+  Bell,
 } from 'lucide-react';
-import { ActiveTab, NavPosition } from '../types/cashback';
+import { ActiveTab, AppRole, NavPosition } from '../types/cashback';
 import { PWAInstallButton } from './PWAInstallPrompt';
 
 interface SmartNavigationProps {
@@ -31,6 +35,11 @@ interface SmartNavigationProps {
   storeName?: string;
   companyLogoUrl?: string;
   isFirebaseConnected?: boolean;
+  appRole: AppRole;
+  onOpenAdminPinModal: () => void;
+  onSwitchToPetugas: () => void;
+  pendingCancelCount?: number;
+  onOpenCancelApprovals?: () => void;
   children: React.ReactNode;
 }
 
@@ -43,6 +52,11 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   totalMasterCustomersCount,
   storeName = 'CashbackPro',
   companyLogoUrl,
+  appRole,
+  onOpenAdminPinModal,
+  onSwitchToPetugas,
+  pendingCancelCount = 0,
+  onOpenCancelApprovals,
   children,
 }) => {
   // Mobile drawer state (for sidebar mode on mobile)
@@ -89,7 +103,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   // Mobile drawer always uses full neat expanded layout
   const showCollapsed = isSidebarCollapsed && !isMobileMenuOpen;
 
-  const navItems: { id: ActiveTab; label: string; shortLabel: string; icon: React.ReactNode; badge?: number; description?: string }[] = [
+  const allNavItems: { id: ActiveTab; label: string; shortLabel: string; icon: React.ReactNode; badge?: number; description?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', shortLabel: 'Dashboard', icon: <BarChart3 className="w-4 h-4" />, description: 'Ringkasan & tren omset' },
     { id: 'top10', label: '10 Besar Tertinggi', shortLabel: 'Top 10', icon: <Trophy className="w-4 h-4" />, description: 'Podium reward konsumen' },
     { id: 'invoices', label: 'Rekap Faktur', shortLabel: 'Faktur', icon: <FileSpreadsheet className="w-4 h-4" />, badge: totalInvoicesCount, description: 'Riwayat data pembelian' },
@@ -99,7 +113,12 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
     { id: 'settings', label: 'Pengaturan', shortLabel: 'Pengaturan', icon: <SettingsIcon className="w-4 h-4" />, description: 'Aturan persen cashback & usaha' },
   ];
 
-  const activeNavItem = navItems.find((n) => n.id === activeTab);
+  // Mode Petugas dapat melihat semua halaman kecuali Pengaturan (akses halaman lain hanya lihat)
+  const navItems = appRole === 'admin'
+    ? allNavItems
+    : allNavItems.filter((item) => item.id !== 'settings');
+
+  const activeNavItem = navItems.find((n) => n.id === activeTab) || navItems[0];
 
   /* -------------------------------------------------------------
    * RENDER MODE 1: SIDEBAR NAVIGATION (DI SAMPING)
@@ -142,17 +161,54 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
               </div>
             </div>
 
-            {onOpenAbout && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {appRole === 'admin' && pendingCancelCount > 0 && onOpenCancelApprovals && (
+                <button
+                  type="button"
+                  onClick={onOpenCancelApprovals}
+                  title={`${pendingCancelCount} pengajuan pembatalan menunggu ACC Admin`}
+                  className="h-10 px-2.5 flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-300 rounded-xl active:scale-95 transition-all"
+                >
+                  <Bell className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="font-mono">{pendingCancelCount}</span>
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={onOpenAbout}
-                title="Tentang Aplikasi & Hak Cipta (Denuda)"
-                aria-label="Tentang Aplikasi"
-                className="w-10 h-10 flex items-center justify-center text-slate-600 hover:text-emerald-700 bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 rounded-xl active:scale-95 transition-all shrink-0"
+                onClick={appRole === 'admin' ? onSwitchToPetugas : onOpenAdminPinModal}
+                title={appRole === 'admin' ? 'Kunci dan kembali ke Mode Petugas' : 'Masuk ke Mode Admin (PIN)'}
+                className={`h-10 px-2.5 flex items-center gap-1 text-[11px] font-bold rounded-xl border active:scale-95 transition-all ${
+                  appRole === 'admin'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                    : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
+                }`}
               >
-                <Info className="w-4 h-4 text-emerald-600" />
+                {appRole === 'admin' ? (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Admin</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Admin</span>
+                  </>
+                )}
               </button>
-            )}
+
+              {onOpenAbout && (
+                <button
+                  type="button"
+                  onClick={onOpenAbout}
+                  title="Tentang Aplikasi & Hak Cipta (Denuda)"
+                  aria-label="Tentang Aplikasi"
+                  className="w-10 h-10 flex items-center justify-center text-slate-600 hover:text-emerald-700 bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 rounded-xl active:scale-95 transition-all shrink-0"
+                >
+                  <Info className="w-4 h-4 text-emerald-600" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Living Horizontal Architectural Bottom Seam */}
@@ -359,38 +415,108 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
           </div>
 
           {/* Bottom Sidebar Footer */}
-          {(!showCollapsed || onOpenAbout) && (
-            <div className={`border-t border-slate-100 bg-slate-50/70 ${showCollapsed ? 'p-2 space-y-2' : 'p-3 space-y-2'}`}>
-              {/* PWA Install Button */}
-              {!showCollapsed && (
-                <div>
-                  <PWAInstallButton className="w-full justify-center" variant="chip" />
-                </div>
-              )}
+          <div className={`border-t border-slate-100 bg-slate-50/70 ${showCollapsed ? 'p-2 space-y-2' : 'p-3 space-y-2'}`}>
+            {/* Role Mode Switcher (Admin Full Akses vs Petugas Pencairan) */}
+            {appRole === 'admin' ? (
+              <div className="space-y-1.5">
+                {pendingCancelCount > 0 && onOpenCancelApprovals && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenCancelApprovals();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    title={`${pendingCancelCount} pengajuan pembatalan menunggu ACC`}
+                    className={`w-full py-1.5 px-2 text-[11px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg transition-colors flex items-center ${
+                      showCollapsed ? 'justify-center gap-1' : 'justify-between px-2.5'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Bell className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                      {!showCollapsed && <span>ACC Batal</span>}
+                    </span>
+                    <span className="px-1.5 py-0.2 rounded-full bg-amber-600 text-white text-[10px] font-mono">
+                      {pendingCancelCount}
+                    </span>
+                  </button>
+                )}
 
-              {onOpenAbout && (
                 <button
                   type="button"
                   onClick={() => {
-                    onOpenAbout();
+                    onSwitchToPetugas();
                     setIsMobileMenuOpen(false);
                   }}
-                  title="Tentang Aplikasi & Hak Cipta (Denuda)"
-                  className={`w-full py-1.5 px-2 text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors flex items-center ${
+                  title="Mode Admin Aktif — Klik untuk beralih ke Mode Petugas"
+                  className={`w-full py-1.5 px-2 text-[11px] font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors flex items-center ${
                     showCollapsed ? 'justify-center gap-1 text-[10px]' : 'justify-between px-2.5'
                   }`}
                 >
-                  <span className="flex items-center gap-1.5">
-                    <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>{showCollapsed ? 'Info' : 'Tentang Aplikasi'}</span>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <span className="truncate">{showCollapsed ? 'Admin' : 'Mode Admin'}</span>
                   </span>
                   {!showCollapsed && (
-                    <span className="text-[10px] text-slate-400 font-medium">&copy; Denuda</span>
+                    <span className="text-[10px] font-semibold text-emerald-700 bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+                      Kunci
+                    </span>
                   )}
                 </button>
-              )}
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {!showCollapsed && (
+                  <div className="px-2.5 py-1.5 rounded-lg bg-slate-100 border border-slate-200 flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="truncate">Mode Petugas (Pencairan & Lihat)</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenAdminPinModal();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  title="Masuk ke Mode Admin dengan PIN"
+                  className={`w-full py-1.5 px-2 text-[11px] font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors flex items-center shadow-2xs ${
+                    showCollapsed ? 'justify-center gap-1 text-[10px]' : 'justify-center gap-1.5 px-2.5'
+                  }`}
+                >
+                  <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>{showCollapsed ? 'Admin' : 'Masuk Mode Admin'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* PWA Install Button */}
+            {!showCollapsed && (
+              <div>
+                <PWAInstallButton className="w-full justify-center" variant="chip" />
+              </div>
+            )}
+
+            {onOpenAbout && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenAbout();
+                  setIsMobileMenuOpen(false);
+                }}
+                title="Tentang Aplikasi & Hak Cipta (Denuda)"
+                className={`w-full py-1.5 px-2 text-[11px] font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors flex items-center ${
+                  showCollapsed ? 'justify-center gap-1 text-[10px]' : 'justify-between px-2.5'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>{showCollapsed ? 'Info' : 'Tentang Aplikasi'}</span>
+                </span>
+                {!showCollapsed && (
+                  <span className="text-[10px] text-slate-400 font-medium">&copy; Denuda</span>
+                )}
+              </button>
+            )}
+          </div>
         </aside>
 
         {/* Main Content Area */}
@@ -444,18 +570,18 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
             type="button"
             onClick={() => setIsMobileMenuOpen(true)}
             className={`relative overflow-hidden flex flex-col items-center justify-center gap-0.5 py-1.5 min-h-[44px] rounded-xl border transition-all duration-200 ${
-              activeTab === 'top10' || activeTab === 'master_customers' || activeTab === 'settings'
+              activeTab === 'top10' || activeTab === 'master_customers' || (appRole === 'admin' && activeTab === 'settings')
                 ? 'bg-slate-900 text-white border-emerald-400/70 shadow-sm font-bold'
                 : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-medium'
             }`}
           >
-            {(activeTab === 'top10' || activeTab === 'master_customers' || activeTab === 'settings') && (
+            {(activeTab === 'top10' || activeTab === 'master_customers' || (appRole === 'admin' && activeTab === 'settings')) && (
               <>
                 <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-1/3 bg-white/10 animate-sidebar-sheen" />
                 <span aria-hidden="true" className="pointer-events-none absolute top-0 inset-x-3 h-[2px] bg-emerald-400 rounded-full" />
               </>
             )}
-            <span className={`relative ${activeTab === 'top10' || activeTab === 'master_customers' || activeTab === 'settings' ? 'text-emerald-300 -translate-y-0.5' : ''}`}>
+            <span className={`relative ${activeTab === 'top10' || activeTab === 'master_customers' || (appRole === 'admin' && activeTab === 'settings') ? 'text-emerald-300 -translate-y-0.5' : ''}`}>
               <Menu className="w-4 h-4" />
             </span>
             <span className="text-[10px] leading-none relative">Menu</span>
@@ -530,6 +656,39 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
 
               {/* Action Zone */}
               <div className="flex items-center gap-2 shrink-0">
+                {appRole === 'admin' && pendingCancelCount > 0 && onOpenCancelApprovals && (
+                  <button
+                    type="button"
+                    onClick={onOpenCancelApprovals}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg transition-colors"
+                  >
+                    <Bell className="w-3.5 h-3.5 text-amber-700" />
+                    <span>{pendingCancelCount}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={appRole === 'admin' ? onSwitchToPetugas : onOpenAdminPinModal}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                    appRole === 'admin'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                      : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
+                  }`}
+                >
+                  {appRole === 'admin' ? (
+                    <>
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Mode Admin</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Masuk Admin</span>
+                    </>
+                  )}
+                </button>
+
                 <div className="hidden sm:block">
                   <PWAInstallButton variant="chip" />
                 </div>
@@ -618,6 +777,37 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {appRole === 'admin' && pendingCancelCount > 0 && onOpenCancelApprovals && (
+              <button
+                type="button"
+                onClick={onOpenCancelApprovals}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-lg transition-colors"
+              >
+                <Bell className="w-3.5 h-3.5 text-amber-700" />
+                <span>{pendingCancelCount}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={appRole === 'admin' ? onSwitchToPetugas : onOpenAdminPinModal}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                appRole === 'admin'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                  : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
+              }`}
+            >
+              {appRole === 'admin' ? (
+                <>
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Admin</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Masuk Admin</span>
+                </>
+              )}
+            </button>
             <div className="hidden sm:block">
               <PWAInstallButton variant="chip" />
             </div>

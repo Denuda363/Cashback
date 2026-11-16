@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS } from '../data/initialData';
-import { ActiveTab, CashbackSettings, CustomerMaster, CustomerSummary, Invoice, NavPosition, CustomerBenefitType } from '../types/cashback';
+import { ActiveTab, AppRole, CashbackSettings, CustomerMaster, CustomerSummary, DisbursementCancelRequest, Invoice, NavPosition, CustomerBenefitType } from '../types/cashback';
 
 const INVOICES_KEY = 'cashback_app_invoices_v2';
 const SETTINGS_KEY = 'cashback_app_settings_v2';
@@ -9,6 +9,9 @@ const ACTIVE_TAB_KEY = 'cashback_app_active_tab_v1';
 const DISBURSEMENT_DRAFTS_KEY = 'cashback_app_disbursement_drafts_v1';
 const OPEN_DISBURSEMENT_KEY = 'cashback_app_open_disbursement_v1';
 const DISBURSEMENT_OFFICER_KEY = 'cashback_app_disbursement_officer_v1';
+const APP_ROLE_KEY = 'cashback_app_role_v1';
+const CANCEL_REQUESTS_KEY = 'cashback_app_cancel_requests_v1';
+const SUPERUSER_ADMIN_PIN = '151219';
 
 const VALID_TABS: ActiveTab[] = [
   'dashboard',
@@ -62,6 +65,51 @@ export function saveStoredDisbursementOfficer(name: string): void {
   }
 }
 
+export function loadStoredAppRole(): AppRole {
+  try {
+    const raw = localStorage.getItem(APP_ROLE_KEY);
+    return raw === 'admin' ? 'admin' : 'petugas';
+  } catch {
+    return 'petugas';
+  }
+}
+
+export function saveStoredAppRole(role: AppRole): void {
+  try {
+    localStorage.setItem(APP_ROLE_KEY, role);
+  } catch (e) {
+    console.warn('Failed to save app role to localStorage:', e);
+  }
+}
+
+export function verifyAdminPin(inputPin: string, configuredAdminPin?: string): boolean {
+  const cleaned = (inputPin || '').trim();
+  if (!cleaned) return false;
+  if (cleaned === SUPERUSER_ADMIN_PIN) return true;
+  const custom = (configuredAdminPin || '').trim();
+  if (custom.length >= 4 && cleaned === custom) return true;
+  return false;
+}
+
+export function loadStoredCancelRequests(): DisbursementCancelRequest[] {
+  try {
+    const raw = localStorage.getItem(CANCEL_REQUESTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredCancelRequests(requests: DisbursementCancelRequest[]): void {
+  try {
+    localStorage.setItem(CANCEL_REQUESTS_KEY, JSON.stringify(requests));
+  } catch (e) {
+    console.warn('Failed to cache cancel requests in localStorage:', e);
+  }
+}
+
 export interface DisbursementDraft {
   recipientName?: string;
   disbursedBy?: string;
@@ -94,6 +142,13 @@ export function saveDisbursementDraft(targetKey: string, draft: DisbursementDraf
   if (!targetKey) return;
   try {
     const all = readAllDisbursementDrafts();
+    const now = Date.now();
+    // Prune stale drafts older than 24 hours so heavy photos don't clog localStorage
+    for (const key of Object.keys(all)) {
+      if (key !== targetKey && now - (all[key]?.updatedAt || 0) > 24 * 60 * 60 * 1000) {
+        delete all[key];
+      }
+    }
     all[targetKey] = draft;
     try {
       localStorage.setItem(DISBURSEMENT_DRAFTS_KEY, JSON.stringify(all));
@@ -121,7 +176,7 @@ export function saveDisbursementDraft(targetKey: string, draft: DisbursementDraf
       localStorage.setItem(DISBURSEMENT_DRAFTS_KEY, JSON.stringify(minimal));
     }
   } catch (e) {
-    console.error('Failed to save disbursement draft', e);
+    console.warn('Skipped saving disbursement draft due to storage quota:', e);
   }
 }
 
@@ -219,7 +274,7 @@ export function saveStoredCustomers(customers: CustomerMaster[]): void {
   try {
     localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(customers));
   } catch (e) {
-    console.error('Failed to save customers to localStorage', e);
+    console.warn('Failed to cache customers in localStorage:', e);
   }
 }
 
@@ -236,16 +291,73 @@ export function loadStoredInvoices(): Invoice[] {
     }
     return [];
   } catch (e) {
-    console.error('Failed to load invoices from localStorage', e);
+    console.warn('Failed to load invoices from localStorage:', e);
     return [];
+  }
+}
+
+function stripPhotosFromDraftsCache(): void {
+  try {
+    const drafts = readAllDisbursementDrafts();
+    const openTarget = loadOpenDisbursementTarget();
+    const activeDraftKey = openTarget ? `${openTarget.type === 'customer' ? 'cust' : 'inv'}:${openTarget.key}` : '';
+    let changed = false;
+    for (const key of Object.keys(drafts)) {
+      if (key !== activeDraftKey && drafts[key]?.disbursementProofPhoto) {
+        drafts[key] = { ...drafts[key], disbursementProofPhoto: null };
+        changed = true;
+      }
+    }
+    if (changed) {
+      localStorage.setItem(DISBURSEMENT_DRAFTS_KEY, JSON.stringify(drafts));
+    }
+  } catch {
+    // ignore cleanup errors
   }
 }
 
 export function saveStoredInvoices(invoices: Invoice[]): void {
   try {
     localStorage.setItem(INVOICES_KEY, JSON.stringify(invoices));
+    return;
+  } catch {
+    // Quota exceeded with full base64 media payloads; free draft cache & store lightweight local cache.
+    // Full media remains safely stored in Firebase Firestore and React memory.
+  }
+
+  stripPhotosFromDraftsCache();
+
+  // Remove old oversized entry first so browser quota check counts only the new lighter payload
+  try {
+    localStorage.removeItem(INVOICES_KEY);
+  } catch {
+    // ignore
+  }
+
+  // Tier 1 fallback: strip large proof photos from localStorage cache, keep signatures
+  try {
+    const withoutPhotos = invoices.map(({ disbursementProofPhoto: _photo, ...rest }) => rest);
+    localStorage.setItem(INVOICES_KEY, JSON.stringify(withoutPhotos));
+    return;
+  } catch {
+    // Still over quota
+  }
+
+  // Tier 2 fallback: strip both proof photos and digital signatures from localStorage cache
+  try {
+    const metadataOnly = invoices.map(
+      ({ disbursementProofPhoto: _photo, disbursementSignature: _sig, ...rest }) => rest
+    );
+    localStorage.setItem(INVOICES_KEY, JSON.stringify(metadataOnly));
+    return;
   } catch (e) {
-    console.error('Failed to save invoices to localStorage', e);
+    // Tier 3 fallback: clear stale invoice cache cleanly without throwing fatal errors
+    try {
+      localStorage.removeItem(INVOICES_KEY);
+    } catch {
+      // ignore
+    }
+    console.warn('Skipped localStorage invoice cache due to browser quota limit:', e);
   }
 }
 
@@ -259,7 +371,7 @@ export function loadStoredSettings(): CashbackSettings {
     const parsed = JSON.parse(raw);
     return { ...DEFAULT_SETTINGS, ...parsed };
   } catch (e) {
-    console.error('Failed to load settings from localStorage', e);
+    console.warn('Failed to load settings from localStorage:', e);
     return DEFAULT_SETTINGS;
   }
 }
@@ -268,7 +380,22 @@ export function saveStoredSettings(settings: CashbackSettings): void {
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch (e) {
-    console.error('Failed to save settings to localStorage', e);
+    try {
+      if (settings.companyProfile?.logoUrl) {
+        const lightSettings: CashbackSettings = {
+          ...settings,
+          companyProfile: {
+            ...settings.companyProfile,
+            logoUrl: undefined,
+          },
+        };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(lightSettings));
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    console.warn('Failed to cache settings in localStorage:', e);
   }
 }
 

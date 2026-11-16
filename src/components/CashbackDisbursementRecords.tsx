@@ -16,14 +16,20 @@ import {
   Sparkles,
   Gift,
   Coins,
-  X
+  X,
+  ShieldAlert,
+  Send,
+  XCircle,
+  Bell
 } from 'lucide-react';
-import { CustomerSummary, Invoice, PayoutMethod, CompanyProfile } from '../types/cashback';
+import { AppRole, CustomerSummary, DisbursementCancelRequest, Invoice, PayoutMethod, CompanyProfile } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
+import { normalizeCustomerName } from '../utils/storage';
 import { ConfirmDialog } from './ConfirmDialog';
 import { OfficialReceiptModal } from './OfficialReceiptModal';
 import { PaginationBar } from './PaginationBar';
 import { DisbursementProgressChart } from './DisbursementProgressChart';
+import { RequestCancelDisbursementModal } from './CancelRequestModal';
 
 interface CashbackDisbursementRecordsProps {
   customerSummaries: CustomerSummary[];
@@ -34,6 +40,11 @@ interface CashbackDisbursementRecordsProps {
   onExportExcel: () => void;
   companyProfile?: CompanyProfile;
   storeName?: string;
+  appRole?: AppRole;
+  cancelRequests?: DisbursementCancelRequest[];
+  onRequestCancelDisbursement?: (customer: CustomerSummary, requestedBy: string, reason: string) => Promise<void>;
+  onExecuteApprovedCancel?: (customerName: string, requestId: string) => Promise<void>;
+  onOpenCancelApprovals?: () => void;
 }
 
 export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsProps> = ({
@@ -45,6 +56,11 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
   onExportExcel,
   companyProfile,
   storeName = 'CashbackPro',
+  appRole = 'admin',
+  cancelRequests = [],
+  onRequestCancelDisbursement,
+  onExecuteApprovedCancel,
+  onOpenCancelApprovals,
 }) => {
   const [filterMode, setFilterMode] = useState<'all' | 'disbursed' | 'undisbursed'>('undisbursed');
   const [search, setSearch] = useState('');
@@ -55,8 +71,27 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
   // Selected customer for full Tanda Terima modal
   const [viewingReceiptCustomer, setViewingReceiptCustomer] = useState<CustomerSummary | null>(null);
 
-  // Selected customer for revert disbursement confirm dialog
+  // Selected customer for direct Admin revert disbursement confirm dialog
   const [customerToRevert, setCustomerToRevert] = useState<string | null>(null);
+
+  // Petugas cancel request modal & post-ACC execution dialog
+  const [requestCancelCustomer, setRequestCancelCustomer] = useState<CustomerSummary | null>(null);
+  const [approvedCancelTarget, setApprovedCancelTarget] = useState<{ customerName: string; requestId: string } | null>(null);
+
+  const pendingCancelRequests = useMemo(
+    () => cancelRequests.filter((r) => r.status === 'pending'),
+    [cancelRequests]
+  );
+
+  const getActiveCancelRequest = (customerName: string): DisbursementCancelRequest | undefined => {
+    const cleanTarget = normalizeCustomerName(customerName);
+    if (!cleanTarget) return undefined;
+    return cancelRequests.find(
+      (r) =>
+        r.status !== 'executed' &&
+        normalizeCustomerName(r.customerName) === cleanTarget
+    );
+  };
 
   // High-level KPI metrics per customer
   const metrics = useMemo(() => {
@@ -320,6 +355,32 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
         }}
       />
 
+      {/* Admin Banner: Pending Cancellation Requests from Petugas */}
+      {appRole === 'admin' && pendingCancelRequests.length > 0 && onOpenCancelApprovals && (
+        <div className="bg-amber-50 border border-amber-300 rounded-2xl sm:rounded-xl p-3.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0">
+              <Bell className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-extrabold text-amber-950">
+                {pendingCancelRequests.length} Pengajuan Pembatalan Pencairan Menunggu ACC Admin
+              </div>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                Petugas mengajukan pembatalan pencairan cashback dan membutuhkan persetujuan Anda sebelum dapat diproses.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenCancelApprovals}
+            className="min-h-[38px] px-3.5 py-1.5 rounded-xl sm:rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition-colors shrink-0 whitespace-nowrap"
+          >
+            Tinjau &amp; ACC ({pendingCancelRequests.length})
+          </button>
+        </div>
+      )}
+
       {/* Main Container */}
       <div className="bg-white rounded-2xl sm:rounded-xl border border-slate-200 p-3.5 sm:p-5 shadow-2xs space-y-3 sm:space-y-4">
         
@@ -342,16 +403,18 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onExportExcel}
-            className="flex items-center gap-1.5 px-3 min-h-[40px] sm:min-h-0 sm:py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl sm:rounded-lg shadow-2xs transition-colors shrink-0 whitespace-nowrap"
-            title="Unduh laporan Excel"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-700" />
-            <span className="sm:hidden">Excel</span>
-            <span className="hidden sm:inline">Export Excel</span>
-          </button>
+          {appRole === 'admin' && (
+            <button
+              type="button"
+              onClick={onExportExcel}
+              className="flex items-center gap-1.5 px-3 min-h-[40px] sm:min-h-0 sm:py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl sm:rounded-lg shadow-2xs transition-colors shrink-0 whitespace-nowrap"
+              title="Unduh laporan Excel"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-700" />
+              <span className="sm:hidden">Excel</span>
+              <span className="hidden sm:inline">Export Excel</span>
+            </button>
+          )}
         </div>
 
         {/* Filter Tabs (Belum Menerima, Sudah Menerima, Semua) */}
@@ -451,6 +514,7 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
               const isFullyDisbursed = cust.disbursedCashback >= cust.totalCashback && cust.totalCashback > 0;
               const isPartial = cust.disbursedCashback > 0 && !isFullyDisbursed;
               const remainingCashback = Math.max(0, cust.totalCashback - cust.disbursedCashback);
+              const activeCancelReq = cust.disbursedCashback > 0 ? getActiveCancelRequest(cust.customerName) : undefined;
 
               const benefitLabel =
                 cust.benefitType === 'cashback_parcel'
@@ -587,6 +651,50 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                     </button>
                   )}
 
+                  {/* Cancel Request Status Strip on Mobile */}
+                  {cust.disbursedCashback > 0 && activeCancelReq && (
+                    <div
+                      className={`p-2.5 rounded-xl border text-[11px] flex items-center justify-between gap-2 ${
+                        activeCancelReq.status === 'approved'
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                          : activeCancelReq.status === 'pending'
+                            ? 'bg-amber-50 border-amber-200 text-amber-900'
+                            : 'bg-rose-50 border-rose-200 text-rose-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-semibold min-w-0">
+                        {activeCancelReq.status === 'approved' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : activeCancelReq.status === 'pending' ? (
+                          <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        ) : (
+                          <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        )}
+                        <span className="truncate">
+                          {activeCancelReq.status === 'approved'
+                            ? 'ACC Pembatalan Disetujui Admin'
+                            : activeCancelReq.status === 'pending'
+                              ? 'Menunggu ACC Admin untuk Batal'
+                              : 'Pengajuan Batal Ditolak Admin'}
+                        </span>
+                      </div>
+                      {appRole === 'petugas' && activeCancelReq.status === 'approved' && onExecuteApprovedCancel && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setApprovedCancelTarget({
+                              customerName: cust.customerName,
+                              requestId: activeCancelReq.id,
+                            })
+                          }
+                          className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] shrink-0"
+                        >
+                          Batalkan Sekarang
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Thumb-Friendly Actions */}
                   <div className="flex items-center gap-2 pt-1">
                     {!cust.isExcludedFromCashback && remainingCashback > 0 && (
@@ -610,6 +718,21 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                         <span>Tanda Terima</span>
                       </button>
                     )}
+
+                    {appRole === 'petugas' &&
+                      cust.disbursedCashback > 0 &&
+                      activeCancelReq?.status !== 'pending' &&
+                      activeCancelReq?.status !== 'approved' &&
+                      onRequestCancelDisbursement && (
+                        <button
+                          type="button"
+                          onClick={() => setRequestCancelCustomer(cust)}
+                          className="min-h-[44px] px-3 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 active:scale-[0.98] rounded-xl flex items-center justify-center gap-1.5 transition-all shrink-0"
+                        >
+                          <Send className="w-3.5 h-3.5 shrink-0" />
+                          <span>Ajukan Batal</span>
+                        </button>
+                      )}
 
                     <button
                       type="button"
@@ -669,14 +792,50 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                         ))}
                       </div>
 
-                      {cust.disbursedCashback > 0 && onRevertCustomerDisbursement && (
-                        <button
-                          type="button"
-                          onClick={() => setCustomerToRevert(cust.customerName)}
-                          className="w-full min-h-[40px] text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" /> Batalkan Pencairan
-                        </button>
+                      {cust.disbursedCashback > 0 && (
+                        appRole === 'admin' ? (
+                          onRevertCustomerDisbursement && (
+                            <button
+                              type="button"
+                              onClick={() => setCustomerToRevert(cust.customerName)}
+                              className="w-full min-h-[40px] text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" /> Batalkan Pencairan
+                            </button>
+                          )
+                        ) : activeCancelReq?.status === 'approved' ? (
+                          onExecuteApprovedCancel && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setApprovedCancelTarget({
+                                  customerName: cust.customerName,
+                                  requestId: activeCancelReq.id,
+                                })
+                              }
+                              className="w-full min-h-[40px] text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" /> ACC Diterima — Batalkan Pencairan
+                            </button>
+                          )
+                        ) : activeCancelReq?.status === 'pending' ? (
+                          <div className="w-full min-h-[40px] px-3 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-amber-600" /> Menunggu ACC Admin
+                          </div>
+                        ) : (
+                          onRequestCancelDisbursement && (
+                            <button
+                              type="button"
+                              onClick={() => setRequestCancelCustomer(cust)}
+                              className="w-full min-h-[40px] text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                            >
+                              <Send className="w-3.5 h-3.5" />{' '}
+                              {activeCancelReq?.status === 'rejected'
+                                ? 'Ajukan Ulang Pembatalan'
+                                : 'Ajukan Batal Pencairan'}
+                            </button>
+                          )
+                        )
                       )}
                     </div>
                   )}
@@ -719,6 +878,7 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                   const isFullyDisbursed = cust.disbursedCashback >= cust.totalCashback && cust.totalCashback > 0;
                   const isPartial = cust.disbursedCashback > 0 && !isFullyDisbursed;
                   const remainingCashback = Math.max(0, cust.totalCashback - cust.disbursedCashback);
+                  const activeCancelReq = cust.disbursedCashback > 0 ? getActiveCancelRequest(cust.customerName) : undefined;
 
                   return (
                     <React.Fragment key={uniqueKey}>
@@ -806,6 +966,32 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                                 <Clock className="w-3 h-3 text-amber-600" /> Belum Menerima
+                              </span>
+                            )}
+
+                            {cust.disbursedCashback > 0 && activeCancelReq && (
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  activeCancelReq.status === 'approved'
+                                    ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                    : activeCancelReq.status === 'pending'
+                                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                      : 'bg-rose-100 text-rose-800 border-rose-200'
+                                }`}
+                              >
+                                {activeCancelReq.status === 'approved' ? (
+                                  <>
+                                    <CheckCircle2 className="w-3 h-3" /> ACC Batal Disetujui
+                                  </>
+                                ) : activeCancelReq.status === 'pending' ? (
+                                  <>
+                                    <ShieldAlert className="w-3 h-3" /> Menunggu ACC Batal
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="w-3 h-3" /> Pengajuan Batal Ditolak
+                                  </>
+                                )}
                               </span>
                             )}
                           </div>
@@ -908,6 +1094,43 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                               </button>
                             )}
 
+                            {/* Petugas post-ACC quick cancel button OR Ajukan Batal */}
+                            {appRole === 'petugas' &&
+                              cust.disbursedCashback > 0 &&
+                              activeCancelReq?.status === 'approved' &&
+                              onExecuteApprovedCancel && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setApprovedCancelTarget({
+                                      customerName: cust.customerName,
+                                      requestId: activeCancelReq.id,
+                                    })
+                                  }
+                                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition-colors"
+                                  title="ACC Pembatalan sudah disetujui Admin — Klik untuk batalkan pencairan"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                  <span>Batalkan (ACC)</span>
+                                </button>
+                              )}
+
+                            {appRole === 'petugas' &&
+                              cust.disbursedCashback > 0 &&
+                              activeCancelReq?.status !== 'pending' &&
+                              activeCancelReq?.status !== 'approved' &&
+                              onRequestCancelDisbursement && (
+                                <button
+                                  type="button"
+                                  onClick={() => setRequestCancelCustomer(cust)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors"
+                                  title="Ajukan permintaan pembatalan pencairan ke Admin"
+                                >
+                                  <Send className="w-3.5 h-3.5" />
+                                  <span>Ajukan Batal</span>
+                                </button>
+                              )}
+
                             {/* Tombol Expand Faktur */}
                             <button
                               onClick={() => setExpandedCustomerKey(isExpanded ? null : uniqueKey)}
@@ -939,14 +1162,50 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                                   >
                                     Buka di Rekap Faktur <ArrowRight className="w-3 h-3" />
                                   </button>
-                                  {cust.disbursedCashback > 0 && onRevertCustomerDisbursement && (
-                                    <button
-                                      onClick={() => setCustomerToRevert(cust.customerName)}
-                                      className="text-rose-600 hover:underline font-semibold flex items-center gap-1"
-                                      title="Batalkan status pencairan konsumen ini"
-                                    >
-                                      <RotateCcw className="w-3 h-3" /> Batalkan Pencairan
-                                    </button>
+                                  {cust.disbursedCashback > 0 && (
+                                    appRole === 'admin' ? (
+                                      onRevertCustomerDisbursement && (
+                                        <button
+                                          onClick={() => setCustomerToRevert(cust.customerName)}
+                                          className="text-rose-600 hover:underline font-semibold flex items-center gap-1"
+                                          title="Batalkan status pencairan konsumen ini"
+                                        >
+                                          <RotateCcw className="w-3 h-3" /> Batalkan Pencairan
+                                        </button>
+                                      )
+                                    ) : activeCancelReq?.status === 'approved' ? (
+                                      onExecuteApprovedCancel && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setApprovedCancelTarget({
+                                              customerName: cust.customerName,
+                                              requestId: activeCancelReq.id,
+                                            })
+                                          }
+                                          className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1"
+                                        >
+                                          <RotateCcw className="w-3 h-3" /> ACC Admin Diterima — Batalkan Pencairan
+                                        </button>
+                                      )
+                                    ) : activeCancelReq?.status === 'pending' ? (
+                                      <span className="px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-semibold flex items-center gap-1">
+                                        <Clock className="w-3 h-3 text-amber-600" /> Menunggu ACC Admin
+                                      </span>
+                                    ) : (
+                                      onRequestCancelDisbursement && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setRequestCancelCustomer(cust)}
+                                          className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 font-semibold flex items-center gap-1"
+                                        >
+                                          <Send className="w-3 h-3" />{' '}
+                                          {activeCancelReq?.status === 'rejected'
+                                            ? 'Ajukan Ulang Batal Pencairan'
+                                            : 'Ajukan Batal Pencairan'}
+                                        </button>
+                                      )
+                                    )
                                   )}
                                 </div>
                               </div>
@@ -1051,7 +1310,7 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
         storeName={storeName}
       />
 
-      {/* Confirm Revert Disbursement Dialog */}
+      {/* Confirm Revert Disbursement Dialog (Direct Admin Action) */}
       <ConfirmDialog
         isOpen={customerToRevert !== null}
         title="Batalkan Pencairan Cashback Konsumen?"
@@ -1067,6 +1326,35 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
         }}
         onCancel={() => setCustomerToRevert(null)}
       />
+
+      {/* Confirm Approved Cancel Execution Dialog (Petugas Post-ACC Action) */}
+      <ConfirmDialog
+        isOpen={approvedCancelTarget !== null}
+        title="Eksekusi Pembatalan Pencairan (ACC Admin)?"
+        message={`Admin telah menyetujui pembatalan untuk "${approvedCancelTarget?.customerName}". Lanjutkan membatalkan status pencairan cashback?`}
+        confirmLabel="Ya, Batalkan Pencairan"
+        cancelLabel="Tutup"
+        isDestructive={true}
+        onConfirm={() => {
+          if (approvedCancelTarget && onExecuteApprovedCancel) {
+            onExecuteApprovedCancel(
+              approvedCancelTarget.customerName,
+              approvedCancelTarget.requestId
+            );
+          }
+          setApprovedCancelTarget(null);
+        }}
+        onCancel={() => setApprovedCancelTarget(null)}
+      />
+
+      {/* Petugas Cancellation Request Modal */}
+      {onRequestCancelDisbursement && (
+        <RequestCancelDisbursementModal
+          customer={requestCancelCustomer}
+          onClose={() => setRequestCancelCustomer(null)}
+          onSubmitRequest={onRequestCancelDisbursement}
+        />
+      )}
 
     </div>
   );

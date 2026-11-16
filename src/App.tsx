@@ -10,6 +10,10 @@ import {
   saveStoredNavPosition,
   loadStoredActiveTab,
   saveStoredActiveTab,
+  loadStoredAppRole,
+  saveStoredAppRole,
+  loadStoredCancelRequests,
+  saveStoredCancelRequests,
   loadOpenDisbursementTarget,
   saveOpenDisbursementTarget,
   clearOpenDisbursementTarget,
@@ -25,7 +29,7 @@ import {
 } from './utils/storage';
 import { exportCashbackToExcel, exportTandaTerimaFormat } from './utils/excelExport';
 import { calculateCashback, formatRupiah, getBenefitLabel } from './utils/cashbackCalculator';
-import { ActiveTab, ClaimStatus, Invoice, CashbackSettings, CustomerMaster, CustomerSummary, NavPosition, CustomerBenefitType } from './types/cashback';
+import { ActiveTab, AppRole, ClaimStatus, DisbursementCancelRequest, Invoice, CashbackSettings, CustomerMaster, CustomerSummary, NavPosition, CustomerBenefitType } from './types/cashback';
 import { SmartNavigation } from './components/SmartNavigation';
 import { DashboardAnalytics } from './components/DashboardAnalytics';
 import { Top10Leaderboard } from './components/Top10Leaderboard';
@@ -45,7 +49,9 @@ import { AboutModal } from './components/AboutModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { DisbursementModal, CustomerDisbursementData } from './components/DisbursementModal';
 import { CashbackDisbursementRecords } from './components/CashbackDisbursementRecords';
-import { CheckCircle2, FileSpreadsheet, Upload, BookOpen, Info } from 'lucide-react';
+import { AdminPinModal } from './components/AdminPinModal';
+import { AdminCancelApprovalModal } from './components/CancelRequestModal';
+import { CheckCircle2, FileSpreadsheet, Upload, BookOpen, Info, Lock } from 'lucide-react';
 import {
   testFirestoreConnection,
   ensureFirestoreTablesExist,
@@ -53,11 +59,13 @@ import {
   subscribeFirestoreInvoices,
   subscribeFirestoreCustomers,
   subscribeFirestoreSettings,
+  subscribeFirestoreCancelRequests,
   saveInvoiceToFirestore,
   deleteInvoiceFromFirestore,
   saveCustomerToFirestore,
   deleteCustomerFromFirestore,
   saveSettingsToFirestore,
+  saveCancelRequestToFirestore,
   batchUpdateInvoicesInFirestore,
   batchUpdateCustomersInFirestore,
   deleteAllDataFromFirestore,
@@ -73,6 +81,14 @@ export default function App() {
   const [settings, setSettings] = useState<CashbackSettings>(() => loadStoredSettings());
   const [navPosition, setNavPosition] = useState<NavPosition>(() => loadStoredNavPosition());
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => loadStoredActiveTab());
+  const [appRole, setAppRole] = useState<AppRole>(() => loadStoredAppRole());
+  const [cancelRequests, setCancelRequests] = useState<DisbursementCancelRequest[]>(() => loadStoredCancelRequests());
+  const [isAdminPinModalOpen, setIsAdminPinModalOpen] = useState(false);
+  const [isCancelApprovalsModalOpen, setIsCancelApprovalsModalOpen] = useState(false);
+
+  const isPetugasReadOnly = appRole !== 'admin';
+  const effectiveActiveTab: ActiveTab =
+    appRole !== 'admin' && activeTab === 'settings' ? 'payout_records' : activeTab;
 
   useEffect(() => {
     saveStoredActiveTab(activeTab);
@@ -92,6 +108,7 @@ export default function App() {
     let unsubInvoices = () => {};
     let unsubCustomers = () => {};
     let unsubSettings = () => {};
+    let unsubCancelRequests = () => {};
     let invoicesSnapReady = false;
     let customersSnapReady = false;
 
@@ -159,6 +176,11 @@ export default function App() {
             saveStoredSettings(liveSettings);
           }
         });
+
+        unsubCancelRequests = subscribeFirestoreCancelRequests((liveRequests) => {
+          setCancelRequests(liveRequests);
+          saveStoredCancelRequests(liveRequests);
+        });
       } else {
         setIsReadyForAutoReconcile(true);
       }
@@ -168,6 +190,7 @@ export default function App() {
       unsubInvoices();
       unsubCustomers();
       unsubSettings();
+      unsubCancelRequests();
     };
   }, []);
 
@@ -300,6 +323,31 @@ export default function App() {
     return dateFilteredInvoices.reduce((sum, inv) => sum + inv.cashbackAmount, 0);
   }, [dateFilteredInvoices]);
 
+  const pendingCancelRequestsCount = useMemo(
+    () => cancelRequests.filter((r) => r.status === 'pending').length,
+    [cancelRequests]
+  );
+
+  // Role Switch Handlers
+  const handleUnlockAdmin = () => {
+    setAppRole('admin');
+    saveStoredAppRole('admin');
+    showToast('Mode Admin aktif — Akses penuh dibuka.');
+  };
+
+  const handleSwitchToPetugas = () => {
+    setAppRole('petugas');
+    saveStoredAppRole('petugas');
+    setIsSettingsModalOpen(false);
+    setIsImportModalOpen(false);
+    setIsImportCustomerModalOpen(false);
+    setIsCustomerModalOpen(false);
+    setIsInvoiceModalOpen(false);
+    setIsExportModalOpen(false);
+    setIsCancelApprovalsModalOpen(false);
+    showToast('Beralih ke Mode Petugas (Khusus Pencairan Cashback).');
+  };
+
   // Nav Position Handler
   const handleChangeNavPosition = (pos: NavPosition) => {
     setNavPosition(pos);
@@ -308,8 +356,12 @@ export default function App() {
     showToast(`Posisi navigasi dipindahkan ke: ${label}`);
   };
 
-  // Import Invoices from Excel Handler
+  // Import Invoices from Excel Handler (Admin Only)
   const handleImportSuccess = async (importedInvoices: Invoice[], newCustomers: CustomerMaster[]) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: fitur ini hanya untuk Mode Admin.');
+      return;
+    }
     for (const inv of importedInvoices) {
       const clean = normalizeCustomerName(inv.customerName);
       if (clean) suppressedCustomerNamesRef.current.delete(clean);
@@ -343,8 +395,12 @@ export default function App() {
     );
   };
 
-  // Import Master Customers from Excel Handler (upserts & avoids duplicates)
+  // Import Master Customers from Excel Handler (Admin Only)
   const handleImportCustomersSuccess = async (importedCustomers: CustomerMaster[]) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: fitur ini hanya untuk Mode Admin.');
+      return;
+    }
     const workingList = [...customers];
     const indexByName = new Map<string, number>();
     const indexByPhone = new Map<string, number>();
@@ -408,8 +464,12 @@ export default function App() {
     );
   };
 
-  // Invoice Handlers
+  // Invoice Handlers (Admin Only)
   const handleSaveInvoice = async (invoiceData: Omit<Invoice, 'id' | 'createdAt'>, invoiceId?: string) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: perubahan data faktur hanya untuk Mode Admin.');
+      return;
+    }
     const cleanTargetName = normalizeCustomerName(invoiceData.customerName);
     if (cleanTargetName) {
       suppressedCustomerNamesRef.current.delete(cleanTargetName);
@@ -498,8 +558,12 @@ export default function App() {
     }
   };
 
-  // Manual toggle benefit package directly from Rekap Faktur
+  // Manual toggle benefit package directly from Rekap Faktur (Admin Only)
   const handleUpdateInvoiceBenefit = async (invoice: Invoice, nextBenefit: CustomerBenefitType) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: perubahan paket hanya untuk Mode Admin.');
+      return;
+    }
     const calc = calculateCashback(invoice.purchaseAmount, settings);
     const updatedInv: Invoice = {
       ...invoice,
@@ -528,11 +592,15 @@ export default function App() {
     showToast(`Paket faktur ${invoice.invoiceNumber} diubah menjadi: "${getBenefitLabel(nextBenefit)}"`);
   };
 
-  // Bulk update benefit package across filtered/all invoices from Rekap Faktur
+  // Bulk update benefit package across filtered/all invoices from Rekap Faktur (Admin Only)
   const handleBulkUpdateInvoiceBenefit = async (
     invoiceIds: string[],
     nextBenefit: CustomerBenefitType
   ) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: perubahan paket massal hanya untuk Mode Admin.');
+      return;
+    }
     if (!invoiceIds || invoiceIds.length === 0) return;
     const idSet = new Set(invoiceIds);
     const affectedCustomerNames = new Set<string>();
@@ -591,6 +659,10 @@ export default function App() {
   };
 
   const handleDeleteInvoice = async (invoiceId: string) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: hapus faktur hanya untuk Mode Admin.');
+      return;
+    }
     const updated = invoices.filter((inv) => inv.id !== invoiceId);
     setInvoices(updated);
     saveStoredInvoices(updated);
@@ -599,6 +671,10 @@ export default function App() {
   };
 
   const handleUpdateStatus = async (invoiceId: string, newStatus: ClaimStatus) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: perubahan status faktur hanya untuk Mode Admin.');
+      return;
+    }
     let updatedInv: Invoice | undefined;
     const updated = invoices.map((inv) => {
       if (inv.id === invoiceId) {
@@ -619,8 +695,12 @@ export default function App() {
     showToast(`Status klaim faktur berhasil diperbarui di Firebase Cloud.`);
   };
 
-  // Reset entire invoice transactions collection (Faktur Reset)
+  // Reset entire invoice transactions collection (Admin Only)
   const handleResetAllInvoices = async () => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: reset faktur hanya untuk Mode Admin.');
+      return;
+    }
     setIsSyncingWithCloud(true);
     try {
       const deletedCount = await deleteAllInvoicesFromFirestore();
@@ -663,7 +743,10 @@ export default function App() {
       disbursementSignature: data.disbursementSignature,
       disbursementNotes: data.disbursementNotes,
     };
-    await handleSaveInvoice(updatedInv, invoiceId);
+    const updated = invoices.map((item) => (item.id === invoiceId ? updatedInv : item));
+    setInvoices(updated);
+    saveStoredInvoices(updated);
+    await saveInvoiceToFirestore(updatedInv).catch((err) => console.warn('Firestore disbursement update:', err));
     showToast(`Penerimaan cashback faktur ${inv.invoiceNumber} (${inv.customerName}) tersimpan ke Cloud!`);
   };
 
@@ -675,10 +758,14 @@ export default function App() {
     setIsSyncingWithCloud(true);
     try {
       const clean = customerName.trim().toLowerCase();
+      const changedInvoices: Invoice[] = [];
+      let mediaAttached = false;
+
       // Update all invoices for this customer to disbursed status
+      // Store heavy proof photo on the first matching invoice only to avoid N-times storage duplication
       const updatedInvoices = invoices.map((inv) => {
         if ((inv.customerName || '').trim().toLowerCase() === clean) {
-          return {
+          const updatedInv: Invoice = {
             ...inv,
             claimStatus: 'disbursed' as const,
             disbursedDate: data.disbursedDate,
@@ -686,17 +773,22 @@ export default function App() {
             payoutMethod: data.payoutMethod,
             recipientName: data.recipientName,
             disbursedBy: data.disbursedBy,
-            disbursementProofPhoto: data.disbursementProofPhoto,
+            disbursementProofPhoto: !mediaAttached ? data.disbursementProofPhoto : undefined,
             disbursementSignature: data.disbursementSignature,
             disbursementNotes: data.disbursementNotes,
           };
+          mediaAttached = true;
+          changedInvoices.push(updatedInv);
+          return updatedInv;
         }
         return inv;
       });
 
       setInvoices(updatedInvoices);
       saveStoredInvoices(updatedInvoices);
-      await batchUpdateInvoicesInFirestore(updatedInvoices);
+      if (changedInvoices.length > 0) {
+        await batchUpdateInvoicesInFirestore(changedInvoices);
+      }
       showToast(
         `Pencairan cashback konsumen ${customerName} sebesar ${formatRupiah(data.totalCashbackPaid)} berhasil dicatat & disimpan ke Cloud!`
       );
@@ -713,9 +805,10 @@ export default function App() {
     setIsSyncingWithCloud(true);
     try {
       const clean = customerName.trim().toLowerCase();
+      const changedInvoices: Invoice[] = [];
       const updatedInvoices = invoices.map((inv) => {
         if ((inv.customerName || '').trim().toLowerCase() === clean && inv.claimStatus === 'disbursed') {
-          return {
+          const revertedInv: Invoice = {
             ...inv,
             claimStatus: 'ready' as const,
             disbursedDate: undefined,
@@ -725,13 +818,49 @@ export default function App() {
             disbursementSignature: undefined,
             disbursementNotes: undefined,
           };
+          changedInvoices.push(revertedInv);
+          return revertedInv;
         }
         return inv;
       });
 
       setInvoices(updatedInvoices);
       saveStoredInvoices(updatedInvoices);
-      await batchUpdateInvoicesInFirestore(updatedInvoices);
+      if (changedInvoices.length > 0) {
+        await batchUpdateInvoicesInFirestore(changedInvoices);
+      }
+
+      // Clean up any active pending/approved cancel requests for this customer as executed
+      const cleanTarget = normalizeCustomerName(customerName);
+      const nowIso = new Date().toISOString();
+      const touchedRequests: DisbursementCancelRequest[] = [];
+      const nextRequests = cancelRequests.map((req) => {
+        if (
+          (req.status === 'pending' || req.status === 'approved') &&
+          normalizeCustomerName(req.customerName) === cleanTarget
+        ) {
+          const closedReq: DisbursementCancelRequest = {
+            ...req,
+            status: 'executed',
+            reviewedAt: req.reviewedAt || nowIso,
+            reviewedBy: req.reviewedBy || 'Admin',
+            executedAt: nowIso,
+          };
+          touchedRequests.push(closedReq);
+          return closedReq;
+        }
+        return req;
+      });
+      if (touchedRequests.length > 0) {
+        setCancelRequests(nextRequests);
+        saveStoredCancelRequests(nextRequests);
+        await Promise.all(
+          touchedRequests.map((req) =>
+            saveCancelRequestToFirestore(req).catch((err) => console.warn('Sync closed cancel req:', err))
+          )
+        );
+      }
+
       showToast(`Status pencairan untuk ${customerName} berhasil dibatalkan.`);
     } catch (err: any) {
       showToast('Gagal membatalkan pencairan: ' + (err?.message || 'Error'));
@@ -740,8 +869,94 @@ export default function App() {
     }
   };
 
-  // Toggle disqualify/exclude customer from receiving cashback
+  // Petugas: Submit cancellation request to Admin
+  const handleRequestCancelDisbursement = async (
+    customer: CustomerSummary,
+    requestedBy: string,
+    reason: string
+  ) => {
+    const newRequest: DisbursementCancelRequest = {
+      id: `cancel-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      customerName: customer.customerName,
+      customerCode: customer.customerCode,
+      amount: customer.disbursedCashback,
+      reason,
+      requestedBy,
+      requestedAt: new Date().toISOString(),
+      status: 'pending',
+    };
+
+    const updatedRequests = [newRequest, ...cancelRequests];
+    setCancelRequests(updatedRequests);
+    saveStoredCancelRequests(updatedRequests);
+    await saveCancelRequestToFirestore(newRequest);
+    showToast(`Pengajuan pembatalan untuk ${customer.customerName} dikirim ke Admin untuk ACC.`);
+  };
+
+  // Admin: Approve cancellation request
+  const handleApproveCancelRequest = async (requestId: string) => {
+    if (appRole !== 'admin') return;
+    let targetReq: DisbursementCancelRequest | undefined;
+    const nextRequests = cancelRequests.map((req) => {
+      if (req.id === requestId) {
+        targetReq = {
+          ...req,
+          status: 'approved',
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: 'Admin',
+        };
+        return targetReq;
+      }
+      return req;
+    });
+    setCancelRequests(nextRequests);
+    saveStoredCancelRequests(nextRequests);
+    if (targetReq) {
+      await saveCancelRequestToFirestore(targetReq);
+      showToast(`Pengajuan batal pencairan ${targetReq.customerName} telah di-ACC. Petugas kini dapat membatalkan.`);
+    }
+  };
+
+  // Admin: Reject cancellation request
+  const handleRejectCancelRequest = async (requestId: string) => {
+    if (appRole !== 'admin') return;
+    let targetReq: DisbursementCancelRequest | undefined;
+    const nextRequests = cancelRequests.map((req) => {
+      if (req.id === requestId) {
+        targetReq = {
+          ...req,
+          status: 'rejected',
+          reviewedAt: new Date().toISOString(),
+          reviewedBy: 'Admin',
+        };
+        return targetReq;
+      }
+      return req;
+    });
+    setCancelRequests(nextRequests);
+    saveStoredCancelRequests(nextRequests);
+    if (targetReq) {
+      await saveCancelRequestToFirestore(targetReq);
+      showToast(`Pengajuan batal pencairan ${targetReq.customerName} ditolak.`);
+    }
+  };
+
+  // Petugas: Execute disbursement cancellation after Admin ACC
+  const handleExecuteApprovedCancel = async (customerName: string, requestId: string) => {
+    const targetReq = cancelRequests.find((r) => r.id === requestId);
+    if (!targetReq || targetReq.status !== 'approved') {
+      showToast('Pembatalan membutuhkan ACC Admin terlebih dahulu.');
+      return;
+    }
+    await handleRevertCustomerDisbursement(customerName);
+  };
+
+  // Toggle disqualify/exclude customer from receiving cashback (Admin Only)
   const handleToggleExcludeCustomer = async (customerName: string) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: pencoretan konsumen hanya untuk Mode Admin.');
+      return;
+    }
     const clean = customerName.trim().toLowerCase();
     const currentList = settings.excludedCustomerNames || [];
     const exists = currentList.some((n) => n.trim().toLowerCase() === clean);
@@ -759,8 +974,12 @@ export default function App() {
     );
   };
 
-  // Set customer benefit package (Cashback + Parsel, Cashback Saja, or Parcel Saja)
+  // Set customer benefit package (Admin Only)
   const handleSetCustomerBenefit = async (customerName: string, benefitType: CustomerBenefitType) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: pengaturan paket konsumen hanya untuk Mode Admin.');
+      return;
+    }
     const clean = customerName.trim().toLowerCase();
     if (!clean) return;
     const currentOverrides = { ...(settings.customerBenefitOverrides || {}) };
@@ -772,8 +991,12 @@ export default function App() {
     showToast(`Paket untuk ${customerName} berhasil diatur ke: "${getBenefitLabel(benefitType)}"`);
   };
 
-  // Master Customer Handlers
+  // Master Customer Handlers (Admin Only)
   const handleSaveCustomer = async (customerData: Omit<CustomerMaster, 'id'>, customerId?: string) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: perubahan Master Konsumen hanya untuk Mode Admin.');
+      return;
+    }
     if (customerId) {
       let updatedTarget: CustomerMaster | undefined;
       const updated = customers.map((c) => {
@@ -803,6 +1026,10 @@ export default function App() {
   };
 
   const handleDeleteCustomer = async (customerId: string) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: hapus Master Konsumen hanya untuk Mode Admin.');
+      return;
+    }
     const target = customers.find((c) => c.id === customerId);
     if (target?.name) {
       const clean = normalizeCustomerName(target.name);
@@ -815,8 +1042,12 @@ export default function App() {
     showToast(`Konsumen ${target?.name || ''} berhasil dihapus dari Firebase Cloud.`);
   };
 
-  // Manual full reconciliation between Master Konsumen & real Rekap Faktur
+  // Manual full reconciliation between Master Konsumen & real Rekap Faktur (Admin Only)
   const handleSyncMasterWithInvoices = async () => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: sinkronisasi Master Konsumen hanya untuk Mode Admin.');
+      return;
+    }
     suppressedCustomerNamesRef.current.clear();
     const result = reconcileMasterCustomersWithInvoices(customers, invoices);
     if (!result.hasChanges) {
@@ -851,6 +1082,10 @@ export default function App() {
   };
 
   const handleToggleCustomerStatus = async (customerId: string) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: perubahan status konsumen hanya untuk Mode Admin.');
+      return;
+    }
     let targetCust: CustomerMaster | undefined;
     const updated = customers.map((c) => {
       if (c.id === customerId) {
@@ -869,6 +1104,7 @@ export default function App() {
   };
 
   const handleQuickAddMasterCustomer = async (newCustData: Omit<CustomerMaster, 'id'>) => {
+    if (appRole !== 'admin') return;
     const newCust: CustomerMaster = {
       ...newCustData,
       id: `cust-${Date.now()}`,
@@ -880,8 +1116,12 @@ export default function App() {
     showToast(`Konsumen ${newCust.name} (${newCust.customerCode}) didaftarkan ke Firebase Cloud.`);
   };
 
-  // Settings Handlers
+  // Settings Handlers (Admin Only)
   const handleSaveSettings = (newSettings: CashbackSettings) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: Pengaturan hanya dapat diubah pada Mode Admin.');
+      return;
+    }
     setSettings(newSettings);
     saveStoredSettings(newSettings);
     saveSettingsToFirestore(newSettings).catch((err) => console.warn('Firestore settings save:', err));
@@ -994,6 +1234,7 @@ export default function App() {
 
   // Export to Excel Dialog Handler
   const handleExportExcel = () => {
+    if (appRole !== 'admin') return;
     setIsExportModalOpen(true);
   };
 
@@ -1005,18 +1246,22 @@ export default function App() {
 
   return (
     <SmartNavigation
-      activeTab={activeTab}
+      activeTab={effectiveActiveTab}
       setActiveTab={(tab) => {
         if (tab === 'settings') {
-          setIsSettingsModalOpen(true);
-        } else {
-          setActiveTab(tab);
+          if (appRole === 'admin') {
+            setIsSettingsModalOpen(true);
+          } else {
+            showToast('Halaman Pengaturan hanya dapat diakses pada Mode Admin.');
+          }
+          return;
         }
+        setActiveTab(tab);
       }}
       navPosition={navPosition}
       onChangeNavPosition={handleChangeNavPosition}
       onExportExcel={handleExportExcel}
-      onOpenImportExcel={() => setIsImportModalOpen(true)}
+      onOpenImportExcel={() => appRole === 'admin' && setIsImportModalOpen(true)}
       onOpenAbout={() => setIsAboutModalOpen(true)}
       totalInvoicesCount={invoices.length}
       totalMasterCustomersCount={customers.length}
@@ -1024,6 +1269,11 @@ export default function App() {
       storeName={settings.companyProfile?.companyName || settings.storeName}
       companyLogoUrl={settings.companyProfile?.logoUrl}
       isFirebaseConnected={isFirebaseConnected}
+      appRole={appRole}
+      onOpenAdminPinModal={() => setIsAdminPinModalOpen(true)}
+      onSwitchToPetugas={handleSwitchToPetugas}
+      pendingCancelCount={pendingCancelRequestsCount}
+      onOpenCancelApprovals={() => setIsCancelApprovalsModalOpen(true)}
     >
       {/* Main Viewport Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6">
@@ -1060,15 +1310,20 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab 1: Dashboard Analytics */}
-        {activeTab === 'dashboard' && (
+        {/* Tab 1: Dashboard Analytics (Admin Full / Petugas Read-Only) */}
+        {effectiveActiveTab === 'dashboard' && (
           <DashboardAnalytics
             invoices={dateFilteredInvoices}
             settings={settings}
             customerSummaries={customerSummaries}
+            isReadOnly={isPetugasReadOnly}
             onNavigateToTab={(tab) => {
               if (tab === 'settings') {
-                setIsSettingsModalOpen(true);
+                if (appRole === 'admin') {
+                  setIsSettingsModalOpen(true);
+                } else {
+                  showToast('Halaman Pengaturan hanya dapat diakses pada Mode Admin.');
+                }
               } else {
                 setActiveTab(tab);
               }
@@ -1076,102 +1331,131 @@ export default function App() {
           />
         )}
 
-        {/* Tab 2: Top 10 Leaderboard */}
-        {activeTab === 'top10' && (
+        {/* Tab 2: Top 10 Leaderboard (Admin Full / Petugas Read-Only) */}
+        {effectiveActiveTab === 'top10' && (
           <Top10Leaderboard
             customerSummaries={customerSummaries}
             invoices={dateFilteredInvoices}
             onSelectCustomer={handleSelectCustomerForInvoices}
-            onExportExcel={handleExportExcel}
+            onExportExcel={appRole === 'admin' ? handleExportExcel : undefined}
+            isReadOnly={isPetugasReadOnly}
           />
         )}
 
-        {/* Tab 3: Rekap Faktur List */}
-        {activeTab === 'invoices' && (
+        {/* Tab 3: Rekap Faktur List (Admin Full / Petugas Read-Only) */}
+        {effectiveActiveTab === 'invoices' && (
           <InvoiceList
             invoices={dateFilteredInvoices}
-            onOpenNewInvoice={() => {
-              setEditingInvoice(null);
-              setIsInvoiceModalOpen(true);
-            }}
-            onEditInvoice={(inv) => {
-              setEditingInvoice(inv);
-              setIsInvoiceModalOpen(true);
-            }}
-            onDeleteInvoice={handleDeleteInvoice}
+            isReadOnly={isPetugasReadOnly}
+            onOpenNewInvoice={
+              appRole === 'admin'
+                ? () => {
+                    setEditingInvoice(null);
+                    setIsInvoiceModalOpen(true);
+                  }
+                : undefined
+            }
+            onEditInvoice={
+              appRole === 'admin'
+                ? (inv) => {
+                    setEditingInvoice(inv);
+                    setIsInvoiceModalOpen(true);
+                  }
+                : undefined
+            }
+            onDeleteInvoice={appRole === 'admin' ? handleDeleteInvoice : undefined}
             onViewReceipt={(inv) => setReceiptInvoice(inv)}
-            onUpdateStatus={handleUpdateStatus}
-            onUpdateInvoiceBenefit={handleUpdateInvoiceBenefit}
-            onBulkUpdateInvoiceBenefit={handleBulkUpdateInvoiceBenefit}
-            onExportExcel={handleExportExcel}
-            onOpenImportExcel={() => setIsImportModalOpen(true)}
-            onResetAllInvoices={handleResetAllInvoices}
-            onOpenDisbursementModal={(inv) => {
-              const matchedCust = customerSummaries.find(
-                (c) => c.customerName.toLowerCase() === inv.customerName.toLowerCase()
-              );
-              if (matchedCust) {
-                openCustomerDisbursement(matchedCust);
-              } else {
-                openInvoiceDisbursement(inv);
-              }
-            }}
+            onUpdateStatus={appRole === 'admin' ? handleUpdateStatus : undefined}
+            onUpdateInvoiceBenefit={appRole === 'admin' ? handleUpdateInvoiceBenefit : undefined}
+            onBulkUpdateInvoiceBenefit={appRole === 'admin' ? handleBulkUpdateInvoiceBenefit : undefined}
+            onExportExcel={appRole === 'admin' ? handleExportExcel : undefined}
+            onOpenImportExcel={appRole === 'admin' ? () => setIsImportModalOpen(true) : undefined}
+            onResetAllInvoices={appRole === 'admin' ? handleResetAllInvoices : undefined}
+            onOpenDisbursementModal={
+              appRole === 'admin'
+                ? (inv) => {
+                    const matchedCust = customerSummaries.find(
+                      (c) => c.customerName.toLowerCase() === inv.customerName.toLowerCase()
+                    );
+                    if (matchedCust) {
+                      openCustomerDisbursement(matchedCust);
+                    } else {
+                      openInvoiceDisbursement(inv);
+                    }
+                  }
+                : undefined
+            }
             initialCustomerFilter={customerFilterForInvoices}
             onClearCustomerFilter={() => setCustomerFilterForInvoices('')}
           />
         )}
 
-        {/* Tab 3.5: Rekap Penerimaan Cashback (Disbursement Records & Proofs Per Konsumen) */}
-        {activeTab === 'payout_records' && (
+        {/* Tab 3.5: Rekap Penerimaan Cashback (Admin & Mode Petugas Interaktif Pencairan) */}
+        {effectiveActiveTab === 'payout_records' && (
           <CashbackDisbursementRecords
             customerSummaries={customerSummaries}
             invoices={dateFilteredInvoices}
             onOpenCustomerDisbursement={openCustomerDisbursement}
-            onRevertCustomerDisbursement={handleRevertCustomerDisbursement}
+            onRevertCustomerDisbursement={appRole === 'admin' ? handleRevertCustomerDisbursement : undefined}
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
             onExportExcel={handleExportExcel}
             companyProfile={settings.companyProfile}
             storeName={settings.companyProfile?.companyName || settings.storeName}
+            appRole={appRole}
+            cancelRequests={cancelRequests}
+            onRequestCancelDisbursement={handleRequestCancelDisbursement}
+            onExecuteApprovedCancel={handleExecuteApprovedCancel}
+            onOpenCancelApprovals={() => setIsCancelApprovalsModalOpen(true)}
           />
         )}
 
-        {/* Tab 4: Rekap Konsumen Aggregated */}
-        {activeTab === 'customers' && (
+        {/* Tab 4: Rekap Konsumen Aggregated (Admin Full / Petugas Read-Only) */}
+        {effectiveActiveTab === 'customers' && (
           <CustomerSummaryView
             invoices={dateFilteredInvoices}
             customerSummaries={customerSummaries}
             excludedCustomerNames={settings.excludedCustomerNames || []}
             benefitOverrides={settings.customerBenefitOverrides || {}}
-            onSetCustomerBenefit={handleSetCustomerBenefit}
-            onToggleExcludeCustomer={handleToggleExcludeCustomer}
-            onOpenCustomerDisbursement={openCustomerDisbursement}
+            isReadOnly={isPetugasReadOnly}
+            onSetCustomerBenefit={appRole === 'admin' ? handleSetCustomerBenefit : undefined}
+            onToggleExcludeCustomer={appRole === 'admin' ? handleToggleExcludeCustomer : undefined}
+            onOpenCustomerDisbursement={appRole === 'admin' ? openCustomerDisbursement : undefined}
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
-            onExportExcel={handleExportExcel}
+            onExportExcel={appRole === 'admin' ? handleExportExcel : undefined}
             companyProfile={settings.companyProfile}
             storeName={settings.companyProfile?.companyName || settings.storeName}
           />
         )}
 
-        {/* Tab 5: Master Data Konsumen (Master Database) */}
-        {activeTab === 'master_customers' && (
+        {/* Tab 5: Master Data Konsumen (Admin Full / Petugas Read-Only) */}
+        {effectiveActiveTab === 'master_customers' && (
           <MasterCustomerList
             customers={customers}
             invoices={dateFilteredInvoices}
             customerSummaries={customerSummaries}
-            onOpenNewCustomer={() => {
-              setEditingCustomer(null);
-              setIsCustomerModalOpen(true);
-            }}
-            onEditCustomer={(cust) => {
-              setEditingCustomer(cust);
-              setIsCustomerModalOpen(true);
-            }}
-            onDeleteCustomer={handleDeleteCustomer}
-            onToggleStatus={handleToggleCustomerStatus}
+            isReadOnly={isPetugasReadOnly}
+            onOpenNewCustomer={
+              appRole === 'admin'
+                ? () => {
+                    setEditingCustomer(null);
+                    setIsCustomerModalOpen(true);
+                  }
+                : undefined
+            }
+            onEditCustomer={
+              appRole === 'admin'
+                ? (cust) => {
+                    setEditingCustomer(cust);
+                    setIsCustomerModalOpen(true);
+                  }
+                : undefined
+            }
+            onDeleteCustomer={appRole === 'admin' ? handleDeleteCustomer : undefined}
+            onToggleStatus={appRole === 'admin' ? handleToggleCustomerStatus : undefined}
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}
-            onExportExcel={handleExportExcel}
-            onOpenImportExcel={() => setIsImportCustomerModalOpen(true)}
-            onSyncWithInvoices={handleSyncMasterWithInvoices}
+            onExportExcel={appRole === 'admin' ? handleExportExcel : undefined}
+            onOpenImportExcel={appRole === 'admin' ? () => setIsImportCustomerModalOpen(true) : undefined}
+            onSyncWithInvoices={appRole === 'admin' ? handleSyncMasterWithInvoices : undefined}
           />
         )}
 
@@ -1195,27 +1479,42 @@ export default function App() {
               Master Data ({customers.length} Konsumen)
             </button>
             <span aria-hidden="true">&middot;</span>
-            <button
-              onClick={() => setIsSettingsModalOpen(true)}
-              className="hover:text-slate-900"
-            >
-              Pengaturan Aturan ({settings.mode === 'flat' ? `${settings.flatPercentage}% Flat` : 'Tiered'})
-            </button>
-            <span aria-hidden="true">&middot;</span>
-            <button
-              onClick={() => setIsImportModalOpen(true)}
-              className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1"
-            >
-              <Upload className="w-3.5 h-3.5" /> Import Excel
-            </button>
-            <span aria-hidden="true">&middot;</span>
-            <button
-              onClick={handleExportExcel}
-              className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" /> Unduh Format Excel
-            </button>
-            <span aria-hidden="true">&middot;</span>
+            {appRole === 'admin' ? (
+              <>
+                <button
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  className="hover:text-slate-900"
+                >
+                  Pengaturan Aturan ({settings.mode === 'flat' ? `${settings.flatPercentage}% Flat` : 'Tiered'})
+                </button>
+                <span aria-hidden="true">&middot;</span>
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1"
+                >
+                  <Upload className="w-3.5 h-3.5" /> Import Excel
+                </button>
+                <span aria-hidden="true">&middot;</span>
+                <button
+                  onClick={handleExportExcel}
+                  className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> Unduh Format Excel
+                </button>
+                <span aria-hidden="true">&middot;</span>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsAdminPinModalOpen(true)}
+                  className="text-slate-700 hover:text-slate-900 font-semibold flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md transition-colors"
+                >
+                  <Lock className="w-3 h-3 text-amber-600" /> Masuk Mode Admin
+                </button>
+                <span aria-hidden="true">&middot;</span>
+              </>
+            )}
             <button
               onClick={() => setIsGuideModalOpen(true)}
               className="text-slate-800 hover:text-emerald-700 font-bold flex items-center gap-1 bg-slate-100 hover:bg-emerald-50 px-2 py-0.5 rounded-md transition-colors"
@@ -1233,73 +1532,107 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Invoice Modal (Input & Edit with Live Searchable Master Customer Combobox) */}
-      <InvoiceModal
-        isOpen={isInvoiceModalOpen}
-        onClose={() => {
-          setIsInvoiceModalOpen(false);
-          setEditingInvoice(null);
-        }}
-        onSave={handleSaveInvoice}
-        editingInvoice={editingInvoice}
-        settings={settings}
-        existingInvoices={invoices}
-        masterCustomers={customers}
-        onQuickAddMasterCustomer={handleQuickAddMasterCustomer}
-      />
+      {/* Admin-Only Modals */}
+      {appRole === 'admin' && (
+        <>
+          <InvoiceModal
+            isOpen={isInvoiceModalOpen}
+            onClose={() => {
+              setIsInvoiceModalOpen(false);
+              setEditingInvoice(null);
+            }}
+            onSave={handleSaveInvoice}
+            editingInvoice={editingInvoice}
+            settings={settings}
+            existingInvoices={invoices}
+            masterCustomers={customers}
+            onQuickAddMasterCustomer={handleQuickAddMasterCustomer}
+          />
 
-      {/* Import Invoices from Excel Modal */}
-      <ImportExcelModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        settings={settings}
-        masterCustomers={customers}
-        onImportSuccess={handleImportSuccess}
-      />
+          <ImportExcelModal
+            isOpen={isImportModalOpen}
+            onClose={() => setIsImportModalOpen(false)}
+            settings={settings}
+            masterCustomers={customers}
+            onImportSuccess={handleImportSuccess}
+          />
 
-      {/* Import Master Customers from Excel Modal */}
-      <ImportCustomerModal
-        isOpen={isImportCustomerModalOpen}
-        onClose={() => setIsImportCustomerModalOpen(false)}
-        existingCustomers={customers}
-        onImportSuccess={handleImportCustomersSuccess}
-      />
+          <ImportCustomerModal
+            isOpen={isImportCustomerModalOpen}
+            onClose={() => setIsImportCustomerModalOpen(false)}
+            existingCustomers={customers}
+            onImportSuccess={handleImportCustomersSuccess}
+          />
 
-      {/* Master Customer Modal (Create & Edit) */}
-      <CustomerModal
-        isOpen={isCustomerModalOpen}
-        onClose={() => {
-          setIsCustomerModalOpen(false);
-          setEditingCustomer(null);
-        }}
-        onSave={handleSaveCustomer}
-        editingCustomer={editingCustomer}
-        existingCustomers={customers}
-      />
+          <CustomerModal
+            isOpen={isCustomerModalOpen}
+            onClose={() => {
+              setIsCustomerModalOpen(false);
+              setEditingCustomer(null);
+            }}
+            onSave={handleSaveCustomer}
+            editingCustomer={editingCustomer}
+            existingCustomers={customers}
+          />
 
-      {/* Settings Modal (% Cashback & Rules & Navigation Position & Cloud Sync & Backup & Wipe & Guide) */}
-      <SettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        settings={settings}
-        onSaveSettings={handleSaveSettings}
-        onForceSyncCloud={handleForceSyncCloud}
-        isSyncingWithCloud={isSyncingWithCloud}
-        navPosition={navPosition}
-        onChangeNavPosition={handleChangeNavPosition}
-        invoices={invoices}
-        customers={customers}
-        onBackupData={handleBackupData}
-        onRestoreBackup={handleRestoreBackup}
-        onWipeAllDataPermanent={handleWipeAllDataPermanent}
-        onOpenGuide={() => setIsGuideModalOpen(true)}
+          <SettingsModal
+            isOpen={isSettingsModalOpen}
+            onClose={() => setIsSettingsModalOpen(false)}
+            settings={settings}
+            onSaveSettings={handleSaveSettings}
+            onForceSyncCloud={handleForceSyncCloud}
+            isSyncingWithCloud={isSyncingWithCloud}
+            navPosition={navPosition}
+            onChangeNavPosition={handleChangeNavPosition}
+            invoices={invoices}
+            customers={customers}
+            onBackupData={handleBackupData}
+            onRestoreBackup={handleRestoreBackup}
+            onWipeAllDataPermanent={handleWipeAllDataPermanent}
+            onOpenGuide={() => setIsGuideModalOpen(true)}
+          />
+
+          <ExportModal
+            isOpen={isExportModalOpen}
+            onClose={() => setIsExportModalOpen(false)}
+            invoices={dateFilteredInvoices}
+            customerSummaries={customerSummaries}
+            settings={settings}
+            masterCustomers={customers}
+            onSaveSettings={handleSaveSettings}
+            onSuccessToast={showToast}
+          />
+
+          <AdminCancelApprovalModal
+            isOpen={isCancelApprovalsModalOpen}
+            onClose={() => setIsCancelApprovalsModalOpen(false)}
+            cancelRequests={cancelRequests}
+            onApproveRequest={handleApproveCancelRequest}
+            onRejectRequest={handleRejectCancelRequest}
+          />
+        </>
+      )}
+
+      {/* Admin PIN Unlock Modal */}
+      <AdminPinModal
+        isOpen={isAdminPinModalOpen}
+        onClose={() => setIsAdminPinModalOpen(false)}
+        configuredAdminPin={settings.adminPin}
+        onSuccessUnlock={handleUnlockAdmin}
       />
 
       {/* Comprehensive Step-by-Step User Guide Modal */}
       <UserGuideModal
         isOpen={isGuideModalOpen}
         onClose={() => setIsGuideModalOpen(false)}
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
+        appRole={appRole}
+        onOpenSettings={() => {
+          if (appRole === 'admin') {
+            setIsSettingsModalOpen(true);
+          } else {
+            setIsAdminPinModalOpen(true);
+          }
+        }}
       />
 
       {/* About Application & Copyright Modal */}
@@ -1314,19 +1647,7 @@ export default function App() {
         invoice={receiptInvoice}
         onClose={() => setReceiptInvoice(null)}
         settings={settings}
-        onMarkDisbursed={(id) => handleUpdateStatus(id, 'disbursed')}
-      />
-
-      {/* Excel Export Selection Modal */}
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        invoices={dateFilteredInvoices}
-        customerSummaries={customerSummaries}
-        settings={settings}
-        masterCustomers={customers}
-        onSaveSettings={handleSaveSettings}
-        onSuccessToast={showToast}
+        onMarkDisbursed={appRole === 'admin' ? (id) => handleUpdateStatus(id, 'disbursed') : undefined}
       />
 
       {/* Cashback Disbursement Modal with Photo & E-Signature (Per Konsumen) */}

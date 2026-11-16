@@ -9,6 +9,7 @@ import {
   Receipt, 
   ExternalLink,
   Sparkles,
+  Eye,
 } from 'lucide-react';
 import { CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
@@ -19,7 +20,8 @@ interface Top10LeaderboardProps {
   customerSummaries: CustomerSummary[];
   invoices: Invoice[];
   onSelectCustomer: (customerName: string) => void;
-  onExportExcel: () => void;
+  onExportExcel?: () => void;
+  isReadOnly?: boolean;
 }
 
 export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
@@ -27,6 +29,7 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
   invoices,
   onSelectCustomer,
   onExportExcel,
+  isReadOnly = false,
 }) => {
   const [periodFilter, setPeriodFilter] = useState<'all' | 'this_month' | 'last_month'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,6 +121,15 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
 
   return (
     <div className="space-y-6">
+
+      {isReadOnly && (
+        <div className="px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 flex items-center gap-2 text-xs text-slate-700">
+          <Eye className="w-4 h-4 text-emerald-700 shrink-0" />
+          <span>
+            <strong>Mode Lihat Saja (Petugas)</strong> — Halaman Peringkat 10 Besar hanya dapat dilihat (tidak dapat mengubah data).
+          </span>
+        </div>
+      )}
       
       {/* Header and Controls */}
       <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -180,13 +192,15 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
               </button>
             </div>
 
-            <button
-              onClick={onExportExcel}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export Top 10</span>
-            </button>
+            {!isReadOnly && onExportExcel && (
+              <button
+                onClick={onExportExcel}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Top 10</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -656,13 +670,15 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
             <span>
               Menampilkan peringkat konsumen berdasarkan cashback kumulatif tertinggi (default 10 Besar).
             </span>
-            <button
-              onClick={onExportExcel}
-              className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 self-start sm:self-auto"
-            >
-              <span>Unduh Laporan Excel Top 10</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </button>
+            {!isReadOnly && onExportExcel && (
+              <button
+                onClick={onExportExcel}
+                className="text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 self-start sm:self-auto"
+              >
+                <span>Unduh Laporan Excel Top 10</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 

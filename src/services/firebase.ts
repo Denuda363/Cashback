@@ -21,7 +21,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { CashbackSettings, CustomerMaster, Invoice } from '../types/cashback';
+import { CashbackSettings, CustomerMaster, DisbursementCancelRequest, Invoice } from '../types/cashback';
 
 // Export Project & Database Identifiers
 export const FIREBASE_PROJECT_ID = firebaseConfig.projectId;
@@ -123,6 +123,7 @@ export const INVOICES_COLLECTION = 'invoices';
 export const CUSTOMERS_COLLECTION = 'customers';
 export const SETTINGS_COLLECTION = 'settings';
 export const SYSTEM_COLLECTION = 'system';
+export const CANCEL_REQUESTS_COLLECTION = 'cancel_requests';
 export const MAIN_SETTINGS_DOC_ID = 'current_settings';
 export const SYSTEM_INFO_DOC_ID = 'database_info';
 
@@ -471,6 +472,47 @@ export async function saveSettingsToFirestore(settings: CashbackSettings): Promi
     const docRef = doc(db, SETTINGS_COLLECTION, MAIN_SETTINGS_DOC_ID);
     await setDoc(docRef, sanitized, { merge: true });
     console.log('[Firestore] Pengaturan cashback berhasil disimpan ke Cloud.');
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+// -------------------------------------------------------------
+// Firestore Database Operations: Disbursement Cancel Requests
+// -------------------------------------------------------------
+export function subscribeFirestoreCancelRequests(
+  onData: (requests: DisbursementCancelRequest[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const colRef = collection(db, CANCEL_REQUESTS_COLLECTION);
+
+  return onSnapshot(
+    colRef,
+    (snapshot) => {
+      const items: DisbursementCancelRequest[] = [];
+      snapshot.forEach((d) => {
+        items.push({
+          id: d.id,
+          ...d.data(),
+        } as DisbursementCancelRequest);
+      });
+      items.sort((a, b) => (b.requestedAt || '').localeCompare(a.requestedAt || ''));
+      onData(items);
+    },
+    (error) => {
+      console.warn('Cancel requests onSnapshot warning:', error);
+      if (onError && error instanceof Error) onError(error);
+    }
+  );
+}
+
+export async function saveCancelRequestToFirestore(req: DisbursementCancelRequest): Promise<void> {
+  const path = `${CANCEL_REQUESTS_COLLECTION}/${req.id}`;
+  try {
+    const sanitized = sanitizeForFirestore(req);
+    const docRef = doc(db, CANCEL_REQUESTS_COLLECTION, req.id);
+    await setDoc(docRef, sanitized, { merge: true });
+    console.log(`[Firestore] Pengajuan pembatalan ${req.id} tersimpan ke Cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }

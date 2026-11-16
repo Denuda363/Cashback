@@ -232,7 +232,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
     srcHeight: number
   ): string | null => {
     if (!srcWidth || !srcHeight) return null;
-    const maxDimension = 800;
+    const maxDimension = 640;
     let width = srcWidth;
     let height = srcHeight;
 
@@ -253,7 +253,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
     if (!compCtx) return null;
 
     compCtx.drawImage(source, 0, 0, width, height);
-    return compCanvas.toDataURL('image/jpeg', 0.8);
+    return compCanvas.toDataURL('image/jpeg', 0.7);
   };
 
   const handleCaptureFromLiveCamera = () => {

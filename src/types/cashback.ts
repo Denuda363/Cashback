@@ -44,6 +44,7 @@ export interface CashbackSettings {
   excludedCustomerNames?: string[]; // Names of customers disqualified/excluded from receiving cashback
   customerBenefitOverrides?: Record<string, CustomerBenefitType>; // Manual configuration of benefit per customer (clean lowercase name -> benefit)
   companyProfile?: CompanyProfile; // Profil identitas perusahaan / toko
+  adminPin?: string; // PIN khusus mode admin yang dapat dikonfigurasi di pengaturan
 }
 
 export interface Invoice {
@@ -128,3 +129,22 @@ export interface CustomerMaster {
 export type ActiveTab = 'dashboard' | 'top10' | 'invoices' | 'payout_records' | 'customers' | 'master_customers' | 'settings';
 
 export type NavPosition = 'sidebar' | 'top' | 'bottom';
+
+export type AppRole = 'admin' | 'petugas';
+
+export type CancelRequestStatus = 'pending' | 'approved' | 'rejected' | 'executed';
+
+export interface DisbursementCancelRequest {
+  id: string;
+  customerName: string;
+  customerCode?: string;
+  amount: number;
+  requestedBy: string;
+  reason: string;
+  status: CancelRequestStatus;
+  requestedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  adminNote?: string;
+  executedAt?: string;
+}
