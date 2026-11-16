@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { CustomerSummary, Invoice, CustomerBenefitType, CompanyProfile } from '../types/cashback';
 import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
-import { aggregateCustomerSummaries } from '../utils/storage';
+import { aggregateCustomerSummaries, normalizeCustomerName } from '../utils/storage';
 import { ConfirmDialog } from './ConfirmDialog';
 import { OfficialReceiptModal } from './OfficialReceiptModal';
 import { PaginationBar } from './PaginationBar';
@@ -83,16 +83,16 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
 
-  // Set of lowercase clean excluded customer names
+  // Set of normalized clean excluded customer names
   const excludedSet = useMemo(() => {
-    return new Set(excludedCustomerNames.map((n) => (n || '').trim().toLowerCase()));
+    return new Set(excludedCustomerNames.map((n) => normalizeCustomerName(n)));
   }, [excludedCustomerNames]);
 
-  // Group invoices directly by customer name as reference
+  // Group invoices directly by normalized customer name as reference
   const invoicesByCustomerName = useMemo(() => {
     const map = new Map<string, Invoice[]>();
     for (const inv of invoices) {
-      const nameKey = (inv.customerName || '').trim().toLowerCase();
+      const nameKey = normalizeCustomerName(inv.customerName);
       if (!nameKey) continue;
       const list = map.get(nameKey) || [];
       list.push(inv);
@@ -108,7 +108,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
       : aggregateCustomerSummaries(invoices, 5000000, [], excludedCustomerNames, benefitOverrides);
 
     return baseList.map((c) => {
-      const nameKey = (c.customerName || '').trim().toLowerCase();
+      const nameKey = normalizeCustomerName(c.customerName);
       const matchedInvoices = c.invoices && c.invoices.length > 0
         ? c.invoices
         : (invoicesByCustomerName.get(nameKey) || []);
@@ -213,7 +213,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   // Helper key for customer identification (unique per consumer)
   const getCustomerKey = (c: CustomerSummary, idx?: number) => {
     if (c.customerCode) return `code:${c.customerCode}`;
-    const cleanName = (c.customerName || '').trim().toLowerCase();
+    const cleanName = normalizeCustomerName(c.customerName);
     if (cleanName) return `name:${cleanName}`;
     if (c.customerPhone) return `phone:${c.customerPhone}_${idx ?? 0}`;
     return `idx:${idx ?? 0}`;

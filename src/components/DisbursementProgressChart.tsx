@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { CustomerSummary } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
+import { normalizeCustomerName, parseLocalYmdDate } from '../utils/storage';
 
 interface DisbursementProgressChartProps {
   customerSummaries: CustomerSummary[];
@@ -141,7 +142,7 @@ export const DisbursementProgressChart: React.FC<DisbursementProgressChartProps>
     for (const cust of customerSummaries) {
       if (cust.isExcludedFromCashback || cust.disbursedCashback <= 0) continue;
 
-      const custKey = (cust.customerName || cust.customerCode || 'tanpa-nama').trim().toLowerCase();
+      const custKey = normalizeCustomerName(cust.customerName) || cust.customerCode || 'tanpa-nama';
       const disbursedInvoices = (cust.invoices || []).filter((i) => i.claimStatus === 'disbursed');
 
       if (disbursedInvoices.length > 0) {
@@ -176,12 +177,12 @@ export const DisbursementProgressChart: React.FC<DisbursementProgressChartProps>
       }
       cumulativeAmount += bucket.amount;
 
-      const d = new Date(dateKey);
-      const isValidDate = dateKey !== 'unknown' && !Number.isNaN(d.getTime());
-      const label = isValidDate
+      const d = dateKey !== 'unknown' ? parseLocalYmdDate(dateKey) : null;
+      const isValidDate = d !== null && !Number.isNaN(d.getTime());
+      const label = isValidDate && d
         ? `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`
         : 'Tercatat';
-      const shortLabel = isValidDate
+      const shortLabel = isValidDate && d
         ? `${d.getDate()} ${monthNames[d.getMonth()]}`
         : 'Tercatat';
 

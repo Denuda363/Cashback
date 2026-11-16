@@ -582,15 +582,40 @@ export async function deleteAllInvoicesFromFirestore(): Promise<number> {
 }
 
 // -------------------------------------------------------------
-// Total Wipe: Permanently delete all invoices and customers from Firestore
+// Reset / Delete All Cancel Requests from Firestore
+// -------------------------------------------------------------
+export async function deleteAllCancelRequestsFromFirestore(): Promise<number> {
+  try {
+    let deletedCount = 0;
+    const snap = await getDocs(collection(db, CANCEL_REQUESTS_COLLECTION));
+    deletedCount = snap.size;
+    if (!snap.empty) {
+      const BATCH_SIZE = 400;
+      const docs = snap.docs;
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        docs.slice(i, i + BATCH_SIZE).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+    return deletedCount;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, CANCEL_REQUESTS_COLLECTION);
+  }
+}
+
+// -------------------------------------------------------------
+// Total Wipe: Permanently delete all invoices, customers, and cancel requests from Firestore
 // -------------------------------------------------------------
 export async function deleteAllDataFromFirestore(): Promise<{
   deletedInvoices: number;
   deletedCustomers: number;
+  deletedCancelRequests: number;
 }> {
   try {
     let deletedInvoices = 0;
     let deletedCustomers = 0;
+    let deletedCancelRequests = 0;
 
     // 1. Delete all invoices in batches
     const invSnap = await getDocs(collection(db, INVOICES_COLLECTION));
@@ -618,7 +643,20 @@ export async function deleteAllDataFromFirestore(): Promise<{
       }
     }
 
-    // 3. Update system table with wipe record
+    // 3. Delete all cancel requests in batches
+    const cancelSnap = await getDocs(collection(db, CANCEL_REQUESTS_COLLECTION));
+    deletedCancelRequests = cancelSnap.size;
+    if (!cancelSnap.empty) {
+      const BATCH_SIZE = 400;
+      const docs = cancelSnap.docs;
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        docs.slice(i, i + BATCH_SIZE).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+
+    // 4. Update system table with wipe record
     const systemRef = doc(db, SYSTEM_COLLECTION, SYSTEM_INFO_DOC_ID);
     await setDoc(
       systemRef,
@@ -631,8 +669,8 @@ export async function deleteAllDataFromFirestore(): Promise<{
       { merge: true }
     );
 
-    console.log(`Firestore Wipe: Dihapus ${deletedInvoices} faktur dan ${deletedCustomers} konsumen.`);
-    return { deletedInvoices, deletedCustomers };
+    console.log(`Firestore Wipe: Dihapus ${deletedInvoices} faktur, ${deletedCustomers} konsumen, dan ${deletedCancelRequests} pengajuan batal.`);
+    return { deletedInvoices, deletedCustomers, deletedCancelRequests };
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, 'all_collections');
   }

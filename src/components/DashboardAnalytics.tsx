@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ActiveTab, CashbackSettings, CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
+import { parseLocalYmdDate } from '../utils/storage';
 import { PaginationBar } from './PaginationBar';
 import { CashbackMovementChart } from './CashbackMovementChart';
 
@@ -92,16 +93,18 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   // Monthly breakdown for trend
   const monthlyTrend = useMemo(() => {
     const map = new Map<string, { label: string; spend: number; cashback: number; count: number }>();
-    
-    // Sort invoices chronologically
-    const sorted = [...invoices].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    // Sort invoices chronologically using ISO/YYYY-MM-DD safe ordering
+    const sorted = [...invoices].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
     for (const inv of sorted) {
-      const d = new Date(inv.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-      const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
-      
+      const d = parseLocalYmdDate(inv.date);
+      const key = d
+        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        : 'unknown';
+      const label = d ? `${monthNames[d.getMonth()]} ${d.getFullYear()}` : 'Lainnya';
+
       const cur = map.get(key) || { label, spend: 0, cashback: 0, count: 0 };
       cur.spend += inv.purchaseAmount;
       cur.cashback += inv.cashbackAmount;
@@ -109,7 +112,9 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
       map.set(key, cur);
     }
 
-    return Array.from(map.values());
+    return Array.from(map.entries())
+      .sort(([aKey], [bKey]) => aKey.localeCompare(bKey))
+      .map(([, val]) => val);
   }, [invoices]);
 
   const maxMonthlyCashback = useMemo(() => {
@@ -125,7 +130,9 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   }, [monthlyTrend, trendRowsPerPage, trendPage]);
 
   const top3Customers = useMemo(() => {
-    return customerSummaries.slice(0, 3);
+    return customerSummaries
+      .filter((c) => !c.isExcludedFromCashback)
+      .slice(0, 3);
   }, [customerSummaries]);
 
   return (

@@ -28,6 +28,7 @@ import {
   clearDisbursementDraft,
   loadStoredDisbursementOfficer,
   saveStoredDisbursementOfficer,
+  normalizeCustomerName,
 } from '../utils/storage';
 
 export interface CustomerDisbursementData {
@@ -122,7 +123,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
 
   // Stable key for draft persistence & preventing background Firestore resets
   const targetKey = customer
-    ? `cust:${customer.customerName.trim().toLowerCase()}`
+    ? `cust:${normalizeCustomerName(customer.customerName)}`
     : invoice
       ? `inv:${invoice.id}`
       : '';

@@ -193,6 +193,14 @@ export function clearDisbursementDraft(targetKey: string): void {
   }
 }
 
+export function clearAllDisbursementDrafts(): void {
+  try {
+    localStorage.removeItem(DISBURSEMENT_DRAFTS_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export interface OpenDisbursementTarget {
   type: 'customer' | 'invoice';
   key: string;
@@ -473,16 +481,40 @@ export function parseBackupJSON(fileContent: string): AppBackupData {
 }
 
 /**
- * Wipes all invoices, customers, and resets settings in local storage.
+ * Wipes all invoices, customers, cancel requests, and active disbursement drafts in local storage
+ * while keeping store/company settings intact.
  */
 export function wipeAllLocalData(): void {
   try {
     localStorage.setItem(INVOICES_KEY, JSON.stringify([]));
     localStorage.setItem(CUSTOMERS_KEY, JSON.stringify([]));
-    saveStoredSettings(DEFAULT_SETTINGS);
+    localStorage.setItem(CANCEL_REQUESTS_KEY, JSON.stringify([]));
+    localStorage.removeItem(DISBURSEMENT_DRAFTS_KEY);
+    localStorage.removeItem(OPEN_DISBURSEMENT_KEY);
   } catch (e) {
     console.error('Failed to wipe local data', e);
   }
+}
+
+/**
+ * Parses a YYYY-MM-DD date string strictly into a local Date without UTC timezone shifting.
+ */
+export function parseLocalYmdDate(dateStr?: string): Date | null {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const trimmed = dateStr.trim();
+  const ymdMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (ymdMatch) {
+    const y = Number(ymdMatch[1]);
+    const m = Number(ymdMatch[2]) - 1;
+    const d = Number(ymdMatch[3]);
+    const dt = new Date(y, m, d);
+    if (!Number.isNaN(dt.getTime()) && dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d) {
+      return dt;
+    }
+    return null;
+  }
+  const fallback = new Date(trimmed);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
 
 /**

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ActiveTab, CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
+import { normalizeCustomerName, parseLocalYmdDate } from '../utils/storage';
 import { PaginationBar } from './PaginationBar';
 
 interface CashbackMovementChartProps {
@@ -213,7 +214,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
     const excludedSet = new Set(
       customerSummaries
         .filter((c) => c.isExcludedFromCashback)
-        .map((c) => c.customerName.trim().toLowerCase())
+        .map((c) => normalizeCustomerName(c.customerName))
     );
     const map = new Map<
       string,
@@ -228,7 +229,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
 
     for (const inv of chartInvoices) {
       const name = (inv.customerName || 'Tanpa Nama').trim();
-      const key = name.toLowerCase();
+      const key = normalizeCustomerName(name);
       if (excludedSet.has(key)) continue;
       const amt = Math.round(Number(inv.cashbackAmount) || 0);
       if (amt <= 0) continue;
@@ -292,26 +293,26 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
     for (const inv of chartInvoices) {
       const amt = Math.round(Number(inv.cashbackAmount) || 0);
       if (amt <= 0) continue;
-      const custKey = (inv.customerName || inv.id || 'tanpa-nama').trim().toLowerCase();
+      const custKey = normalizeCustomerName(inv.customerName) || inv.id || 'tanpa-nama';
       const isDisbursed = inv.claimStatus === 'disbursed';
       const isReady = inv.claimStatus === 'ready';
       const refDateStr = isDisbursed && inv.disbursedDate ? inv.disbursedDate : inv.date;
-      const d = new Date(refDateStr);
-      const valid = !Number.isNaN(d.getTime());
+      const d = parseLocalYmdDate(refDateStr);
+      const valid = d !== null && !Number.isNaN(d.getTime());
 
-      const dayKey = valid
+      const dayKey = valid && d
         ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
         : 'unknown';
-      const dayLabel = valid
+      const dayLabel = valid && d
         ? `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`
         : 'Lainnya';
-      const dayShort = valid ? `${d.getDate()} ${monthNames[d.getMonth()]}` : 'Lainnya';
+      const dayShort = valid && d ? `${d.getDate()} ${monthNames[d.getMonth()]}` : 'Lainnya';
 
-      const monthKey = valid
+      const monthKey = valid && d
         ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
         : 'unknown';
-      const monthLabel = valid ? `${monthNames[d.getMonth()]} ${d.getFullYear()}` : 'Lainnya';
-      const monthShort = valid
+      const monthLabel = valid && d ? `${monthNames[d.getMonth()]} ${d.getFullYear()}` : 'Lainnya';
+      const monthShort = valid && d
         ? `${monthNames[d.getMonth()]} '${String(d.getFullYear()).slice(-2)}`
         : 'Lainnya';
 

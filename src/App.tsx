@@ -17,6 +17,7 @@ import {
   loadOpenDisbursementTarget,
   saveOpenDisbursementTarget,
   clearOpenDisbursementTarget,
+  clearAllDisbursementDrafts,
   aggregateCustomerSummaries,
   reconcileMasterCustomersWithInvoices,
   normalizeCustomerName,
@@ -70,6 +71,7 @@ import {
   batchUpdateCustomersInFirestore,
   deleteAllDataFromFirestore,
   deleteAllInvoicesFromFirestore,
+  deleteAllCancelRequestsFromFirestore,
   restoreBackupToFirestore,
   FIRESTORE_DATABASE_ID,
   FIREBASE_PROJECT_ID,
@@ -135,37 +137,17 @@ export default function App() {
 
         // 3. Attach live real-time listeners for instant multi-device sync
         unsubInvoices = subscribeFirestoreInvoices((liveInvoices) => {
-          if (liveInvoices && liveInvoices.length > 0) {
-            setInvoices(liveInvoices);
-            saveStoredInvoices(liveInvoices);
-          } else {
-            const local = loadStoredInvoices();
-            if (local.length > 0) {
-              console.log('[Firestore] Mengunggah data faktur lokal ke Firebase Cloud...');
-              batchUpdateInvoicesInFirestore(local).catch((e) => console.warn('Sync local invoices error:', e));
-            } else {
-              setInvoices([]);
-              saveStoredInvoices([]);
-            }
-          }
+          const nextInvoices = liveInvoices || [];
+          setInvoices(nextInvoices);
+          saveStoredInvoices(nextInvoices);
           invoicesSnapReady = true;
           markReadyIfBothLoaded();
         });
 
         unsubCustomers = subscribeFirestoreCustomers((liveCustomers) => {
-          if (liveCustomers && liveCustomers.length > 0) {
-            setCustomers(liveCustomers);
-            saveStoredCustomers(liveCustomers);
-          } else {
-            const local = loadStoredCustomers();
-            if (local.length > 0) {
-              console.log('[Firestore] Mengunggah master konsumen lokal ke Firebase Cloud...');
-              batchUpdateCustomersInFirestore(local).catch((e) => console.warn('Sync local customers error:', e));
-            } else {
-              setCustomers([]);
-              saveStoredCustomers([]);
-            }
-          }
+          const nextCustomers = liveCustomers || [];
+          setCustomers(nextCustomers);
+          saveStoredCustomers(nextCustomers);
           customersSnapReady = true;
           markReadyIfBothLoaded();
         });
@@ -244,13 +226,26 @@ export default function App() {
   const [startDateFilter, setStartDateFilter] = useState<string>('');
   const [endDateFilter, setEndDateFilter] = useState<string>('');
 
-  // Toast feedback state
+  // Toast feedback state with clean timer cancellation
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   const showToast = (msg: string) => {
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
     setToastMessage(msg);
-    setTimeout(() => {
+    toastTimerRef.current = window.setTimeout(() => {
       setToastMessage(null);
+      toastTimerRef.current = null;
     }, 3500);
   };
 
@@ -278,7 +273,7 @@ export default function App() {
   const openCustomerDisbursement = (cust: CustomerSummary) => {
     setDisbursingInvoice(null);
     setDisbursingCustomer(cust);
-    saveOpenDisbursementTarget({ type: 'customer', key: cust.customerName.trim().toLowerCase() });
+    saveOpenDisbursementTarget({ type: 'customer', key: normalizeCustomerName(cust.customerName) });
   };
 
   const openInvoiceDisbursement = (inv: Invoice) => {
@@ -303,8 +298,9 @@ export default function App() {
       return;
     }
     if (savedTarget.type === 'customer') {
+      const targetKey = normalizeCustomerName(savedTarget.key);
       const matched = customerSummaries.find(
-        (c) => c.customerName.trim().toLowerCase() === savedTarget.key
+        (c) => normalizeCustomerName(c.customerName) === targetKey
       );
       if (matched) {
         setDisbursingCustomer(matched);
@@ -385,6 +381,15 @@ export default function App() {
     if (createdOrUpdated.length > 0) {
       await batchUpdateCustomersInFirestore(reconciled.syncedCustomers).catch((err) =>
         console.warn('Firestore new cust import:', err)
+      );
+    }
+    if (reconciled.duplicateIdsToDelete.length > 0) {
+      await Promise.all(
+        reconciled.duplicateIdsToDelete.map((dupId) =>
+          deleteCustomerFromFirestore(dupId).catch((err) =>
+            console.warn('Firestore duplicate customer delete on import:', err)
+          )
+        )
       );
     }
 
@@ -546,7 +551,7 @@ export default function App() {
     }
 
     // Clear conflicting customer-level benefit override if invoice's explicit benefit differs
-    const cleanName = (invoiceData.customerName || '').trim().toLowerCase();
+    const cleanName = normalizeCustomerName(invoiceData.customerName);
     const existingOverride = cleanName ? settings.customerBenefitOverrides?.[cleanName] : undefined;
     if (cleanName && existingOverride && invoiceData.benefitType && existingOverride !== invoiceData.benefitType) {
       const nextOverrides = { ...(settings.customerBenefitOverrides || {}) };
@@ -578,7 +583,7 @@ export default function App() {
     saveStoredInvoices(updated);
     await saveInvoiceToFirestore(updatedInv).catch((err) => console.warn('Firestore benefit update:', err));
 
-    const cleanName = (invoice.customerName || '').trim().toLowerCase();
+    const cleanName = normalizeCustomerName(invoice.customerName);
     const existingOverride = cleanName ? settings.customerBenefitOverrides?.[cleanName] : undefined;
     if (cleanName && existingOverride && existingOverride !== nextBenefit) {
       const nextOverrides = { ...(settings.customerBenefitOverrides || {}) };
@@ -608,7 +613,7 @@ export default function App() {
 
     const updated = invoices.map((inv) => {
       if (!idSet.has(inv.id)) return inv;
-      const cleanName = (inv.customerName || '').trim().toLowerCase();
+      const cleanName = normalizeCustomerName(inv.customerName);
       if (cleanName) affectedCustomerNames.add(cleanName);
 
       const calc = calculateCashback(inv.purchaseAmount, settings);
@@ -704,8 +709,18 @@ export default function App() {
     setIsSyncingWithCloud(true);
     try {
       const deletedCount = await deleteAllInvoicesFromFirestore();
+      await deleteAllCancelRequestsFromFirestore().catch((err) =>
+        console.warn('Reset cancel requests error:', err)
+      );
       saveStoredInvoices([]);
+      saveStoredCancelRequests([]);
+      clearOpenDisbursementTarget();
+      clearAllDisbursementDrafts();
       setInvoices([]);
+      setCancelRequests([]);
+      setDisbursingCustomer(null);
+      setDisbursingInvoice(null);
+      setReceiptInvoice(null);
       showToast(`Seluruh data faktur (${deletedCount} transaksi) berhasil di-reset dan dibersihkan dari Firebase Cloud!`);
     } catch (err: any) {
       console.error('Reset invoices error:', err);
@@ -750,38 +765,56 @@ export default function App() {
     showToast(`Penerimaan cashback faktur ${inv.invoiceNumber} (${inv.customerName}) tersimpan ke Cloud!`);
   };
 
-  // Confirm cashback disbursement per customer (mencairkan seluruh hak cashback konsumen)
+  // Confirm cashback disbursement per customer (mencairkan faktur konsumen yang belum cair dalam cakupan aktif)
   const handleConfirmCustomerDisbursement = async (
     customerName: string,
     data: CustomerDisbursementData
   ) => {
     setIsSyncingWithCloud(true);
     try {
-      const clean = customerName.trim().toLowerCase();
+      const clean = normalizeCustomerName(customerName);
+      const scopedIdSet =
+        disbursingCustomer &&
+        normalizeCustomerName(disbursingCustomer.customerName) === clean &&
+        disbursingCustomer.invoices &&
+        disbursingCustomer.invoices.length > 0
+          ? new Set(disbursingCustomer.invoices.map((i) => i.id))
+          : null;
+
+      const isTargetInvoice = (inv: Invoice) => {
+        if (normalizeCustomerName(inv.customerName) !== clean) return false;
+        if (scopedIdSet && !scopedIdSet.has(inv.id)) return false;
+        return true;
+      };
+
+      const targetInvoices = invoices.filter(isTargetInvoice);
+      const hasUndisbursedInScope = targetInvoices.some((inv) => inv.claimStatus !== 'disbursed');
+
       const changedInvoices: Invoice[] = [];
       let mediaAttached = false;
 
-      // Update all invoices for this customer to disbursed status
-      // Store heavy proof photo on the first matching invoice only to avoid N-times storage duplication
+      // Only transition pending/ready invoices when partial undisbursed invoices exist,
+      // preserving historical disbursedDate/photo/officer on earlier completed invoices.
       const updatedInvoices = invoices.map((inv) => {
-        if ((inv.customerName || '').trim().toLowerCase() === clean) {
-          const updatedInv: Invoice = {
-            ...inv,
-            claimStatus: 'disbursed' as const,
-            disbursedDate: data.disbursedDate,
-            disbursedAt: data.disbursedAt,
-            payoutMethod: data.payoutMethod,
-            recipientName: data.recipientName,
-            disbursedBy: data.disbursedBy,
-            disbursementProofPhoto: !mediaAttached ? data.disbursementProofPhoto : undefined,
-            disbursementSignature: data.disbursementSignature,
-            disbursementNotes: data.disbursementNotes,
-          };
-          mediaAttached = true;
-          changedInvoices.push(updatedInv);
-          return updatedInv;
+        if (!isTargetInvoice(inv)) return inv;
+        if (hasUndisbursedInScope && inv.claimStatus === 'disbursed') {
+          return inv;
         }
-        return inv;
+        const updatedInv: Invoice = {
+          ...inv,
+          claimStatus: 'disbursed' as const,
+          disbursedDate: data.disbursedDate,
+          disbursedAt: data.disbursedAt,
+          payoutMethod: data.payoutMethod,
+          recipientName: data.recipientName,
+          disbursedBy: data.disbursedBy,
+          disbursementProofPhoto: !mediaAttached ? data.disbursementProofPhoto : undefined,
+          disbursementSignature: data.disbursementSignature,
+          disbursementNotes: data.disbursementNotes,
+        };
+        mediaAttached = true;
+        changedInvoices.push(updatedInv);
+        return updatedInv;
       });
 
       setInvoices(updatedInvoices);
@@ -804,10 +837,10 @@ export default function App() {
   const handleRevertCustomerDisbursement = async (customerName: string) => {
     setIsSyncingWithCloud(true);
     try {
-      const clean = customerName.trim().toLowerCase();
+      const clean = normalizeCustomerName(customerName);
       const changedInvoices: Invoice[] = [];
       const updatedInvoices = invoices.map((inv) => {
-        if ((inv.customerName || '').trim().toLowerCase() === clean && inv.claimStatus === 'disbursed') {
+        if (normalizeCustomerName(inv.customerName) === clean && inv.claimStatus === 'disbursed') {
           const revertedInv: Invoice = {
             ...inv,
             claimStatus: 'ready' as const,
@@ -957,11 +990,11 @@ export default function App() {
       showToast('Akses ditolak: pencoretan konsumen hanya untuk Mode Admin.');
       return;
     }
-    const clean = customerName.trim().toLowerCase();
+    const clean = normalizeCustomerName(customerName);
     const currentList = settings.excludedCustomerNames || [];
-    const exists = currentList.some((n) => n.trim().toLowerCase() === clean);
+    const exists = currentList.some((n) => normalizeCustomerName(n) === clean);
     const nextList = exists
-      ? currentList.filter((n) => n.trim().toLowerCase() !== clean)
+      ? currentList.filter((n) => normalizeCustomerName(n) !== clean)
       : [...currentList, customerName.trim()];
     const nextSettings: CashbackSettings = { ...settings, excludedCustomerNames: nextList };
     setSettings(nextSettings);
@@ -980,7 +1013,7 @@ export default function App() {
       showToast('Akses ditolak: pengaturan paket konsumen hanya untuk Mode Admin.');
       return;
     }
-    const clean = customerName.trim().toLowerCase();
+    const clean = normalizeCustomerName(customerName);
     if (!clean) return;
     const currentOverrides = { ...(settings.customerBenefitOverrides || {}) };
     currentOverrides[clean] = benefitType;
@@ -1211,15 +1244,20 @@ export default function App() {
   const handleWipeAllDataPermanent = async () => {
     setIsSyncingWithCloud(true);
     try {
-      // 1. Delete all invoices and customers from Cloud Firestore
+      // 1. Delete all invoices, customers, and cancel requests from Cloud Firestore
       const wipeResult = await deleteAllDataFromFirestore();
 
-      // 2. Clear local storage
+      // 2. Clear local storage (preserving company settings)
       wipeAllLocalData();
 
-      // 3. Clear local React state
+      // 3. Clear local React & modal states
+      suppressedCustomerNamesRef.current.clear();
       setInvoices([]);
       setCustomers([]);
+      setCancelRequests([]);
+      setDisbursingCustomer(null);
+      setDisbursingInvoice(null);
+      setReceiptInvoice(null);
 
       showToast(
         `Seluruh data berhasil dihapus permanen! (${wipeResult?.deletedInvoices || 0} faktur & ${wipeResult?.deletedCustomers || 0} konsumen telah dibersihkan dari Cloud & Lokal).`
@@ -1276,7 +1314,7 @@ export default function App() {
       onOpenCancelApprovals={() => setIsCancelApprovalsModalOpen(true)}
     >
       {/* Main Viewport Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6">
+      <main className={`flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6 ${receiptInvoice ? 'print:hidden' : ''}`}>
         
         {/* Global Date Range Filter Bar */}
         <div className="print:hidden">
@@ -1336,6 +1374,10 @@ export default function App() {
           <Top10Leaderboard
             customerSummaries={customerSummaries}
             invoices={dateFilteredInvoices}
+            masterCustomers={customers}
+            excludedCustomerNames={settings.excludedCustomerNames || []}
+            benefitOverrides={settings.customerBenefitOverrides || {}}
+            minSpendForParcel={settings.minSpendForParcel || 5000000}
             onSelectCustomer={handleSelectCustomerForInvoices}
             onExportExcel={appRole === 'admin' ? handleExportExcel : undefined}
             isReadOnly={isPetugasReadOnly}
@@ -1375,7 +1417,7 @@ export default function App() {
               appRole === 'admin'
                 ? (inv) => {
                     const matchedCust = customerSummaries.find(
-                      (c) => c.customerName.toLowerCase() === inv.customerName.toLowerCase()
+                      (c) => normalizeCustomerName(c.customerName) === normalizeCustomerName(inv.customerName)
                     );
                     if (matchedCust) {
                       openCustomerDisbursement(matchedCust);

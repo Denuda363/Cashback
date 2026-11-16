@@ -11,14 +11,18 @@ import {
   Sparkles,
   Eye,
 } from 'lucide-react';
-import { CustomerSummary, Invoice } from '../types/cashback';
+import { CustomerBenefitType, CustomerMaster, CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
-import { aggregateCustomerSummaries } from '../utils/storage';
+import { aggregateCustomerSummaries, parseLocalYmdDate } from '../utils/storage';
 import { PaginationBar } from './PaginationBar';
 
 interface Top10LeaderboardProps {
   customerSummaries: CustomerSummary[];
   invoices: Invoice[];
+  masterCustomers?: CustomerMaster[];
+  excludedCustomerNames?: string[];
+  benefitOverrides?: Record<string, CustomerBenefitType>;
+  minSpendForParcel?: number;
   onSelectCustomer: (customerName: string) => void;
   onExportExcel?: () => void;
   isReadOnly?: boolean;
@@ -27,6 +31,10 @@ interface Top10LeaderboardProps {
 export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
   customerSummaries,
   invoices,
+  masterCustomers = [],
+  excludedCustomerNames = [],
+  benefitOverrides = {},
+  minSpendForParcel = 5000000,
   onSelectCustomer,
   onExportExcel,
   isReadOnly = false,
@@ -36,10 +44,10 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
   const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Filter invoices based on period if selected, then recalculate rankings with the same aggregate function
+  // Filter invoices based on period if selected, then recalculate rankings excluding disqualified consumers
   const rankedData = useMemo(() => {
     if (periodFilter === 'all') {
-      const list = [...customerSummaries];
+      const list = customerSummaries.filter((c) => !c.isExcludedFromCashback && c.totalCashback > 0);
       list.sort((a, b) => b.totalCashback - a.totalCashback);
       return list.map((item, idx) => ({ ...item, rank: idx + 1 }));
     }
@@ -51,23 +59,29 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
 
     if (periodFilter === 'this_month') {
       filteredInvoices = invoices.filter((inv) => {
-        const d = new Date(inv.date);
-        return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+        const d = parseLocalYmdDate(inv.date);
+        return d ? d.getFullYear() === currentYear && d.getMonth() === currentMonth : false;
       });
     } else if (periodFilter === 'last_month') {
       const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
       const targetYear = lastMonthDate.getFullYear();
       const targetMonth = lastMonthDate.getMonth();
       filteredInvoices = invoices.filter((inv) => {
-        const d = new Date(inv.date);
-        return d.getFullYear() === targetYear && d.getMonth() === targetMonth;
+        const d = parseLocalYmdDate(inv.date);
+        return d ? d.getFullYear() === targetYear && d.getMonth() === targetMonth : false;
       });
     }
 
-    const aggregated = aggregateCustomerSummaries(filteredInvoices);
+    const aggregated = aggregateCustomerSummaries(
+      filteredInvoices,
+      minSpendForParcel,
+      masterCustomers,
+      excludedCustomerNames,
+      benefitOverrides
+    ).filter((c) => !c.isExcludedFromCashback && c.totalCashback > 0);
     aggregated.sort((a, b) => b.totalCashback - a.totalCashback);
     return aggregated.map((item, idx) => ({ ...item, rank: idx + 1 }));
-  }, [invoices, customerSummaries, periodFilter]);
+  }, [invoices, customerSummaries, periodFilter, minSpendForParcel, masterCustomers, excludedCustomerNames, benefitOverrides]);
 
   // Filtered leaderboard items (default displays Top 10 via rowsPerPage=10, user can change rows per page)
   const filteredRanked = useMemo(() => {
@@ -221,7 +235,7 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
           <div>
             <span className="text-slate-500">Rata-rata per Konsumen Top 10</span>
             <div className="text-base font-bold text-emerald-700 font-mono tabular-nums mt-0.5">
-              {formatRupiah(top10.length > 0 ? totalTop10Cashback / Math.min(top10.length, 10) : 0)}
+              {formatRupiah(rankedData.length > 0 ? totalTop10Cashback / Math.min(rankedData.length, 10) : 0)}
             </div>
           </div>
           <div>

@@ -108,8 +108,20 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     return `INV-${datePart}-${randomPart}`;
   };
 
-  // Populate or reset form
+  const initializedSessionRef = useRef<string>('');
+
+  // Populate or reset form only on modal open or editing target change
   useEffect(() => {
+    if (!isOpen) {
+      initializedSessionRef.current = '';
+      return;
+    }
+    const sessionKey = editingInvoice ? `edit:${editingInvoice.id}` : 'new';
+    if (initializedSessionRef.current === sessionKey) {
+      return;
+    }
+    initializedSessionRef.current = sessionKey;
+
     if (editingInvoice) {
       setInvoiceNumber(editingInvoice.invoiceNumber);
       setDate(editingInvoice.date);
@@ -158,7 +170,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         setIsCustomRate(false);
       }
     } else {
-      const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       setInvoiceNumber(generateInvoiceNumber());
       setDate(today);
       setSelectedMasterCustomer(null);
@@ -180,6 +193,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       setGetParcel(true);
     }
     setIsQuickAddingCustomer(false);
+    setQuickCustomerCity('');
     setIsSearchDropdownOpen(false);
     setError(null);
   }, [editingInvoice, isOpen, settings, masterCustomers]);

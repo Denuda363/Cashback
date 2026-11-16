@@ -179,6 +179,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     });
 
     onImportSuccess(newInvoices, newCustomersToAdd);
+    handleReset();
     onClose();
   };
 
@@ -188,6 +189,11 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     setParseError(null);
     setCurrentPage(1);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleCloseModal = () => {
+    handleReset();
+    onClose();
   };
 
   return (
@@ -210,7 +216,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleCloseModal}
             className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />

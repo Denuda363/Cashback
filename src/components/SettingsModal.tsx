@@ -147,32 +147,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [showAdminPinInput, setShowAdminPinInput] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
 
-  // Sync draft logo & company profile whenever modal opens with latest Firestore settings
+  const wasOpenRef = useRef(false);
+
+  // Sync all rule, profile, logo, and PIN fields cleanly on each modal open transition
   useEffect(() => {
-    if (!isOpen) return;
-    setLogoUrl(settings.companyProfile?.logoUrl || '');
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      return;
+    }
+    if (wasOpenRef.current) return;
+    wasOpenRef.current = true;
+
+    setMode(settings.mode);
+    setFlatPercentage(settings.flatPercentage);
+    setTiers(settings.tiers);
+    setTierError(null);
+    setHasMaxCap(settings.maxCashbackPerTransaction !== null);
+    setMaxCapValue(settings.maxCashbackPerTransaction || 1000000);
+    setRounding(settings.rounding);
+    setClaimValidityDays(settings.claimValidityDays);
+    setStoreName(settings.storeName || 'Mitra Niaga Utama');
+
+    const cp = settings.companyProfile;
+    setLogoUrl(cp?.logoUrl || '');
     setLogoError(null);
     setIsSecurityExpanded(false);
     setAdminPinDraft(settings.adminPin || '');
     setConfirmAdminPinDraft(settings.adminPin || '');
     setShowAdminPinInput(false);
     setPinError(null);
-    if (settings.companyProfile) {
-      setCompanyName(settings.companyProfile.companyName || settings.storeName || '');
-      setTagline(settings.companyProfile.tagline || '');
-      setAddress(settings.companyProfile.address || '');
-      setCity(settings.companyProfile.city || '');
-      setPhone(settings.companyProfile.phone || '');
-      setEmail(settings.companyProfile.email || '');
-      setWebsite(settings.companyProfile.website || '');
-      setTaxNumber(settings.companyProfile.taxNumber || '');
-      setPicName(settings.companyProfile.picName || '');
-      setPicTitle(settings.companyProfile.picTitle || '');
-      setBankName(settings.companyProfile.bankName || 'BCA');
-      setBankAccountNumber(settings.companyProfile.bankAccountNumber || '');
-      setBankAccountHolder(settings.companyProfile.bankAccountHolder || '');
-      setFooterNotes(settings.companyProfile.footerNotes || '');
-    }
+    setCompanyName(cp?.companyName || settings.storeName || '');
+    setTagline(cp?.tagline || '');
+    setAddress(cp?.address || '');
+    setCity(cp?.city || '');
+    setPhone(cp?.phone || '');
+    setEmail(cp?.email || '');
+    setWebsite(cp?.website || '');
+    setTaxNumber(cp?.taxNumber || '');
+    setPicName(cp?.picName || '');
+    setPicTitle(cp?.picTitle || '');
+    setBankName(cp?.bankName || 'BCA');
+    setBankAccountNumber(cp?.bankAccountNumber || '');
+    setBankAccountHolder(cp?.bankAccountHolder || '');
+    setFooterNotes(cp?.footerNotes || '');
   }, [isOpen, settings]);
 
   if (!isOpen) return null;

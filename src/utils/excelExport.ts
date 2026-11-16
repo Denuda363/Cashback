@@ -217,18 +217,21 @@ export function populateTandaTerimaSheet(
       : (cust.totalPurchase >= minSpendParcel);
     const parcelText = cust.benefitType ? getBenefitLabel(cust.benefitType) : (isParcel ? 'Cashback + Parsel' : 'Cashback');
 
-    // Percentage calculation for the formula (in flat mode, strictly use settings.flatPercentage)
-    const pct = settings.mode === 'flat'
-      ? settings.flatPercentage
-      : (cust.totalPurchase > 0
-          ? Number(((cust.totalCashback / cust.totalPurchase) * 100).toFixed(2))
-          : (settings.flatPercentage || 2));
+    // Percentage calculation for the formula (respect parcel_only = 0% / Rp 0 and actual aggregated cashback)
+    const isParcelOnly = cust.benefitType === 'parcel_only' || cust.totalCashback <= 0;
+    const pct = isParcelOnly
+      ? 0
+      : settings.mode === 'flat' && cust.totalPurchase > 0
+        ? Number(((cust.totalCashback / cust.totalPurchase) * 100).toFixed(2)) === settings.flatPercentage
+          ? settings.flatPercentage
+          : Number(((cust.totalCashback / cust.totalPurchase) * 100).toFixed(2))
+        : (cust.totalPurchase > 0
+            ? Number(((cust.totalCashback / cust.totalPurchase) * 100).toFixed(2))
+            : (settings.flatPercentage || 2));
 
-    // Formula: Total Belanja (Col C) * Persentase Cashback (e.g. C2*2% or C2*3%)
+    // Formula: Total Belanja (Col C) * Persentase Cashback (e.g. C2*2% or C2*0%)
     const formulaString = `ROUND(C${rowNum}*${pct}%, 0)`;
-    const expectedCashback = settings.mode === 'flat'
-      ? Math.round((cust.totalPurchase || 0) * (pct / 100))
-      : (cust.totalCashback || 0);
+    const expectedCashback = isParcelOnly ? 0 : (cust.totalCashback || 0);
 
     const row = ws.addRow([
       seqNo,
@@ -316,15 +319,8 @@ export function populateTandaTerimaSheet(
 
   if (exportSummaries.length > 0) {
     const totalCashbackResult = exportSummaries.reduce((s, c) => {
-      const pct = settings.mode === 'flat'
-        ? settings.flatPercentage
-        : (c.totalPurchase > 0
-            ? Number(((c.totalCashback / c.totalPurchase) * 100).toFixed(2))
-            : (settings.flatPercentage || 2));
-      const expected = settings.mode === 'flat'
-        ? Math.round((c.totalPurchase || 0) * (pct / 100))
-        : (c.totalCashback || 0);
-      return s + expected;
+      const isParcelOnly = c.benefitType === 'parcel_only' || c.totalCashback <= 0;
+      return s + (isParcelOnly ? 0 : (c.totalCashback || 0));
     }, 0);
 
     const totalRow = ws.addRow([
@@ -1183,19 +1179,39 @@ export async function parseInvoicesFromExcel(file: File): Promise<ParsedImportIn
     }
 
     const rawValDate = row.getCell(2).value;
-    let date = new Date().toISOString().split('T')[0];
-    if (rawValDate instanceof Date) {
+    const nowLocal = new Date();
+    let date = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
+    const parseExcelStringDate = (str: string): string | null => {
+      const s = str.trim();
+      if (!s) return null;
+      const isoMatch = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (isoMatch) {
+        return `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
+      }
+      const dmyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if (dmyMatch) {
+        const day = Number(dmyMatch[1]);
+        const mon = Number(dmyMatch[2]);
+        const yr = Number(dmyMatch[3]);
+        if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+          return `${yr}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+      }
+      const parsed = new Date(s);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split('T')[0];
+      }
+      return null;
+    };
+
+    if (rawValDate instanceof Date && !isNaN(rawValDate.getTime())) {
       date = rawValDate.toISOString().split('T')[0];
     } else if (typeof rawValDate === 'string' && rawValDate.trim()) {
-      const d = new Date(rawValDate);
-      if (!isNaN(d.getTime())) {
-        date = d.toISOString().split('T')[0];
-      }
+      const parsed = parseExcelStringDate(rawValDate);
+      if (parsed) date = parsed;
     } else if (rawDate) {
-      const d = new Date(rawDate);
-      if (!isNaN(d.getTime())) {
-        date = d.toISOString().split('T')[0];
-      }
+      const parsed = parseExcelStringDate(rawDate);
+      if (parsed) date = parsed;
     }
 
     let claimStatus: ClaimStatus = 'pending';
