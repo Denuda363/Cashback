@@ -332,7 +332,9 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                   <span className="text-sm font-bold font-mono text-slate-900 truncate">{formatRupiah(totalSpend)}</span>
                 </div>
                 <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
-                  <span className="text-[10px] text-emerald-700 block">Total Cashback ({settings.flatPercentage}%)</span>
+                  <span className="text-[10px] text-emerald-700 block">
+                    Total Cashback ({settings.mode === 'tiered' ? 'Tiered' : `${settings.flatPercentage}%`})
+                  </span>
                   <span className="text-sm font-bold font-mono text-emerald-700 truncate">{formatRupiah(totalCashback)}</span>
                 </div>
               </div>
@@ -341,7 +343,9 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 bg-slate-100/70 border-b border-slate-200 font-semibold text-[11px] text-slate-700 flex items-center justify-between">
                   <span>Pratinjau Data Faktur ({validRows.length} Valid)</span>
-                  <span className="text-[10px] text-slate-500">Kalkulasi: {settings.flatPercentage}% Cashback</span>
+                  <span className="text-[10px] text-slate-500">
+                    Kalkulasi: {settings.mode === 'tiered' ? 'Tiered (Bertingkat)' : `${settings.flatPercentage}%`} Cashback
+                  </span>
                 </div>
                 <div className="max-h-48 overflow-y-auto">
                   <table className="w-full text-left border-collapse text-[11px]">
@@ -400,7 +404,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
         <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleCloseModal}
             className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors"
           >
             Batal

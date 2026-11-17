@@ -166,18 +166,22 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
     });
   }, [customerSummaries, filterMode, search]);
 
+  const safePage = useMemo(() => {
+    if (rowsPerPage === 'all') return 1;
+    const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / rowsPerPage));
+    return Math.min(Math.max(1, currentPage), totalPages);
+  }, [filteredCustomers.length, rowsPerPage, currentPage]);
+
   const { paginatedCustomers, startIndex } = useMemo(() => {
     if (rowsPerPage === 'all') {
       return { paginatedCustomers: filteredCustomers, startIndex: 0 };
     }
-    const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / rowsPerPage));
-    const safePage = Math.min(Math.max(1, currentPage), totalPages);
     const start = (safePage - 1) * rowsPerPage;
     return {
       paginatedCustomers: filteredCustomers.slice(start, start + rowsPerPage),
       startIndex: start,
     };
-  }, [filteredCustomers, rowsPerPage, currentPage]);
+  }, [filteredCustomers, rowsPerPage, safePage]);
 
   const methodLabel = (_m?: PayoutMethod) => {
     return 'Tunai (Cash)';
@@ -1281,7 +1285,7 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
         <PaginationBar
           totalItems={filteredCustomers.length}
           rowsPerPage={rowsPerPage}
-          currentPage={currentPage}
+          currentPage={safePage}
           onChangeRowsPerPage={(rows) => {
             setRowsPerPage(rows);
             setCurrentPage(1);

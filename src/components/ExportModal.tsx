@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   X, 
   FileSpreadsheet, 
@@ -10,9 +10,10 @@ import {
   Sparkles,
   Percent
 } from 'lucide-react';
-import { CashbackSettings, CustomerMaster, CustomerSummary, Invoice } from '../types/cashback';
+import { CashbackSettings, CustomerBenefitType, CustomerMaster, CustomerSummary, Invoice } from '../types/cashback';
 import { exportCashbackToExcel, exportTandaTerimaFormat } from '../utils/excelExport';
-import { getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
+import { calculateCashback, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
+import { aggregateCustomerSummaries } from '../utils/storage';
 import { PaginationBar } from './PaginationBar';
 
 interface ExportModalProps {
@@ -42,6 +43,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState<number | 'all'>(5);
   const [currentPage, setCurrentPage] = useState<number>(1);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActivePercentage(settings.flatPercentage ?? 2);
+      setParcelThreshold(settings.minSpendForParcel || 5000000);
+      setCurrentPage(1);
+    }
+  }, [isOpen, settings.flatPercentage, settings.minSpendForParcel]);
 
   const { eligibleCustomers, excludedCount, eligibleInvoices } = useMemo(() => {
     const excludedSet = new Set<string>();
@@ -97,11 +106,50 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         onSaveSettings(currentSettings);
       }
 
+      // Compute fresh export rows/invoices immediately so same-click percentage/threshold changes reflect in Excel
+      const exportInvoices: Invoice[] = eligibleInvoices.map((inv) => {
+        const resolvedBenefit: CustomerBenefitType =
+          inv.benefitType ||
+          (inv.getParcel === false
+            ? 'cashback_only'
+            : inv.cashbackAmount > 0
+              ? 'cashback_parcel'
+              : 'parcel_only');
+        const calc = calculateCashback(inv.purchaseAmount, currentSettings);
+        return {
+          ...inv,
+          benefitType: resolvedBenefit,
+          getParcel: resolvedBenefit !== 'cashback_only',
+          cashbackPercentage: resolvedBenefit === 'parcel_only' ? 0 : calc.effectivePercentage,
+          cashbackAmount: resolvedBenefit === 'parcel_only' ? 0 : calc.cashbackAmount,
+        };
+      });
+
+      const exportCustomers: CustomerSummary[] =
+        exportInvoices.length > 0
+          ? aggregateCustomerSummaries(
+              exportInvoices,
+              parcelThreshold,
+              masterCustomers,
+              settings.excludedCustomerNames || [],
+              settings.customerBenefitOverrides || {}
+            ).filter((c) => !c.isExcludedFromCashback)
+          : eligibleCustomers.map((cust) => {
+              const isParcelOnly = cust.benefitType === 'parcel_only';
+              const newCashback = isParcelOnly
+                ? 0
+                : Math.round((cust.totalPurchase || 0) * (activePercentage / 100));
+              return {
+                ...cust,
+                totalCashback: newCashback,
+              };
+            });
+
       if (exportType === 'receipt_image') {
-        await exportTandaTerimaFormat(eligibleCustomers, currentSettings);
+        await exportTandaTerimaFormat(exportCustomers, currentSettings);
         onSuccessToast(`File Excel Format Tanda Terima & Parcel (${activePercentage}% Cashback) berhasil diunduh!`);
       } else {
-        await exportCashbackToExcel(eligibleInvoices, eligibleCustomers, currentSettings, 'Rekap_Cashback_Konsumen', masterCustomers);
+        await exportCashbackToExcel(exportInvoices, exportCustomers, currentSettings, 'Rekap_Cashback_Konsumen', masterCustomers);
         onSuccessToast(`File Excel Komprehensif (${activePercentage}% Cashback) berhasil diunduh!`);
       }
       onClose();
@@ -344,7 +392,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                       : (cust.totalPurchase >= parcelThreshold);
                     const resolvedType = cust.benefitType || (isParcel ? 'cashback_parcel' : 'cashback_only');
                     const benefitBadge = getBenefitBadgeClasses(resolvedType);
-                    const calculatedCashback = Math.round((cust.totalPurchase || 0) * (activePercentage / 100));
+                    const calculatedCashback =
+                      resolvedType === 'parcel_only'
+                        ? 0
+                        : Math.round((cust.totalPurchase || 0) * (activePercentage / 100));
 
                     return (
                       <tr key={cust.customerCode || `${cust.customerName}_${rowNumber}`} className="hover:bg-slate-50/70">

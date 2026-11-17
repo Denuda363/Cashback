@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Printer,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 import { CustomerSummary, CompanyProfile, CustomerBenefitType } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
+import { getTodayLocalYmd } from '../utils/storage';
 
 interface OfficialReceiptModalProps {
   customer: CustomerSummary | null;
@@ -46,6 +48,15 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
   useEffect(() => {
     setActiveRangkap(1);
   }, [customer?.customerCode, customer?.customerName]);
+
+  // Mark body while open so printing isolates the portaled 2-copy receipt cleanly
+  useEffect(() => {
+    if (!customer) return;
+    document.body.classList.add('printing-official-receipt');
+    return () => {
+      document.body.classList.remove('printing-official-receipt');
+    };
+  }, [customer]);
 
   // All React hooks MUST be called before conditional early return!
   if (!customer) return null;
@@ -97,10 +108,11 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
     window.print();
   };
 
-  const docNumber = `BAP-CB/${customer.customerCode || 'KONS'}/${(customer.lastDisbursedDate || new Date().toISOString().split('T')[0]).replace(/-/g, '')}`;
-  const docDate = customer.lastDisbursedDate || new Date().toISOString().split('T')[0];
+  const todayYmd = getTodayLocalYmd();
+  const docNumber = `BAP-CB/${customer.customerCode || 'KONS'}/${(customer.lastDisbursedDate || todayYmd).replace(/-/g, '')}`;
+  const docDate = customer.lastDisbursedDate || todayYmd;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:static print:inset-auto print:block print:bg-white print:p-0 print:overflow-visible">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-4xl w-full max-h-[96vh] flex flex-col overflow-hidden print:max-w-none print:w-full print:max-h-none print:block print:border-none print:shadow-none print:rounded-none print:overflow-visible">
         
@@ -467,6 +479,7 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

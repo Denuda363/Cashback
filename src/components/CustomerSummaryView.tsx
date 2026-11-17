@@ -197,18 +197,22 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
     return list;
   }, [resolvedSummaries, search, eligibilityFilter, benefitFilter, tierFilter, parcelFilter, sortBy]);
 
+  const safePage = useMemo(() => {
+    if (rowsPerPage === 'all') return 1;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+    return Math.min(Math.max(1, currentPage), totalPages);
+  }, [filtered.length, rowsPerPage, currentPage]);
+
   const { paginatedCustomers, startIndex } = useMemo(() => {
     if (rowsPerPage === 'all') {
       return { paginatedCustomers: filtered, startIndex: 0 };
     }
-    const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
-    const safePage = Math.min(Math.max(1, currentPage), totalPages);
     const start = (safePage - 1) * rowsPerPage;
     return {
       paginatedCustomers: filtered.slice(start, start + rowsPerPage),
       startIndex: start,
     };
-  }, [filtered, rowsPerPage, currentPage]);
+  }, [filtered, rowsPerPage, safePage]);
 
   // Helper key for customer identification (unique per consumer)
   const getCustomerKey = (c: CustomerSummary, idx?: number) => {
@@ -1213,7 +1217,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
       <PaginationBar
         totalItems={filtered.length}
         rowsPerPage={rowsPerPage}
-        currentPage={currentPage}
+        currentPage={safePage}
         onChangeRowsPerPage={(rows) => {
           setRowsPerPage(rows);
           setCurrentPage(1);

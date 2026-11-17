@@ -1361,6 +1361,10 @@ main .bg-white .p-2.rounded-lg {
 
 /* Force clean white flat presentation during printing regardless of active theme */
 @media print {
+  body.printing-official-receipt #root {
+    display: none !important;
+  }
+
   body,
   main .bg-white,
   div.fixed .bg-white,

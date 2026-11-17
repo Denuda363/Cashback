@@ -94,13 +94,17 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
     );
   }, [rankedData, searchQuery]);
 
+  const safePage = useMemo(() => {
+    if (rowsPerPage === 'all') return 1;
+    const totalPages = Math.max(1, Math.ceil(filteredRanked.length / rowsPerPage));
+    return Math.min(Math.max(1, currentPage), totalPages);
+  }, [filteredRanked.length, rowsPerPage, currentPage]);
+
   const top10 = useMemo(() => {
     if (rowsPerPage === 'all') return filteredRanked;
-    const totalPages = Math.max(1, Math.ceil(filteredRanked.length / rowsPerPage));
-    const safePage = Math.min(Math.max(1, currentPage), totalPages);
     const start = (safePage - 1) * rowsPerPage;
     return filteredRanked.slice(start, start + rowsPerPage);
-  }, [filteredRanked, rowsPerPage, currentPage]);
+  }, [filteredRanked, rowsPerPage, safePage]);
 
   const top1 = rankedData[0];
   const top2 = rankedData[1];
@@ -118,8 +122,9 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
 
   // Open WhatsApp template for rewarding consumer
   const handleContactWhatsApp = (phone: string, name: string, cashback: number) => {
-    const cleanPhone = phone.replace(/\D/g, '');
+    const cleanPhone = (phone || '').replace(/\D/g, '');
     const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+    if (!formattedPhone) return;
     const message = encodeURIComponent(
       `Halo Kak ${name},\nTerima kasih atas loyalitas belanja di toko kami! Anda masuk dalam daftar 10 Besar Konsumen dengan cashback tertinggi sebesar ${formatRupiah(cashback)}. Silakan hubungi kami untuk konfirmasi pencairan cashback Anda. Terima kasih!`
     );
@@ -612,7 +617,7 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
                           </div>
                           <div className="flex justify-between text-[10px] text-slate-400 font-mono tabular-nums">
                             <span>{percentOfTop.toFixed(0)}% dari #1</span>
-                            <span>{((cust.totalCashback / cust.totalPurchase) * 100).toFixed(1)}% rasio</span>
+                            <span>{cust.totalPurchase > 0 ? ((cust.totalCashback / cust.totalPurchase) * 100).toFixed(1) : '0.0'}% rasio</span>
                           </div>
                         </div>
                       </td>
@@ -671,7 +676,7 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
           <PaginationBar
             totalItems={filteredRanked.length}
             rowsPerPage={rowsPerPage}
-            currentPage={currentPage}
+            currentPage={safePage}
             onChangeRowsPerPage={(rows) => {
               setRowsPerPage(rows);
               setCurrentPage(1);

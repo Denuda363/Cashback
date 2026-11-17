@@ -113,13 +113,17 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
     return list;
   }, [invoices, search, statusFilter, sortBy]);
 
+  const safePage = useMemo(() => {
+    if (rowsPerPage === 'all') return 1;
+    const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / rowsPerPage));
+    return Math.min(Math.max(1, currentPage), totalPages);
+  }, [filteredInvoices.length, rowsPerPage, currentPage]);
+
   const paginatedInvoices = useMemo(() => {
     if (rowsPerPage === 'all') return filteredInvoices;
-    const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / rowsPerPage));
-    const safePage = Math.min(Math.max(1, currentPage), totalPages);
     const start = (safePage - 1) * rowsPerPage;
     return filteredInvoices.slice(start, start + rowsPerPage);
-  }, [filteredInvoices, rowsPerPage, currentPage]);
+  }, [filteredInvoices, rowsPerPage, safePage]);
 
   // Summaries of current filtered view
   const filteredSummary = useMemo(() => {
@@ -468,9 +472,13 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
 
                 {!isReadOnly && (
                   <div className="flex items-center gap-1">
-                    {inv.claimStatus !== 'disbursed' && onUpdateStatus && (
+                    {inv.claimStatus !== 'disbursed' && (onOpenDisbursementModal || onUpdateStatus) && (
                       <button
-                        onClick={() => onUpdateStatus(inv.id, 'disbursed')}
+                        onClick={() =>
+                          onOpenDisbursementModal
+                            ? onOpenDisbursementModal(inv)
+                            : onUpdateStatus?.(inv.id, 'disbursed')
+                        }
                         className="px-2.5 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg"
                       >
                         Cairkan
@@ -671,7 +679,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
       <PaginationBar
         totalItems={filteredInvoices.length}
         rowsPerPage={rowsPerPage}
-        currentPage={currentPage}
+        currentPage={safePage}
         onChangeRowsPerPage={(rows) => {
           setRowsPerPage(rows);
           setCurrentPage(1);

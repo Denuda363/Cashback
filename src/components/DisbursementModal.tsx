@@ -29,6 +29,7 @@ import {
   loadStoredDisbursementOfficer,
   saveStoredDisbursementOfficer,
   normalizeCustomerName,
+  getTodayLocalYmd,
 } from '../utils/storage';
 
 export interface CustomerDisbursementData {
@@ -99,7 +100,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
   const [recipientName, setRecipientName] = useState(initialRecipient);
   const [disbursedBy, setDisbursedBy] = useState(() => loadStoredDisbursementOfficer());
   const [disbursedDate, setDisbursedDate] = useState(
-    customer?.lastDisbursedDate || invoice?.disbursedDate || new Date().toISOString().split('T')[0]
+    customer?.lastDisbursedDate || invoice?.disbursedDate || getTodayLocalYmd()
   );
   const [disbursementNotes, setDisbursementNotes] = useState(
     customer?.disbursementNotes || invoice?.disbursementNotes || ''
@@ -400,7 +401,7 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
     const baseOfficer = hasRemainingUndisbursed
       ? (storedDeviceOfficer || customer?.disbursedBy || invoice?.disbursedBy || '')
       : (customer?.disbursedBy || invoice?.disbursedBy || storedDeviceOfficer || '');
-    const baseDt = customer?.lastDisbursedDate || invoice?.disbursedDate || new Date().toISOString().split('T')[0];
+    const baseDt = customer?.lastDisbursedDate || invoice?.disbursedDate || getTodayLocalYmd();
     const baseNotes = customer?.disbursementNotes || invoice?.disbursementNotes || '';
     const basePhoto = customer?.disbursementProofPhoto || invoice?.disbursementProofPhoto || null;
     const baseSig = customer?.disbursementSignature || invoice?.disbursementSignature;

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { CashbackSettings, ClaimStatus, CustomerMaster, Invoice, PayoutMethod, CustomerBenefitType } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
-import { getNextCustomerCode, isValidRealPhone, normalizeCustomerName, normalizePhone } from '../utils/storage';
+import { getNextCustomerCode, getTodayLocalYmd, isValidRealPhone, normalizeCustomerName, normalizePhone } from '../utils/storage';
 
 interface InvoiceModalProps {
   isOpen: boolean;
@@ -168,10 +168,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         setCustomRate(editingInvoice.cashbackPercentage);
       } else {
         setIsCustomRate(false);
+        setCustomRate(settings.flatPercentage);
       }
     } else {
-      const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const today = getTodayLocalYmd();
       setInvoiceNumber(generateInvoiceNumber());
       setDate(today);
       setSelectedMasterCustomer(null);
@@ -228,7 +228,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       phone: customerPhone.trim() || '-',
       email: customerEmail.trim() || undefined,
       city: quickCustomerCity.trim() || undefined,
-      joinedDate: new Date().toISOString().split('T')[0],
+      joinedDate: getTodayLocalYmd(),
       isActive: true,
       preferredPayoutMethod: payoutMethod,
     };
@@ -626,7 +626,13 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   <input
                     type="checkbox"
                     checked={isCustomRate}
-                    onChange={(e) => setIsCustomRate(e.target.checked)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsCustomRate(checked);
+                      if (checked && (!customRate || customRate <= 0)) {
+                        setCustomRate(settings.flatPercentage);
+                      }
+                    }}
                     className="rounded text-emerald-600"
                   />
                   <span>Gunakan % Khusus</span>

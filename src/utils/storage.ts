@@ -510,7 +510,7 @@ export function exportBackupJSON(
   const safeName = (settings.storeName || 'CashbackPro')
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '_');
-  const dateStr = new Date().toISOString().split('T')[0];
+  const dateStr = getTodayLocalYmd();
 
   a.href = url;
   a.download = `Backup_CashbackPro_${safeName}_${dateStr}.json`;
@@ -558,6 +558,14 @@ export function wipeAllLocalData(): void {
   } catch (e) {
     console.error('Failed to wipe local data', e);
   }
+}
+
+/**
+ * Returns today's date in local YYYY-MM-DD format without UTC timezone shifting.
+ */
+export function getTodayLocalYmd(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
 /**
@@ -687,7 +695,7 @@ export function reconcileMasterCustomersWithInvoices(
         displayName: rawName,
         bestPhone: isValidRealPhone(rawPhone) ? rawPhone : '',
         email: inv.customerEmail?.trim() || undefined,
-        earliestDate: invDate || new Date().toISOString().split('T')[0],
+        earliestDate: invDate || getTodayLocalYmd(),
       });
     } else {
       if (!isValidRealPhone(existing.bestPhone) && isValidRealPhone(rawPhone)) {
@@ -821,7 +829,7 @@ export function reconcileMasterCustomersWithInvoices(
       phone: invMeta.bestPhone || '-',
       email: invMeta.email,
       preferredPayoutMethod: 'tunai',
-      joinedDate: invMeta.earliestDate || new Date().toISOString().split('T')[0],
+      joinedDate: invMeta.earliestDate || getTodayLocalYmd(),
       isActive: true,
     };
     newCustomers.push(newCust);

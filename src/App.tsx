@@ -28,6 +28,7 @@ import {
   normalizePhone,
   isValidRealPhone,
   getNextCustomerCode,
+  getTodayLocalYmd,
   exportBackupJSON,
   wipeAllLocalData,
   AppBackupData
@@ -731,7 +732,7 @@ export default function App() {
         updatedInv = {
           ...inv,
           claimStatus: newStatus,
-          disbursedDate: newStatus === 'disbursed' ? (inv.disbursedDate || new Date().toISOString().split('T')[0]) : undefined,
+          disbursedDate: newStatus === 'disbursed' ? (inv.disbursedDate || getTodayLocalYmd()) : undefined,
         };
         return updatedInv;
       }
@@ -1365,13 +1366,11 @@ export default function App() {
         <LiveClockBanner
           clockStyle={clockStyle}
           isTodayFilterActive={(() => {
-            const d = new Date();
-            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const today = getTodayLocalYmd();
             return startDateFilter === today && endDateFilter === today;
           })()}
           onToggleTodayFilter={() => {
-            const d = new Date();
-            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const today = getTodayLocalYmd();
             if (startDateFilter === today && endDateFilter === today) {
               setStartDateFilter('');
               setEndDateFilter('');

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserPlus, CheckCircle2, AlertCircle, Wallet } from 'lucide-react';
 import { CustomerMaster, PayoutMethod } from '../types/cashback';
-import { getNextCustomerCode, isValidRealPhone, normalizeCustomerName, normalizePhone } from '../utils/storage';
+import { getNextCustomerCode, getTodayLocalYmd, isValidRealPhone, normalizeCustomerName, normalizePhone } from '../utils/storage';
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -106,7 +106,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       address: address.trim() || undefined,
       preferredPayoutMethod,
       notes: notes.trim() || undefined,
-      joinedDate: editingCustomer ? editingCustomer.joinedDate : new Date().toISOString().split('T')[0],
+      joinedDate: editingCustomer ? editingCustomer.joinedDate : getTodayLocalYmd(),
       isActive,
     };
 

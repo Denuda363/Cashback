@@ -235,13 +235,17 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
     return list;
   }, [customers, search, statusFilter, txFilter, cityFilter, sortBy, statsByName, statsByUniquePhone]);
 
+  const safePage = useMemo(() => {
+    if (rowsPerPage === 'all') return 1;
+    const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / rowsPerPage));
+    return Math.min(Math.max(1, currentPage), totalPages);
+  }, [filteredCustomers.length, rowsPerPage, currentPage]);
+
   const paginatedCustomers = useMemo(() => {
     if (rowsPerPage === 'all') return filteredCustomers;
-    const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / rowsPerPage));
-    const safePage = Math.min(Math.max(1, currentPage), totalPages);
     const start = (safePage - 1) * rowsPerPage;
     return filteredCustomers.slice(start, start + rowsPerPage);
-  }, [filteredCustomers, rowsPerPage, currentPage]);
+  }, [filteredCustomers, rowsPerPage, safePage]);
 
   const activeCount = customers.filter((c) => c.isActive).length;
 
@@ -849,7 +853,7 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
       <PaginationBar
         totalItems={filteredCustomers.length}
         rowsPerPage={rowsPerPage}
-        currentPage={currentPage}
+        currentPage={safePage}
         onChangeRowsPerPage={(rows) => {
           setRowsPerPage(rows);
           setCurrentPage(1);
