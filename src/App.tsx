@@ -45,6 +45,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { ReceiptModal } from './components/ReceiptModal';
 import { ExportModal } from './components/ExportModal';
 import { DateRangeFilterBar } from './components/DateRangeFilterBar';
+import { LiveClockBanner } from './components/LiveClockBanner';
 import { ImportExcelModal } from './components/ImportExcelModal';
 import { ImportCustomerModal } from './components/ImportCustomerModal';
 import { UserGuideModal } from './components/UserGuideModal';
@@ -1337,7 +1338,28 @@ export default function App() {
     >
       {/* Main Viewport Container */}
       <main className={`flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6 ${receiptInvoice ? 'print:hidden' : ''}`}>
-        
+        {/* Live Chronometer, Day & Full Date Banner */}
+        <LiveClockBanner
+          isTodayFilterActive={(() => {
+            const d = new Date();
+            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            return startDateFilter === today && endDateFilter === today;
+          })()}
+          onToggleTodayFilter={() => {
+            const d = new Date();
+            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            if (startDateFilter === today && endDateFilter === today) {
+              setStartDateFilter('');
+              setEndDateFilter('');
+              showToast('Menampilkan seluruh periode tanggal transaksi.');
+            } else {
+              setStartDateFilter(today);
+              setEndDateFilter(today);
+              showToast('Menyaring data transaksi khusus hari ini.');
+            }
+          }}
+        />
+
         {/* Global Date Range Filter Bar */}
         <div className="print:hidden">
           <DateRangeFilterBar

@@ -83,7 +83,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
               'Sistem dilengkapi pengamanan peran serta personalisasi tampilan untuk mendukung kerja tim harian:',
             details: [
               'Mode Admin & Mode Petugas: Admin memiliki kendali penuh atas seluruh data & pengaturan, sedangkan Petugas fokus pada transaksi pencairan cashback serta dapat melihat halaman lain dalam mode lihat saja (Read-Only).',
-              'Dashboard, 10 Besar & Filter Tanggal Universal: Pantau omset, progres pencairan, grafik tren bulanan, peringkat 10 besar konsumen, serta saring seluruh data lintas menu berdasarkan rentang tanggal.',
+              'Dashboard, Jam & Tanggal Hidup, 10 Besar & Filter Universal: Pantau jam/hari/tanggal langsung di bagian atas aplikasi (dengan filter cepat Hari Ini), omset, progres pencairan, grafik tren bulanan, peringkat 10 besar konsumen, serta saring seluruh data lintas menu berdasarkan rentang tanggal.',
               'Tema Tampilan 3D & Gaya Navigasi Fleksibel: Pilih dari 5 tema 3D (Klasik 3D, Glass 3D Hidup, 3D Spasial, Glossy 3D, atau Full Animasi 3D) serta posisi menu (Sidebar Samping, Top Bar Atas, atau Dock Bawah).',
               'Kop Surat & Logo Perusahaan: Unggah logo usaha dan identitas perusahaan untuk ditampilkan pada navigasi aplikasi, Struk Digital, dan Tanda Terima Resmi.',
               'Backup, Restore & PWA Multi-Perangkat: Cadangkan database ke file .JSON, pulihkan kapan saja, dan instal aplikasi ke layar utama Android, iOS, atau PC.',
