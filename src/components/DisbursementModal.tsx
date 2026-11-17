@@ -19,6 +19,7 @@ import {
   Maximize2,
   Minimize2,
   RefreshCw,
+  Download,
 } from 'lucide-react';
 import { Invoice, PayoutMethod, CustomerSummary } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
@@ -30,6 +31,7 @@ import {
   saveStoredDisbursementOfficer,
   normalizeCustomerName,
   getTodayLocalYmd,
+  downloadProofPhoto,
 } from '../utils/storage';
 
 export interface CustomerDisbursementData {
@@ -1148,14 +1150,31 @@ export const DisbursementModal: React.FC<DisbursementModalProps> = ({
               className="relative max-w-3xl max-h-full overflow-hidden rounded-2xl bg-white p-2 flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                type="button"
-                onClick={() => setPreviewPhoto(false)}
-                className="absolute top-3 right-3 z-10 min-h-[40px] min-w-[40px] p-2 bg-slate-900/80 text-white rounded-full hover:bg-slate-900 flex items-center justify-center"
-                aria-label="Tutup pratinjau foto"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadProofPhoto(
+                      proofPhoto,
+                      recipientName || targetName,
+                      disbursedDate
+                    )
+                  }
+                  className="min-h-[40px] px-3 py-2 bg-emerald-600/95 hover:bg-emerald-600 text-white rounded-full text-xs font-bold flex items-center gap-1.5 shadow-md transition-colors"
+                  aria-label="Download foto bukti penerimaan"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewPhoto(false)}
+                  className="min-h-[40px] min-w-[40px] p-2 bg-slate-900/80 text-white rounded-full hover:bg-slate-900 flex items-center justify-center"
+                  aria-label="Tutup pratinjau foto"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
               <img
                 src={proofPhoto}
                 alt="Bukti Serah Terima Penuh"

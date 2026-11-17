@@ -9,10 +9,12 @@ import {
   Coins,
   Sparkles,
   Copy,
+  Download,
+  Eye,
 } from 'lucide-react';
 import { CustomerSummary, CompanyProfile, CustomerBenefitType } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
-import { getTodayLocalYmd } from '../utils/storage';
+import { getTodayLocalYmd, downloadProofPhoto } from '../utils/storage';
 
 interface OfficialReceiptModalProps {
   customer: CustomerSummary | null;
@@ -43,10 +45,12 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
   storeName = 'CashbackPro',
 }) => {
   const [activeRangkap, setActiveRangkap] = useState<1 | 2>(1);
+  const [previewPhoto, setPreviewPhoto] = useState(false);
 
   // Reset active copy preview when customer changes
   useEffect(() => {
     setActiveRangkap(1);
+    setPreviewPhoto(false);
   }, [customer?.customerCode, customer?.customerName]);
 
   // Mark body while open so printing isolates the portaled 2-copy receipt cleanly
@@ -388,12 +392,19 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
                             Dokumentasi Serah Terima:
                           </span>
                           {customer.disbursementProofPhoto ? (
-                            <div className="w-full h-28 rounded-xl border border-slate-300 overflow-hidden bg-slate-100 flex items-center justify-center p-0.5">
+                            <div
+                              onClick={() => setPreviewPhoto(true)}
+                              title="Klik untuk memperbesar & download foto bukti penerimaan"
+                              className="w-full h-28 rounded-xl border border-slate-300 overflow-hidden bg-slate-100 flex items-center justify-center p-0.5 cursor-pointer group relative"
+                            >
                               <img
                                 src={customer.disbursementProofPhoto}
                                 alt="Bukti Serah Terima"
-                                className="w-full h-full object-cover rounded-lg"
+                                className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
                               />
+                              <span className="print:hidden absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-slate-900/75 text-white text-[9px] font-semibold flex items-center gap-1 opacity-90 group-hover:opacity-100">
+                                <Eye className="w-2.5 h-2.5" /> Perbesar
+                              </span>
                             </div>
                           ) : (
                             <div className="w-full h-28 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 text-[10px] p-2 text-center bg-slate-50 print:bg-white">
@@ -479,6 +490,50 @@ export const OfficialReceiptModal: React.FC<OfficialReceiptModalProps> = ({
         </div>
 
       </div>
+
+      {/* Lightbox Preview + Download Foto Bukti */}
+      {previewPhoto && customer.disbursementProofPhoto && (
+        <div
+          className="fixed inset-0 z-[95] h-screen h-dvh max-h-dvh w-full bg-black/85 flex items-center justify-center p-3 sm:p-4 overflow-hidden print:hidden"
+          onClick={() => setPreviewPhoto(false)}
+        >
+          <div
+            className="relative max-w-3xl max-h-full overflow-hidden rounded-2xl bg-white p-2 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  downloadProofPhoto(
+                    customer.disbursementProofPhoto!,
+                    customer.recipientName || customer.customerName,
+                    docDate
+                  )
+                }
+                className="min-h-[40px] px-3 py-2 bg-emerald-600/95 hover:bg-emerald-600 text-white rounded-full text-xs font-bold flex items-center gap-1.5 shadow-md transition-colors"
+                aria-label="Download foto bukti penerimaan"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(false)}
+                className="min-h-[40px] min-w-[40px] p-2 bg-slate-900/80 text-white rounded-full hover:bg-slate-900 flex items-center justify-center"
+                aria-label="Tutup pratinjau foto"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <img
+              src={customer.disbursementProofPhoto}
+              alt="Bukti Serah Terima Penuh"
+              className="max-h-[calc(100dvh-3rem)] w-auto object-contain rounded-xl"
+            />
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );

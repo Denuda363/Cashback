@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   CheckCircle2, 
   Clock, 
@@ -24,7 +25,7 @@ import {
 } from 'lucide-react';
 import { AppRole, CustomerSummary, DisbursementCancelRequest, Invoice, PayoutMethod, CompanyProfile } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
-import { normalizeCustomerName } from '../utils/storage';
+import { normalizeCustomerName, downloadProofPhoto } from '../utils/storage';
 import { ConfirmDialog } from './ConfirmDialog';
 import { OfficialReceiptModal } from './OfficialReceiptModal';
 import { PaginationBar } from './PaginationBar';
@@ -70,6 +71,8 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
 
   // Selected customer for full Tanda Terima modal
   const [viewingReceiptCustomer, setViewingReceiptCustomer] = useState<CustomerSummary | null>(null);
+  // Selected customer for enlarged proof photo lightbox (download inside lightbox)
+  const [previewPhotoCustomer, setPreviewPhotoCustomer] = useState<CustomerSummary | null>(null);
 
   // Selected customer for direct Admin revert disbursement confirm dialog
   const [customerToRevert, setCustomerToRevert] = useState<string | null>(null);
@@ -617,42 +620,51 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
 
                   {/* Proof, Signature & Officer Strip (if available) */}
                   {(cust.disbursementProofPhoto || cust.disbursementSignature || cust.disbursedCashback > 0 || Boolean(cust.disbursedBy)) && (
-                    <button
-                      type="button"
-                      onClick={() => setViewingReceiptCustomer(cust)}
-                      className="w-full flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-left active:opacity-80"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {cust.disbursementProofPhoto && (
+                    <div className="w-full flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                      {cust.disbursementProofPhoto && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewPhotoCustomer(cust)}
+                          title="Klik untuk perbesar & download foto bukti penerimaan"
+                          className="shrink-0 rounded-lg overflow-hidden border border-slate-200 hover:opacity-85 active:scale-95 transition-all"
+                        >
                           <img
                             src={cust.disbursementProofPhoto}
                             alt="Bukti"
-                            className="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0"
+                            className="w-9 h-9 object-cover block"
                           />
-                        )}
-                        {cust.disbursementSignature && (
-                          <div className="w-11 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center p-0.5 shrink-0">
-                            <img
-                              src={cust.disbursementSignature}
-                              alt="TTD"
-                              className="max-h-full max-w-full object-contain"
-                            />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="text-[11px] font-semibold text-slate-800 truncate">
-                            {cust.recipientName || cust.customerName}
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-mono truncate">
-                            {cust.lastDisbursedDate || 'Bukti tersimpan'}
-                            {cust.disbursedBy ? ` · Petugas: ${cust.disbursedBy}` : ''}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setViewingReceiptCustomer(cust)}
+                        className="flex-1 flex items-center justify-between gap-2 text-left active:opacity-80 min-w-0"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {cust.disbursementSignature && (
+                            <div className="w-11 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center p-0.5 shrink-0">
+                              <img
+                                src={cust.disbursementSignature}
+                                alt="TTD"
+                                className="max-h-full max-w-full object-contain"
+                              />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-semibold text-slate-800 truncate">
+                              {cust.recipientName || cust.customerName}
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono truncate">
+                              {cust.lastDisbursedDate || 'Bukti tersimpan'}
+                              {cust.disbursedBy ? ` · Petugas: ${cust.disbursedBy}` : ''}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <span className="text-[11px] font-semibold text-emerald-700 shrink-0">
-                        Bukti →
-                      </span>
-                    </button>
+                        <span className="text-[11px] font-semibold text-emerald-700 shrink-0">
+                          Bukti →
+                        </span>
+                      </button>
+                    </div>
                   )}
 
                   {/* Cancel Request Status Strip on Mobile */}
@@ -1029,9 +1041,9 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                                 <img
                                   src={cust.disbursementProofPhoto}
                                   alt="Bukti Struk"
-                                  title="Foto bukti penyerahan (klik untuk buka tanda terima)"
-                                  onClick={() => setViewingReceiptCustomer(cust)}
-                                  className="w-8 h-8 rounded-md object-cover border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
+                                  title="Klik untuk perbesar & download foto bukti penerimaan"
+                                  onClick={() => setPreviewPhotoCustomer(cust)}
+                                  className="w-8 h-8 rounded-md object-cover border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity shrink-0"
                                 />
                               ) : null}
 
@@ -1313,6 +1325,52 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
         companyProfile={companyProfile}
         storeName={storeName}
       />
+
+      {/* Enlarged Proof Photo Lightbox (Download available after photo is clicked/enlarged) */}
+      {previewPhotoCustomer?.disbursementProofPhoto &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[95] h-screen h-dvh max-h-dvh w-full bg-black/85 flex items-center justify-center p-3 sm:p-4 overflow-hidden"
+            onClick={() => setPreviewPhotoCustomer(null)}
+          >
+            <div
+              className="relative max-w-3xl max-h-full overflow-hidden rounded-2xl bg-white p-2 flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadProofPhoto(
+                      previewPhotoCustomer.disbursementProofPhoto!,
+                      previewPhotoCustomer.recipientName || previewPhotoCustomer.customerName,
+                      previewPhotoCustomer.lastDisbursedDate
+                    )
+                  }
+                  className="min-h-[40px] px-3 py-2 bg-emerald-600/95 hover:bg-emerald-600 text-white rounded-full text-xs font-bold flex items-center gap-1.5 shadow-md transition-colors"
+                  aria-label="Download foto bukti penerimaan"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewPhotoCustomer(null)}
+                  className="min-h-[40px] min-w-[40px] p-2 bg-slate-900/80 text-white rounded-full hover:bg-slate-900 flex items-center justify-center"
+                  aria-label="Tutup pratinjau foto"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <img
+                src={previewPhotoCustomer.disbursementProofPhoto}
+                alt={`Bukti Serah Terima ${previewPhotoCustomer.customerName}`}
+                className="max-h-[calc(100dvh-3rem)] w-auto object-contain rounded-xl"
+              />
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Confirm Revert Disbursement Dialog (Direct Admin Action) */}
       <ConfirmDialog

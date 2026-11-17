@@ -1114,3 +1114,69 @@ export function aggregateCustomerSummaries(
     rank: index + 1,
   }));
 }
+
+/**
+ * Downloads a proof-of-receipt photo (base64 data URL or image URL) directly to the user's device.
+ */
+export function downloadProofPhoto(
+  photoSrc: string,
+  customerName?: string,
+  dateStr?: string
+): void {
+  if (!photoSrc) return;
+
+  const safeCustomer = (customerName || 'Konsumen')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'Konsumen';
+  const safeDate = (dateStr || getTodayLocalYmd()).replace(/[^0-9-]+/g, '') || getTodayLocalYmd();
+
+  let ext = 'jpg';
+  const mimeMatch = photoSrc.match(/^data:image\/([a-zA-Z0-9+.-]+);/i);
+  if (mimeMatch) {
+    const rawExt = mimeMatch[1].toLowerCase();
+    ext = rawExt === 'jpeg' ? 'jpg' : rawExt.replace(/\+xml$/, '') || 'jpg';
+  } else {
+    const urlExtMatch = photoSrc.match(/\.([a-zA-Z0-9]{3,4})(?:\?|$)/);
+    if (urlExtMatch) {
+      ext = urlExtMatch[1].toLowerCase();
+    }
+  }
+
+  const filename = `Bukti_Penerimaan_${safeCustomer}_${safeDate}.${ext}`;
+
+  const triggerDownload = (href: string, revokeAfter = false) => {
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = filename;
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    if (revokeAfter) {
+      setTimeout(() => URL.revokeObjectURL(href), 1500);
+    }
+  };
+
+  if (photoSrc.startsWith('data:')) {
+    try {
+      const [header, base64Data] = photoSrc.split(',');
+      const mimeType = header.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
+      const byteString = atob(base64Data);
+      const byteArray = new Uint8Array(byteString.length);
+      for (let i = 0; i < byteString.length; i += 1) {
+        byteArray[i] = byteString.charCodeAt(i);
+      }
+      const blob = new Blob([byteArray], { type: mimeType });
+      const blobUrl = URL.createObjectURL(blob);
+      triggerDownload(blobUrl, true);
+      return;
+    } catch {
+      triggerDownload(photoSrc, false);
+      return;
+    }
+  }
+
+  triggerDownload(photoSrc, false);
+}
+
