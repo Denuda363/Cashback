@@ -130,7 +130,25 @@ export type ActiveTab = 'dashboard' | 'top10' | 'invoices' | 'payout_records' | 
 
 export type NavPosition = 'sidebar' | 'top' | 'bottom';
 
-export type AppTheme = 'classic' | 'glass' | '3d' | 'glossy' | 'motion3d';
+export type AppTheme =
+  | 'classic'
+  | 'glass'
+  | '3d'
+  | 'glossy'
+  | 'motion3d'
+  | 'neomorph'
+  | 'emerald_gold'
+  | 'cyber_prism'
+  | 'titanium'
+  | 'sunset_warm';
+
+export type ClockStyle =
+  | 'chronograph'
+  | 'ivory_card'
+  | 'flip_split'
+  | 'nixie_amber'
+  | 'emerald_matrix'
+  | 'ultra_typo';
 
 export type AppRole = 'admin' | 'petugas';
 

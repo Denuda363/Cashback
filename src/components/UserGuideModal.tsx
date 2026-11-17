@@ -84,7 +84,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             details: [
               'Mode Admin & Mode Petugas: Admin memiliki kendali penuh atas seluruh data & pengaturan, sedangkan Petugas fokus pada transaksi pencairan cashback serta dapat melihat halaman lain dalam mode lihat saja (Read-Only).',
               'Dashboard, Jam & Tanggal Hidup, 10 Besar & Filter Universal: Pantau jam/hari/tanggal langsung di bagian atas aplikasi (dengan filter cepat Hari Ini), omset, progres pencairan, grafik tren bulanan, peringkat 10 besar konsumen, serta saring seluruh data lintas menu berdasarkan rentang tanggal.',
-              'Tema Tampilan 3D & Gaya Navigasi Fleksibel: Pilih dari 5 tema 3D (Klasik 3D, Glass 3D Hidup, 3D Spasial, Glossy 3D, atau Full Animasi 3D) serta posisi menu (Sidebar Samping, Top Bar Atas, atau Dock Bawah).',
+              'Tema Tampilan 3D & Gaya Navigasi Fleksibel: Pilih dari 10 tema 3D (Klasik 3D, Glass 3D Hidup, 3D Spasial, Glossy 3D, Full Animasi 3D, Neumorfik 3D, Zamrud Emas 3D, Prismatik 3D, Titanium Logam 3D, dan Kuarsa Hangat 3D) serta posisi menu (Sidebar, Top Bar, atau Dock Bawah).',
               'Kop Surat & Logo Perusahaan: Unggah logo usaha dan identitas perusahaan untuk ditampilkan pada navigasi aplikasi, Struk Digital, dan Tanda Terima Resmi.',
               'Backup, Restore & PWA Multi-Perangkat: Cadangkan database ke file .JSON, pulihkan kapan saja, dan instal aplikasi ke layar utama Android, iOS, atau PC.',
             ],
@@ -160,7 +160,8 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
               'Sesuaikan tampilan aplikasi agar paling nyaman dilihat di monitor kasir, tablet, maupun HP:',
             details: [
               'Tata Letak Posisi Navigasi: Pilih Di Samping (Sidebar — standar desktop + laci & bilah bawah di HP), Di Atas (Top Bar horizontal), atau Di Bawah (Dock Jempol melayang).',
-              'Tema Tampilan 3D (Semua Tema Berbasis 3D): Pilih Klasik 3D (matte bersih terang dengan kartu timbul), Glass 3D Hidup (kaca kristal transparan + aurora & prisma bergerak hidup), 3D Spasial (bevel 3D tegas di atas panggung kisi perspektif studio), Glossy 3D (efek kilap akrilik cermin & tombol jelly 3D berpantulan cahaya), atau Full Animasi 3D (kartu 3D melayang interaktif, cincin studio berputar, & kilau cahaya sapuan penuh). Perubahan langsung terlihat saat diklik.',
+              'Tema Tampilan 3D (10 Pilihan 3D Unik): Tersedia Klasik 3D, Glass 3D Hidup, 3D Spasial, Glossy 3D, Full Animasi 3D, Neumorfik 3D (pahatan clay lembut), Zamrud Emas 3D (lis sampanye mewah), Prismatik 3D (bevel holografik indigo-sian), Titanium Logam 3D (pelat baja perak), serta Kuarsa Hangat 3D (travertine senja). Perubahan langsung terlihat saat diklik.',
+              'Gaya Jam, Hari & Tanggal Hidup: Pilih 6 gaya jam minimalis unik (Kronograf Gelap, Plakat Putih, Kartu Flip Retro, Tabung Nixie Hangat, HUD Zamrud, atau Tipografi Editorial) lengkap dengan tombol 24J/12J dan filter cepat Hari Ini.',
             ],
             tips: 'Saat mencetak struk atau Tanda Terima Resmi, sistem otomatis menyesuaikan ke halaman cetak putih bersih agar hemat tinta dan tajam.',
           },
@@ -462,9 +463,9 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
           'Jawaban ringkas atas pertanyaan yang paling sering muncul saat pengoperasian harian oleh Admin maupun Petugas.',
         steps: [
           {
-            title: 'Q: Bagaimana cara mengganti tema tampilan 3D atau posisi menu navigasi?',
+            title: 'Q: Bagaimana cara mengganti tema tampilan 3D, gaya jam, atau posisi menu navigasi?',
             description:
-              'A: Masuk ke Mode Admin -> buka Pengaturan -> tab "Aturan Cashback". Pilih "Tema Tampilan Aplikasi" (Klasik 3D, Glass 3D Hidup, 3D Spasial, Glossy 3D, atau Full Animasi 3D) maupun "Tata Letak Posisi Navigasi" (Sidebar, Top Bar, atau Dock Bawah) — tampilan langsung berubah seketika dan tersimpan otomatis di perangkat Anda.',
+              'A: Masuk ke Mode Admin -> buka Pengaturan -> tab "Aturan Cashback". Pilih "Tema Tampilan Aplikasi" (tersedia 10 tema 3D mulai dari Klasik 3D, Glass 3D Hidup, 3D Spasial, Glossy 3D, Full Animasi 3D, Neumorfik 3D, Zamrud Emas 3D, Prismatik 3D, Titanium Logam 3D, hingga Kuarsa Hangat 3D), "Gaya Jam, Hari & Tanggal Hidup" (6 gaya unik), maupun "Tata Letak Posisi Navigasi" — tampilan langsung berubah seketika.',
           },
           {
             title: 'Q: Mengapa di Mode Petugas saya bisa membuka halaman lain tetapi tidak bisa mengedit atau membuka Pengaturan?',

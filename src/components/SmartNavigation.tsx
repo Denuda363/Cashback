@@ -164,6 +164,96 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
     );
   }
 
+  if (appTheme === 'neomorph') {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-200/95 via-slate-100 to-slate-200" />
+        {/* Soft sculpted clay dome highlights */}
+        <div className="hidden md:block absolute top-[12%] right-[8%] w-32 h-32 rounded-[36px] bg-slate-100 border border-white/80 theme-3d-prism animate-3d-cube-float-1" />
+        <div className="hidden md:block absolute bottom-[16%] left-[16%] w-24 h-24 rounded-full bg-slate-100 border border-white/80 theme-3d-prism animate-3d-cube-float-2" />
+        <div className="hidden lg:block absolute top-[55%] right-[20%] w-16 h-16 rounded-2xl bg-slate-100 border border-white/80 theme-3d-prism animate-3d-cube-float-3" />
+      </div>
+    );
+  }
+
+  if (appTheme === 'emerald_gold') {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/90 via-amber-50/55 to-stone-100/90" />
+        <div className="absolute -top-32 -left-24 w-[460px] h-[460px] rounded-full bg-gradient-to-br from-amber-200/45 via-emerald-100/35 to-transparent blur-3xl animate-glass-orb-1" />
+        <div className="absolute -bottom-32 right-[12%] w-[480px] h-[480px] rounded-full bg-gradient-to-tr from-emerald-200/40 via-amber-100/35 to-transparent blur-3xl animate-glass-orb-2" />
+        {/* Gilded emerald & champagne 3D jewel blocks */}
+        <div className="hidden md:block absolute top-[15%] right-[9%] w-26 h-26 rounded-3xl bg-gradient-to-br from-amber-100/90 to-emerald-100/75 border border-amber-200/90 theme-3d-prism animate-3d-cube-float-1" />
+        <div className="hidden lg:block absolute bottom-[18%] left-[18%] w-18 h-18 rounded-2xl bg-gradient-to-br from-white/95 to-amber-100/80 border border-amber-200/90 theme-3d-prism animate-3d-cube-float-2" />
+      </div>
+    );
+  }
+
+  if (appTheme === 'cyber_prism') {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/85 via-sky-50/90 to-emerald-50/85" />
+        <div className="absolute -top-28 -left-20 w-[44vw] h-[44vw] max-w-[540px] max-h-[540px] rounded-full bg-gradient-to-br from-indigo-300/35 via-sky-200/35 to-transparent blur-3xl animate-glass-orb-1" />
+        <div className="absolute top-[25%] -right-24 w-[42vw] h-[42vw] max-w-[520px] max-h-[520px] rounded-full bg-gradient-to-bl from-cyan-300/35 via-emerald-200/30 to-transparent blur-3xl animate-glass-orb-2" />
+        <div
+          className="hidden md:block absolute top-[14%] right-[7%] w-52 h-52 rounded-full border border-indigo-400/35 animate-motion3d-spin-slow"
+          style={{
+            background:
+              'conic-gradient(from 0deg, rgba(99,102,241,0.14), rgba(6,182,212,0.12), rgba(16,185,129,0.12), rgba(99,102,241,0.14))',
+          }}
+        />
+        <div className="hidden md:block absolute top-[17%] right-[11%] w-24 h-24 rounded-3xl bg-gradient-to-br from-white/90 to-indigo-100/80 border border-indigo-200 theme-3d-prism animate-3d-cube-float-1" />
+        <div className="hidden lg:block absolute bottom-[18%] left-[16%] w-18 h-18 rounded-2xl bg-gradient-to-br from-white/90 to-cyan-100/80 border border-cyan-200 theme-3d-prism animate-3d-cube-float-2" />
+      </div>
+    );
+  }
+
+  if (appTheme === 'titanium') {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-300/75 via-slate-200/85 to-slate-300/90" />
+        <div className="absolute -top-36 -left-32 w-[540px] h-[540px] rounded-full bg-radial from-white/90 via-white/35 to-transparent blur-2xl" />
+        <div
+          className="absolute -bottom-24 inset-x-[-10%] h-[50vh] opacity-40 animate-stage-3d-float"
+          style={{
+            backgroundImage:
+              'linear-gradient(to right, rgba(100,116,139,0.35) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.35) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
+        <div className="hidden md:block absolute top-[15%] right-[9%] w-26 h-26 rounded-2xl bg-gradient-to-br from-white/90 to-slate-300/80 border border-slate-300 theme-3d-prism animate-3d-cube-float-1" />
+        <div className="hidden lg:block absolute bottom-[17%] left-[17%] w-18 h-18 rounded-xl bg-gradient-to-br from-white/85 to-slate-300/75 border border-slate-300 theme-3d-prism animate-3d-cube-float-2" />
+      </div>
+    );
+  }
+
+  if (appTheme === 'sunset_warm') {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-50/95 via-amber-50/75 to-stone-100/90" />
+        <div className="absolute -top-28 -left-24 w-[460px] h-[460px] rounded-full bg-gradient-to-br from-orange-200/45 via-amber-100/40 to-transparent blur-3xl animate-glass-orb-1" />
+        <div className="absolute -bottom-28 right-[14%] w-[460px] h-[460px] rounded-full bg-gradient-to-tr from-amber-200/40 via-rose-100/35 to-transparent blur-3xl animate-glass-orb-2" />
+        <div className="hidden md:block absolute top-[16%] right-[10%] w-24 h-24 rounded-3xl bg-gradient-to-br from-white/95 to-orange-100/80 border border-orange-200/80 theme-3d-prism animate-3d-cube-float-1" />
+        <div className="hidden lg:block absolute bottom-[18%] left-[17%] w-18 h-18 rounded-2xl bg-gradient-to-br from-white/95 to-amber-100/80 border border-amber-200/80 theme-3d-prism animate-3d-cube-float-2" />
+      </div>
+    );
+  }
+
   // Classic 3D: Clean studio directional light + subtle matte 3D floating accents
   return (
     <div

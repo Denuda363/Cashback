@@ -317,12 +317,12 @@ main .bg-white .p-2.rounded-lg {
  * THEME 1: KLASIK 3D (Default / [data-theme="classic"])
  * Realistic matte ceramic 3D slabs with soft ambient studio lighting
  * ========================================================================= */
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) body {
+:root:is([data-theme="classic"], :not([data-theme])) body {
   background: linear-gradient(155deg, #e7edf5 0%, #f8fafc 52%, #e4ebf4 100%);
   color: #0f172a;
 }
 
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) header {
+:root:is([data-theme="classic"], :not([data-theme])) header {
   background: linear-gradient(180deg, #ffffff 0%, #f6f9fc 100%) !important;
   box-shadow:
     0 4px 0 0 rgba(203, 213, 225, 0.72),
@@ -330,7 +330,7 @@ main .bg-white .p-2.rounded-lg {
     inset 0 1.5px 0 0 #ffffff !important;
 }
 
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) aside {
+:root:is([data-theme="classic"], :not([data-theme])) aside {
   background: linear-gradient(180deg, #ffffff 0%, #f6f9fc 100%) !important;
   box-shadow:
     5px 0 0 0 rgba(203, 213, 225, 0.58),
@@ -338,7 +338,7 @@ main .bg-white .p-2.rounded-lg {
     inset -1.5px 0 0 0 #ffffff !important;
 }
 
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) .theme-glass-dock {
+:root:is([data-theme="classic"], :not([data-theme])) .theme-glass-dock {
   background: linear-gradient(180deg, #ffffff 0%, #f6f9fc 100%) !important;
   border-color: #cbd5e1 !important;
   box-shadow:
@@ -347,11 +347,11 @@ main .bg-white .p-2.rounded-lg {
     inset 0 2px 0 0 #ffffff !important;
 }
 
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white.rounded-xl,
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white.rounded-2xl,
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white\/95.rounded-xl,
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white\/95.rounded-2xl,
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) footer {
+:root:is([data-theme="classic"], :not([data-theme])) main .bg-white.rounded-xl,
+:root:is([data-theme="classic"], :not([data-theme])) main .bg-white.rounded-2xl,
+:root:is([data-theme="classic"], :not([data-theme])) main .bg-white\/95.rounded-xl,
+:root:is([data-theme="classic"], :not([data-theme])) main .bg-white\/95.rounded-2xl,
+:root:is([data-theme="classic"], :not([data-theme])) footer {
   background: linear-gradient(165deg, #ffffff 0%, #f8fafc 68%, #f1f5f9 100%) !important;
   border-color: #cbd5e1 !important;
   box-shadow:
@@ -363,8 +363,8 @@ main .bg-white .p-2.rounded-lg {
   transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white.rounded-xl:hover,
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white.rounded-2xl:hover {
+:root:is([data-theme="classic"], :not([data-theme])) main .bg-white.rounded-xl:hover,
+:root:is([data-theme="classic"], :not([data-theme])) main .bg-white.rounded-2xl:hover {
   transform: perspective(1100px) translateY(-3px) rotateX(0.8deg);
   box-shadow:
     0 7px 0 0 #cbd5e1,
@@ -372,17 +372,17 @@ main .bg-white .p-2.rounded-lg {
     inset 0 2px 0 0 #ffffff !important;
 }
 
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-slate-900.rounded-xl,
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-slate-900.rounded-2xl {
+:root:is([data-theme="classic"], :not([data-theme])) main .bg-slate-900.rounded-xl,
+:root:is([data-theme="classic"], :not([data-theme])) main .bg-slate-900.rounded-2xl {
   box-shadow:
     0 6px 0 0 #020617,
     0 22px 40px -10px rgba(15, 23, 42, 0.38),
     inset 0 1.5px 0 0 rgba(255, 255, 255, 0.2);
 }
 
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) div.fixed .bg-white.rounded-xl,
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) div.fixed .bg-white.rounded-2xl,
-:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) div.fixed .bg-white.sm\:rounded-2xl {
+:root:is([data-theme="classic"], :not([data-theme])) div.fixed .bg-white.rounded-xl,
+:root:is([data-theme="classic"], :not([data-theme])) div.fixed .bg-white.rounded-2xl,
+:root:is([data-theme="classic"], :not([data-theme])) div.fixed .bg-white.sm\:rounded-2xl {
   background: linear-gradient(175deg, #ffffff 0%, #f8fafc 100%) !important;
   box-shadow:
     0 7px 0 0 #cbd5e1,
@@ -975,6 +975,388 @@ main .bg-white .p-2.rounded-lg {
   :root[data-theme="motion3d"] main .bg-slate-900.rounded-2xl::after {
     animation: none !important;
   }
+}
+
+/* =========================================================================
+ * THEME 6: NEUMORFIK 3D ([data-theme="neomorph"])
+ * Soft sculpted clay surfaces with opposing top-left highlight & cast depth
+ * ========================================================================= */
+:root[data-theme="neomorph"] body {
+  background: linear-gradient(145deg, #e2e8f0 0%, #eaeff5 55%, #dce4ee 100%);
+  color: #0f172a;
+}
+
+:root[data-theme="neomorph"] header,
+:root[data-theme="neomorph"] .theme-glass-dock {
+  background: linear-gradient(145deg, #f3f6fa 0%, #e7edf4 100%) !important;
+  border-color: rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    -4px -4px 10px rgba(255, 255, 255, 0.85),
+    6px 8px 18px rgba(148, 163, 184, 0.38),
+    inset 0 2px 0 #ffffff !important;
+}
+
+:root[data-theme="neomorph"] aside {
+  background: linear-gradient(160deg, #f4f7fb 0%, #e7edf5 100%) !important;
+  border-color: rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    6px 0 18px rgba(148, 163, 184, 0.34),
+    inset -2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="neomorph"] main .bg-white.rounded-xl,
+:root[data-theme="neomorph"] main .bg-white.rounded-2xl,
+:root[data-theme="neomorph"] main .bg-white\/95.rounded-xl,
+:root[data-theme="neomorph"] main .bg-white\/95.rounded-2xl,
+:root[data-theme="neomorph"] footer {
+  background: linear-gradient(145deg, #f7f9fc 0%, #eaf0f6 100%) !important;
+  border-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow:
+    -7px -7px 16px rgba(255, 255, 255, 0.92),
+    8px 10px 20px rgba(148, 163, 184, 0.4),
+    0 4px 0 0 #cbd5e1,
+    inset 0 2px 2px rgba(255, 255, 255, 0.95) !important;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="neomorph"] main .bg-white.rounded-xl:hover,
+:root[data-theme="neomorph"] main .bg-white.rounded-2xl:hover {
+  transform: perspective(1100px) translateY(-3px) rotateX(0.9deg);
+  box-shadow:
+    -9px -9px 20px rgba(255, 255, 255, 0.96),
+    10px 14px 26px rgba(148, 163, 184, 0.46),
+    0 6px 0 0 #cbd5e1,
+    inset 0 2px 2px #ffffff !important;
+}
+
+:root[data-theme="neomorph"] main .bg-slate-900.rounded-xl,
+:root[data-theme="neomorph"] main .bg-slate-900.rounded-2xl {
+  box-shadow:
+    -5px -5px 14px rgba(255, 255, 255, 0.55),
+    8px 10px 22px rgba(15, 23, 42, 0.38),
+    0 6px 0 0 #020617,
+    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.22);
+}
+
+:root[data-theme="neomorph"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+:root[data-theme="neomorph"] select,
+:root[data-theme="neomorph"] textarea {
+  background-color: #e6ecf3 !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
+  box-shadow:
+    inset 3px 3px 6px rgba(148, 163, 184, 0.34),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.85) !important;
+}
+
+:root[data-theme="neomorph"] div.fixed .bg-white.rounded-xl,
+:root[data-theme="neomorph"] div.fixed .bg-white.rounded-2xl,
+:root[data-theme="neomorph"] div.fixed .bg-white.sm\:rounded-2xl {
+  background: linear-gradient(145deg, #f8fafd 0%, #ecf1f7 100%) !important;
+  box-shadow:
+    0 8px 0 0 #cbd5e1,
+    0 32px 66px -14px rgba(15, 23, 42, 0.35),
+    inset 0 2px 0 #ffffff !important;
+}
+
+/* =========================================================================
+ * THEME 7: ZAMRUD EMAS 3D ([data-theme="emerald_gold"])
+ * Royal emerald & warm champagne-gold 3D metallic beveled rims
+ * ========================================================================= */
+:root[data-theme="emerald_gold"] body {
+  background: linear-gradient(148deg, #e7f3ec 0%, #f9f6ee 52%, #ece5d5 100%);
+  color: #0f172a;
+}
+
+:root[data-theme="emerald_gold"] header,
+:root[data-theme="emerald_gold"] .theme-glass-dock {
+  background: linear-gradient(180deg, #fffdf8 0%, #f8f5ec 100%) !important;
+  border-color: #e5d2a4 !important;
+  box-shadow:
+    0 5px 0 0 #d5b978,
+    0 18px 36px -12px rgba(6, 78, 59, 0.16),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="emerald_gold"] aside {
+  background: linear-gradient(180deg, #fffdf8 0%, #f6f3e8 100%) !important;
+  border-color: #e5d2a4 !important;
+  box-shadow:
+    5px 0 0 0 #d5b978,
+    18px 0 38px -14px rgba(6, 78, 59, 0.16),
+    inset -2px 0 0 0 #ffffff !important;
+}
+
+:root[data-theme="emerald_gold"] main .bg-white.rounded-xl,
+:root[data-theme="emerald_gold"] main .bg-white.rounded-2xl,
+:root[data-theme="emerald_gold"] main .bg-white\/95.rounded-xl,
+:root[data-theme="emerald_gold"] main .bg-white\/95.rounded-2xl,
+:root[data-theme="emerald_gold"] footer {
+  background: linear-gradient(165deg, #ffffff 0%, #fdfaf3 65%, #f5efe0 100%) !important;
+  border-color: #e6d3a5 !important;
+  box-shadow:
+    0 5px 0 0 #d4b876,
+    0 6px 0 0 rgba(16, 185, 129, 0.14),
+    0 20px 38px -12px rgba(6, 78, 59, 0.16),
+    inset 0 2px 0 0 #ffffff,
+    inset 0 -1.5px 0 0 rgba(212, 184, 118, 0.35) !important;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="emerald_gold"] main .bg-white.rounded-xl:hover,
+:root[data-theme="emerald_gold"] main .bg-white.rounded-2xl:hover {
+  transform: perspective(1100px) translateY(-4px) rotateX(1deg);
+  box-shadow:
+    0 7px 0 0 #c6a456,
+    0 26px 46px -12px rgba(6, 78, 59, 0.22),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="emerald_gold"] main .bg-slate-900.rounded-xl,
+:root[data-theme="emerald_gold"] main .bg-slate-900.rounded-2xl {
+  background: linear-gradient(160deg, #064e3b 0%, #0f172a 68%, #020617 100%) !important;
+  border-color: rgba(234, 179, 8, 0.45) !important;
+  box-shadow:
+    0 6px 0 0 #785b1e,
+    0 22px 44px -10px rgba(6, 78, 59, 0.42),
+    inset 0 1.5px 0 0 rgba(253, 230, 138, 0.45);
+}
+
+:root[data-theme="emerald_gold"] div.fixed .bg-white.rounded-xl,
+:root[data-theme="emerald_gold"] div.fixed .bg-white.rounded-2xl,
+:root[data-theme="emerald_gold"] div.fixed .bg-white.sm\:rounded-2xl {
+  background: linear-gradient(170deg, #ffffff 0%, #fbf6ea 100%) !important;
+  border-color: #e6d3a5 !important;
+  box-shadow:
+    0 8px 0 0 #d4b876,
+    0 32px 66px -14px rgba(15, 23, 42, 0.36),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+/* =========================================================================
+ * THEME 8: PRISMATIK 3D ([data-theme="cyber_prism"])
+ * Arctic cobalt studio slabs with holographic iridescent 3D edge bevels
+ * ========================================================================= */
+:root[data-theme="cyber_prism"] body {
+  background: linear-gradient(142deg, #dbeafe 0%, #ede9fe 50%, #d1fae5 100%);
+  color: #0f172a;
+}
+
+:root[data-theme="cyber_prism"] header,
+:root[data-theme="cyber_prism"] .theme-glass-dock {
+  background: linear-gradient(175deg, rgba(255, 255, 255, 0.92) 0%, rgba(238, 242, 255, 0.86) 100%) !important;
+  backdrop-filter: blur(18px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(185%) !important;
+  border-color: rgba(165, 180, 252, 0.85) !important;
+  box-shadow:
+    0 5px 0 0 #818cf8,
+    0 18px 38px -10px rgba(79, 70, 229, 0.2),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="cyber_prism"] aside {
+  background: linear-gradient(175deg, rgba(255, 255, 255, 0.94) 0%, rgba(238, 242, 255, 0.88) 100%) !important;
+  backdrop-filter: blur(18px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(185%) !important;
+  border-color: rgba(165, 180, 252, 0.85) !important;
+  box-shadow:
+    6px 0 0 0 #818cf8,
+    20px 0 42px -12px rgba(79, 70, 229, 0.18),
+    inset -2px 0 0 0 #ffffff !important;
+}
+
+:root[data-theme="cyber_prism"] main .bg-white.rounded-xl,
+:root[data-theme="cyber_prism"] main .bg-white.rounded-2xl,
+:root[data-theme="cyber_prism"] main .bg-white\/95.rounded-xl,
+:root[data-theme="cyber_prism"] main .bg-white\/95.rounded-2xl,
+:root[data-theme="cyber_prism"] footer {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 246, 255, 0.9) 55%, rgba(236, 253, 245, 0.88) 100%) !important;
+  border-color: rgba(165, 180, 252, 0.8) !important;
+  box-shadow:
+    0 5px 0 0 #a5b4fc,
+    0 6px 0 0 rgba(6, 182, 212, 0.22),
+    0 20px 40px -12px rgba(79, 70, 229, 0.18),
+    inset 0 2px 0 0 #ffffff,
+    inset 0 -1.5px 0 0 rgba(56, 189, 248, 0.25) !important;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="cyber_prism"] main .bg-white.rounded-xl:hover,
+:root[data-theme="cyber_prism"] main .bg-white.rounded-2xl:hover {
+  transform: perspective(1100px) translateY(-4px) rotateX(1.2deg);
+  box-shadow:
+    0 7px 0 0 #6366f1,
+    0 8px 0 0 rgba(16, 185, 129, 0.24),
+    0 28px 48px -12px rgba(79, 70, 229, 0.24),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="cyber_prism"] main .bg-slate-900.rounded-xl,
+:root[data-theme="cyber_prism"] main .bg-slate-900.rounded-2xl {
+  background: linear-gradient(150deg, #1e1b4b 0%, #0f172a 58%, #042f2e 100%) !important;
+  border-color: rgba(129, 140, 248, 0.5) !important;
+  box-shadow:
+    0 6px 0 0 #312e81,
+    0 24px 46px -10px rgba(49, 46, 129, 0.42),
+    inset 0 1.5px 0 0 rgba(165, 243, 252, 0.4);
+}
+
+:root[data-theme="cyber_prism"] div.fixed .bg-white.rounded-xl,
+:root[data-theme="cyber_prism"] div.fixed .bg-white.rounded-2xl,
+:root[data-theme="cyber_prism"] div.fixed .bg-white.sm\:rounded-2xl {
+  background: linear-gradient(168deg, #ffffff 0%, #eef2ff 100%) !important;
+  border-color: rgba(165, 180, 252, 0.9) !important;
+  box-shadow:
+    0 8px 0 0 #818cf8,
+    0 32px 68px -14px rgba(30, 27, 75, 0.36),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+/* =========================================================================
+ * THEME 9: TITANIUM LOGAM 3D ([data-theme="titanium"])
+ * Precision brushed silver aluminum plates with gunmetal chamfered bevels
+ * ========================================================================= */
+:root[data-theme="titanium"] body {
+  background: linear-gradient(155deg, #cbd5e1 0%, #e2e8f0 48%, #d6dfe9 100%);
+  color: #0f172a;
+}
+
+:root[data-theme="titanium"] header,
+:root[data-theme="titanium"] .theme-glass-dock {
+  background: linear-gradient(180deg, #ffffff 0%, #edf1f5 50%, #e2e7ee 100%) !important;
+  border-color: #94a3b8 !important;
+  box-shadow:
+    0 5px 0 0 #64748b,
+    0 18px 36px -10px rgba(15, 23, 42, 0.24),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="titanium"] aside {
+  background: linear-gradient(180deg, #f8fafc 0%, #e7ecf2 100%) !important;
+  border-color: #94a3b8 !important;
+  box-shadow:
+    6px 0 0 0 #64748b,
+    20px 0 42px -12px rgba(15, 23, 42, 0.24),
+    inset -2px 0 0 0 #ffffff !important;
+}
+
+:root[data-theme="titanium"] main .bg-white.rounded-xl,
+:root[data-theme="titanium"] main .bg-white.rounded-2xl,
+:root[data-theme="titanium"] main .bg-white\/95.rounded-xl,
+:root[data-theme="titanium"] main .bg-white\/95.rounded-2xl,
+:root[data-theme="titanium"] footer {
+  background: linear-gradient(170deg, #ffffff 0%, #f1f5f9 46%, #e6ecf2 100%) !important;
+  border-color: #94a3b8 !important;
+  box-shadow:
+    0 5.5px 0 0 #64748b,
+    0 7px 0 0 rgba(15, 23, 42, 0.16),
+    0 20px 38px -12px rgba(15, 23, 42, 0.22),
+    inset 0 2px 0 0 #ffffff,
+    inset 0 -1.5px 0 0 rgba(100, 116, 139, 0.28) !important;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="titanium"] main .bg-white.rounded-xl:hover,
+:root[data-theme="titanium"] main .bg-white.rounded-2xl:hover {
+  transform: perspective(1100px) translateY(-4px) rotateX(1deg);
+  box-shadow:
+    0 7.5px 0 0 #475569,
+    0 26px 46px -12px rgba(15, 23, 42, 0.28),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="titanium"] main .bg-slate-900.rounded-xl,
+:root[data-theme="titanium"] main .bg-slate-900.rounded-2xl {
+  background: linear-gradient(165deg, #334155 0%, #1e293b 52%, #0f172a 100%) !important;
+  border-color: #64748b !important;
+  box-shadow:
+    0 7px 0 0 #020617,
+    0 24px 44px -10px rgba(15, 23, 42, 0.45),
+    inset 0 2px 0 0 rgba(226, 232, 240, 0.38);
+}
+
+:root[data-theme="titanium"] div.fixed .bg-white.rounded-xl,
+:root[data-theme="titanium"] div.fixed .bg-white.rounded-2xl,
+:root[data-theme="titanium"] div.fixed .bg-white.sm\:rounded-2xl {
+  background: linear-gradient(170deg, #ffffff 0%, #ebeff5 100%) !important;
+  border-color: #94a3b8 !important;
+  box-shadow:
+    0 8px 0 0 #64748b,
+    0 32px 68px -14px rgba(15, 23, 42, 0.38),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+/* =========================================================================
+ * THEME 10: KUARSA HANGAT 3D ([data-theme="sunset_warm"])
+ * Warm sunlit travertine quartz & copper-amber tactile 3D extrusion
+ * ========================================================================= */
+:root[data-theme="sunset_warm"] body {
+  background: linear-gradient(148deg, #faeedf 0%, #fdf6ee 52%, #f4e3d3 100%);
+  color: #0f172a;
+}
+
+:root[data-theme="sunset_warm"] header,
+:root[data-theme="sunset_warm"] .theme-glass-dock {
+  background: linear-gradient(180deg, #fffdf9 0%, #fbf3e8 100%) !important;
+  border-color: #e7c8ad !important;
+  box-shadow:
+    0 5px 0 0 #d9aa82,
+    0 18px 36px -12px rgba(120, 53, 15, 0.16),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="sunset_warm"] aside {
+  background: linear-gradient(180deg, #fffdf9 0%, #faf1e4 100%) !important;
+  border-color: #e7c8ad !important;
+  box-shadow:
+    6px 0 0 0 #d9aa82,
+    20px 0 40px -14px rgba(120, 53, 15, 0.16),
+    inset -2px 0 0 0 #ffffff !important;
+}
+
+:root[data-theme="sunset_warm"] main .bg-white.rounded-xl,
+:root[data-theme="sunset_warm"] main .bg-white.rounded-2xl,
+:root[data-theme="sunset_warm"] main .bg-white\/95.rounded-xl,
+:root[data-theme="sunset_warm"] main .bg-white\/95.rounded-2xl,
+:root[data-theme="sunset_warm"] footer {
+  background: linear-gradient(165deg, #ffffff 0%, #fffaf4 65%, #f7ebdd 100%) !important;
+  border-color: #e6c6aa !important;
+  box-shadow:
+    0 5px 0 0 #d9aa82,
+    0 6px 0 0 rgba(217, 119, 6, 0.14),
+    0 20px 38px -12px rgba(120, 53, 15, 0.16),
+    inset 0 2px 0 0 #ffffff,
+    inset 0 -1.5px 0 0 rgba(217, 170, 130, 0.3) !important;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="sunset_warm"] main .bg-white.rounded-xl:hover,
+:root[data-theme="sunset_warm"] main .bg-white.rounded-2xl:hover {
+  transform: perspective(1100px) translateY(-4px) rotateX(1deg);
+  box-shadow:
+    0 7px 0 0 #c79063,
+    0 26px 46px -12px rgba(120, 53, 15, 0.22),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="sunset_warm"] main .bg-slate-900.rounded-xl,
+:root[data-theme="sunset_warm"] main .bg-slate-900.rounded-2xl {
+  background: linear-gradient(160deg, #431407 0%, #1c1917 62%, #0f172a 100%) !important;
+  border-color: rgba(251, 146, 60, 0.4) !important;
+  box-shadow:
+    0 6px 0 0 #7c2d12,
+    0 22px 44px -10px rgba(124, 45, 18, 0.38),
+    inset 0 1.5px 0 0 rgba(254, 215, 170, 0.35);
+}
+
+:root[data-theme="sunset_warm"] div.fixed .bg-white.rounded-xl,
+:root[data-theme="sunset_warm"] div.fixed .bg-white.rounded-2xl,
+:root[data-theme="sunset_warm"] div.fixed .bg-white.sm\:rounded-2xl {
+  background: linear-gradient(170deg, #ffffff 0%, #fcf4ea 100%) !important;
+  border-color: #e6c6aa !important;
+  box-shadow:
+    0 8px 0 0 #d9aa82,
+    0 32px 68px -14px rgba(120, 53, 15, 0.32),
+    inset 0 2px 0 0 #ffffff !important;
 }
 
 /* Force clean white flat presentation during printing regardless of active theme */

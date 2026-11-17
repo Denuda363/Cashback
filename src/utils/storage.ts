@@ -1,11 +1,12 @@
 import { DEFAULT_SETTINGS } from '../data/initialData';
-import { ActiveTab, AppRole, AppTheme, CashbackSettings, CustomerMaster, CustomerSummary, DisbursementCancelRequest, Invoice, NavPosition, CustomerBenefitType } from '../types/cashback';
+import { ActiveTab, AppRole, AppTheme, CashbackSettings, ClockStyle, CustomerMaster, CustomerSummary, DisbursementCancelRequest, Invoice, NavPosition, CustomerBenefitType } from '../types/cashback';
 
 const INVOICES_KEY = 'cashback_app_invoices_v2';
 const SETTINGS_KEY = 'cashback_app_settings_v2';
 const CUSTOMERS_KEY = 'cashback_app_customers_v1';
 const NAV_POSITION_KEY = 'cashback_app_nav_position_v1';
 const APP_THEME_KEY = 'cashback_app_theme_v1';
+const CLOCK_STYLE_KEY = 'cashback_clock_style_v1';
 const ACTIVE_TAB_KEY = 'cashback_app_active_tab_v1';
 const DISBURSEMENT_DRAFTS_KEY = 'cashback_app_disbursement_drafts_v1';
 const OPEN_DISBURSEMENT_KEY = 'cashback_app_open_disbursement_v1';
@@ -261,10 +262,23 @@ export function saveStoredNavPosition(pos: NavPosition): void {
   }
 }
 
+const VALID_APP_THEMES: AppTheme[] = [
+  'classic',
+  'glass',
+  '3d',
+  'glossy',
+  'motion3d',
+  'neomorph',
+  'emerald_gold',
+  'cyber_prism',
+  'titanium',
+  'sunset_warm',
+];
+
 export function loadStoredAppTheme(): AppTheme {
   try {
-    const raw = localStorage.getItem(APP_THEME_KEY);
-    if (raw === 'classic' || raw === 'glass' || raw === '3d' || raw === 'glossy' || raw === 'motion3d') {
+    const raw = localStorage.getItem(APP_THEME_KEY) as AppTheme | null;
+    if (raw && VALID_APP_THEMES.includes(raw)) {
       return raw;
     }
     return 'classic';
@@ -278,6 +292,35 @@ export function saveStoredAppTheme(theme: AppTheme): void {
     localStorage.setItem(APP_THEME_KEY, theme);
   } catch (e) {
     console.error('Failed to save app theme to localStorage', e);
+  }
+}
+
+const VALID_CLOCK_STYLES: ClockStyle[] = [
+  'chronograph',
+  'ivory_card',
+  'flip_split',
+  'nixie_amber',
+  'emerald_matrix',
+  'ultra_typo',
+];
+
+export function loadStoredClockStyle(): ClockStyle {
+  try {
+    const raw = localStorage.getItem(CLOCK_STYLE_KEY) as ClockStyle | null;
+    if (raw && VALID_CLOCK_STYLES.includes(raw)) {
+      return raw;
+    }
+    return 'chronograph';
+  } catch {
+    return 'chronograph';
+  }
+}
+
+export function saveStoredClockStyle(style: ClockStyle): void {
+  try {
+    localStorage.setItem(CLOCK_STYLE_KEY, style);
+  } catch (e) {
+    console.error('Failed to save clock style to localStorage', e);
   }
 }
 

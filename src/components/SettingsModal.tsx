@@ -43,8 +43,17 @@ import {
   Box,
   Gem,
   Orbit,
+  Clock,
+  Watch,
+  Flame,
+  Cpu,
+  Type,
+  CircleDot,
+  Crown,
+  Hexagon,
+  Sun,
 } from 'lucide-react';
-import { AppTheme, CashbackSettings, CustomerMaster, Invoice, NavPosition, TierRule, CompanyProfile } from '../types/cashback';
+import { AppTheme, CashbackSettings, ClockStyle, CustomerMaster, Invoice, NavPosition, TierRule, CompanyProfile } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
 import { AppBackupData, parseBackupJSON } from '../utils/storage';
@@ -61,6 +70,8 @@ interface SettingsModalProps {
   onChangeNavPosition?: (pos: NavPosition) => void;
   appTheme?: AppTheme;
   onChangeAppTheme?: (theme: AppTheme) => void;
+  clockStyle?: ClockStyle;
+  onChangeClockStyle?: (style: ClockStyle) => void;
   invoices: Invoice[];
   customers: CustomerMaster[];
   onBackupData: () => void;
@@ -80,6 +91,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onChangeNavPosition,
   appTheme = 'classic',
   onChangeAppTheme,
+  clockStyle = 'chronograph',
+  onChangeClockStyle,
   invoices,
   customers,
   onBackupData,
@@ -646,7 +659,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="flex items-center justify-between mb-2">
                     <label className="block font-semibold text-slate-700 flex items-center gap-1.5">
                       <Palette className="w-4 h-4 text-emerald-600" />
-                      <span>Tema Tampilan Aplikasi (Semua 3D)</span>
+                      <span>Tema Tampilan Aplikasi (10 Tema 3D)</span>
                     </label>
                     <span className="text-[11px] font-medium text-slate-500">
                       Berubah langsung saat dipilih
@@ -865,6 +878,427 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                       <span className="text-[10px] text-slate-500 leading-snug">
                         Kartu 3D melayang hidup, cahaya sapu & latar kinetik
+                      </span>
+                    </button>
+
+                    {/* Theme 6: Neumorfik 3D */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeAppTheme('neomorph')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        appTheme === 'neomorph'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="h-12 rounded-lg bg-slate-200/80 border border-white p-2 mb-2.5 flex items-center gap-2">
+                          <div
+                            className="w-4 h-full rounded bg-slate-100"
+                            style={{ boxShadow: '-2px -2px 5px rgba(255,255,255,0.9), 2px 3px 6px rgba(148,163,184,0.45)' }}
+                          />
+                          <div
+                            className="flex-1 h-full rounded bg-slate-100 p-1.5 flex flex-col justify-between transition-transform group-hover:-translate-y-0.5"
+                            style={{ boxShadow: '-3px -3px 6px rgba(255,255,255,0.95), 3px 4px 8px rgba(148,163,184,0.45), 0 2px 0 #cbd5e1' }}
+                          >
+                            <div className="h-1.5 w-3/4 rounded-full bg-slate-700" />
+                            <div className="h-1.5 w-1/2 rounded-full bg-emerald-500" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <CircleDot className="w-3.5 h-3.5 text-slate-600" />
+                            Neumorfik 3D
+                          </span>
+                          {appTheme === 'neomorph' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Pahatan clay lembut timbal balik & tombol cekung
+                      </span>
+                    </button>
+
+                    {/* Theme 7: Zamrud Emas 3D */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeAppTheme('emerald_gold')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        appTheme === 'emerald_gold'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="h-12 rounded-lg bg-gradient-to-br from-emerald-50 via-amber-50 to-stone-100 border border-amber-300/70 p-2 mb-2.5 flex items-center gap-2">
+                          <div
+                            className="w-4 h-full rounded bg-emerald-900 border border-amber-400/60"
+                            style={{ boxShadow: '0 2.5px 0 0 #92712b, 0 4px 6px rgba(6,78,59,0.25)' }}
+                          />
+                          <div
+                            className="flex-1 h-full rounded bg-[#fffdf8] border border-amber-300/80 p-1.5 flex flex-col justify-between transition-transform group-hover:-translate-y-0.5"
+                            style={{ boxShadow: '0 3px 0 0 #d4b876, 0 6px 10px rgba(6,78,59,0.16)' }}
+                          >
+                            <div className="h-1.5 w-3/4 rounded-full bg-emerald-900" />
+                            <div className="h-1.5 w-1/2 rounded-full bg-amber-500" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Crown className="w-3.5 h-3.5 text-amber-600" />
+                            Zamrud Emas 3D
+                          </span>
+                          {appTheme === 'emerald_gold' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Lis bevel emas sampanye mewah & aksen zamrud
+                      </span>
+                    </button>
+
+                    {/* Theme 8: Prismatik 3D */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeAppTheme('cyber_prism')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        appTheme === 'cyber_prism'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="h-12 rounded-lg bg-gradient-to-br from-indigo-100 via-sky-100 to-emerald-100 border border-indigo-300/80 p-2 mb-2.5 flex items-center gap-2">
+                          <div
+                            className="w-4 h-full rounded bg-indigo-950 border border-indigo-400/70"
+                            style={{ boxShadow: '0 2.5px 0 0 #4f46e5, 0 4px 6px rgba(79,70,229,0.24)' }}
+                          />
+                          <div
+                            className="flex-1 h-full rounded bg-white/95 border border-indigo-300 p-1.5 flex flex-col justify-between transition-transform group-hover:-translate-y-0.5"
+                            style={{ boxShadow: '0 3px 0 0 #a5b4fc, 0 6px 10px rgba(79,70,229,0.18)' }}
+                          >
+                            <div className="h-1.5 w-3/4 rounded-full bg-indigo-900" />
+                            <div className="h-1.5 w-1/2 rounded-full bg-cyan-500" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Hexagon className="w-3.5 h-3.5 text-indigo-600" />
+                            Prismatik 3D
+                          </span>
+                          {appTheme === 'cyber_prism' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Tepi holografik indigo-sian & cincin prisma berputar
+                      </span>
+                    </button>
+
+                    {/* Theme 9: Titanium Logam 3D */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeAppTheme('titanium')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        appTheme === 'titanium'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="h-12 rounded-lg bg-gradient-to-br from-slate-300 via-slate-200 to-slate-300 border border-slate-400 p-2 mb-2.5 flex items-center gap-2">
+                          <div
+                            className="w-4 h-full rounded bg-slate-800 border border-slate-500"
+                            style={{ boxShadow: '0 2.5px 0 0 #0f172a, 0 4px 6px rgba(15,23,42,0.28)' }}
+                          />
+                          <div
+                            className="flex-1 h-full rounded bg-gradient-to-b from-white to-slate-200 border border-slate-400 p-1.5 flex flex-col justify-between transition-transform group-hover:-translate-y-0.5"
+                            style={{ boxShadow: '0 3px 0 0 #64748b, 0 6px 10px rgba(15,23,42,0.22)' }}
+                          >
+                            <div className="h-1.5 w-3/4 rounded-full bg-slate-800" />
+                            <div className="h-1.5 w-1/2 rounded-full bg-emerald-600" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Shield className="w-3.5 h-3.5 text-slate-700" />
+                            Titanium Logam 3D
+                          </span>
+                          {appTheme === 'titanium' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Pelat aluminium perak tegas & bezel baja gunmetal
+                      </span>
+                    </button>
+
+                    {/* Theme 10: Kuarsa Hangat 3D */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeAppTheme('sunset_warm')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        appTheme === 'sunset_warm'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="h-12 rounded-lg bg-gradient-to-br from-orange-100 via-amber-50 to-stone-200 border border-orange-300/80 p-2 mb-2.5 flex items-center gap-2">
+                          <div
+                            className="w-4 h-full rounded bg-stone-900 border border-orange-400/50"
+                            style={{ boxShadow: '0 2.5px 0 0 #7c2d12, 0 4px 6px rgba(124,45,18,0.24)' }}
+                          />
+                          <div
+                            className="flex-1 h-full rounded bg-[#fffaf4] border border-orange-300/80 p-1.5 flex flex-col justify-between transition-transform group-hover:-translate-y-0.5"
+                            style={{ boxShadow: '0 3px 0 0 #d9aa82, 0 6px 10px rgba(120,53,15,0.16)' }}
+                          >
+                            <div className="h-1.5 w-3/4 rounded-full bg-stone-800" />
+                            <div className="h-1.5 w-1/2 rounded-full bg-orange-500" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Sun className="w-3.5 h-3.5 text-orange-500" />
+                            Kuarsa Hangat 3D
+                          </span>
+                          {appTheme === 'sunset_warm' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Kuarsa travertine hangat & bayangan tembaga senja
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Live Clock Style Picker (Minimalist & Unik) */}
+              {onChangeClockStyle && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-emerald-600" />
+                      <span>Gaya Jam, Hari & Tanggal Hidup</span>
+                    </label>
+                    <span className="text-[11px] font-medium text-slate-500">
+                      6 gaya minimalis unik
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {/* Clock Style 1: Kronograf Gelap */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeClockStyle('chronograph')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        clockStyle === 'chronograph'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="relative h-9 rounded-lg bg-slate-900 border border-slate-700 px-2.5 mb-2 flex items-center justify-between overflow-hidden">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-4 h-4 rounded-full border border-emerald-400/80 bg-slate-950 flex items-center justify-center">
+                              <div className="w-1.5 h-[1.5px] bg-emerald-400 rotate-[-35deg] origin-left" />
+                            </div>
+                            <span className="text-[9px] font-bold text-emerald-300">Selasa</span>
+                          </div>
+                          <span className="text-[11px] font-mono font-extrabold text-white tabular-nums">
+                            09:45<span className="text-emerald-300 text-[9px]">:12</span>
+                          </span>
+                          <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-emerald-400 to-sky-400 w-3/4" />
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Watch className="w-3.5 h-3.5 text-slate-700" />
+                            Kronograf Gelap
+                          </span>
+                          {clockStyle === 'chronograph' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Dial analog presisi & garis progres zamrud elegan
+                      </span>
+                    </button>
+
+                    {/* Clock Style 2: Plakat Putih Bersih */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeClockStyle('ivory_card')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        clockStyle === 'ivory_card'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="relative h-9 rounded-lg bg-white border border-slate-200 px-2.5 mb-2 flex items-center justify-between overflow-hidden shadow-2xs">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-4 h-4 rounded-full border border-emerald-500 bg-slate-50 flex items-center justify-center">
+                              <div className="w-1.5 h-[1.5px] bg-slate-800 rotate-[-35deg] origin-left" />
+                            </div>
+                            <span className="text-[9px] font-bold text-emerald-700">Selasa</span>
+                          </div>
+                          <span className="text-[11px] font-mono font-extrabold text-slate-900 tabular-nums">
+                            09:45<span className="text-emerald-600 text-[9px]">:12</span>
+                          </span>
+                          <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-emerald-600 to-teal-400 w-3/4" />
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                            Plakat Putih
+                          </span>
+                          {clockStyle === 'ivory_card' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Terang, rapi & menyatu mulus dengan kartu aplikasi
+                      </span>
+                    </button>
+
+                    {/* Clock Style 3: Kartu Flip Retro */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeClockStyle('flip_split')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        clockStyle === 'flip_split'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="relative h-9 rounded-lg bg-slate-900 border border-slate-700 px-2.5 mb-2 flex items-center justify-between overflow-hidden">
+                          <div className="w-4 h-4 rounded bg-slate-800 border border-slate-600 flex flex-col overflow-hidden">
+                            <div className="h-1 bg-emerald-500 w-full" />
+                            <div className="flex-1 flex items-center justify-center text-[6px] font-mono font-bold text-white">17</div>
+                          </div>
+                          <div className="flex items-center gap-0.5 font-mono text-[9px] font-extrabold text-white">
+                            <span className="relative px-1 py-0.5 rounded bg-slate-800 border border-slate-600">09</span>
+                            <span className="text-emerald-400">:</span>
+                            <span className="relative px-1 py-0.5 rounded bg-slate-800 border border-slate-600">45</span>
+                            <span className="text-emerald-400">:</span>
+                            <span className="relative px-1 py-0.5 rounded bg-emerald-950 border border-emerald-500/40 text-emerald-300">12</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                            Kartu Flip Retro
+                          </span>
+                          {clockStyle === 'flip_split' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Kotak angka papan jadwal mekanik & daun kalender
+                      </span>
+                    </button>
+
+                    {/* Clock Style 4: Tabung Nixie Hangat */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeClockStyle('nixie_amber')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        clockStyle === 'nixie_amber'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="relative h-9 rounded-lg bg-stone-950 border border-amber-900/60 px-2.5 mb-2 flex items-center justify-between overflow-hidden">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-4 h-4 rounded-full border border-amber-500 bg-stone-900 flex items-center justify-center">
+                              <div className="w-1.5 h-[1.5px] bg-amber-400 rotate-[-35deg] origin-left" />
+                            </div>
+                            <span className="text-[9px] font-bold text-amber-300">Selasa</span>
+                          </div>
+                          <span className="text-[11px] font-mono font-extrabold text-amber-300 tabular-nums">
+                            09:45<span className="text-orange-400 text-[9px]">:12</span>
+                          </span>
+                          <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-amber-500 to-orange-400 w-3/4" />
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Flame className="w-3.5 h-3.5 text-amber-600" />
+                            Tabung Nixie Hangat
+                          </span>
+                          {clockStyle === 'nixie_amber' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Sasis obsidian vintage dengan kilau angka kuning hangat
+                      </span>
+                    </button>
+
+                    {/* Clock Style 5: HUD Zamrud Presisi */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeClockStyle('emerald_matrix')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        clockStyle === 'emerald_matrix'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="relative h-9 rounded-lg bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border border-emerald-500/40 px-2.5 mb-2 flex items-center justify-between overflow-hidden">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-4 h-4 rounded-full border border-emerald-400/70 bg-emerald-900/50 flex items-center justify-center">
+                              <div className="w-2 h-2 rounded-full border border-emerald-300/60" />
+                            </div>
+                            <span className="text-[9px] font-bold text-emerald-300">Selasa</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex items-end gap-[1.5px] h-2.5">
+                              <span className="w-[2px] h-1 bg-emerald-600 rounded-full" />
+                              <span className="w-[2px] h-2.5 bg-emerald-300 rounded-full" />
+                              <span className="w-[2px] h-1.5 bg-emerald-600 rounded-full" />
+                            </div>
+                            <span className="text-[11px] font-mono font-extrabold text-emerald-100 tabular-nums">
+                              09:45<span className="text-teal-300 text-[9px]">:12</span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Cpu className="w-3.5 h-3.5 text-teal-600" />
+                            HUD Zamrud
+                          </span>
+                          {clockStyle === 'emerald_matrix' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Radar sapu konsentris & bar ritme detik modern
+                      </span>
+                    </button>
+
+                    {/* Clock Style 6: Tipografi Editorial */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeClockStyle('ultra_typo')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        clockStyle === 'ultra_typo'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <div className="relative h-9 rounded-lg bg-white/90 border border-slate-200/90 px-2.5 mb-2 flex items-center justify-between overflow-hidden">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-[2.5px] h-3.5 rounded-full bg-emerald-600" />
+                            <span className="text-[9px] font-extrabold text-slate-800">Selasa, 17 Nov</span>
+                          </div>
+                          <span className="text-[11px] font-mono font-extrabold text-slate-900 tabular-nums">
+                            09:45<span className="text-emerald-600 text-[9px]">:12</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Type className="w-3.5 h-3.5 text-slate-600" />
+                            Tipografi Editorial
+                          </span>
+                          {clockStyle === 'ultra_typo' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Garis tipis ultra-bersih, lapang & super hemat ruang
                       </span>
                     </button>
                   </div>

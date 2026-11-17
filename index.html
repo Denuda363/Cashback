@@ -26,7 +26,8 @@
     <script>
       try {
         var t = localStorage.getItem('cashback_app_theme_v1');
-        if (t === 'glass' || t === '3d' || t === 'classic' || t === 'glossy' || t === 'motion3d') {
+        var validThemes = ['classic','glass','3d','glossy','motion3d','neomorph','emerald_gold','cyber_prism','titanium','sunset_warm'];
+        if (validThemes.indexOf(t) !== -1) {
           document.documentElement.setAttribute('data-theme', t);
         }
       } catch (e) {}

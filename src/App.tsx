@@ -10,6 +10,8 @@ import {
   saveStoredNavPosition,
   loadStoredAppTheme,
   saveStoredAppTheme,
+  loadStoredClockStyle,
+  saveStoredClockStyle,
   loadStoredActiveTab,
   saveStoredActiveTab,
   loadStoredAppRole,
@@ -32,7 +34,7 @@ import {
 } from './utils/storage';
 import { exportCashbackToExcel, exportTandaTerimaFormat } from './utils/excelExport';
 import { calculateCashback, formatRupiah, getBenefitLabel } from './utils/cashbackCalculator';
-import { ActiveTab, AppRole, AppTheme, ClaimStatus, DisbursementCancelRequest, Invoice, CashbackSettings, CustomerMaster, CustomerSummary, NavPosition, CustomerBenefitType } from './types/cashback';
+import { ActiveTab, AppRole, AppTheme, ClaimStatus, ClockStyle, DisbursementCancelRequest, Invoice, CashbackSettings, CustomerMaster, CustomerSummary, NavPosition, CustomerBenefitType } from './types/cashback';
 import { SmartNavigation } from './components/SmartNavigation';
 import { DashboardAnalytics } from './components/DashboardAnalytics';
 import { Top10Leaderboard } from './components/Top10Leaderboard';
@@ -86,6 +88,7 @@ export default function App() {
   const [settings, setSettings] = useState<CashbackSettings>(() => loadStoredSettings());
   const [navPosition, setNavPosition] = useState<NavPosition>(() => loadStoredNavPosition());
   const [appTheme, setAppTheme] = useState<AppTheme>(() => loadStoredAppTheme());
+  const [clockStyle, setClockStyle] = useState<ClockStyle>(() => loadStoredClockStyle());
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => loadStoredActiveTab());
   const [appRole, setAppRole] = useState<AppRole>(() => loadStoredAppRole());
   const [cancelRequests, setCancelRequests] = useState<DisbursementCancelRequest[]>(() => loadStoredCancelRequests());
@@ -370,8 +373,28 @@ export default function App() {
       '3d': '3D Spasial',
       glossy: 'Glossy 3D',
       motion3d: 'Full Animasi 3D',
+      neomorph: 'Neumorfik 3D',
+      emerald_gold: 'Zamrud Emas 3D',
+      cyber_prism: 'Prismatik 3D',
+      titanium: 'Titanium Logam 3D',
+      sunset_warm: 'Kuarsa Hangat 3D',
     };
     showToast(`Tema tampilan diubah ke: ${labelMap[theme]}`);
+  };
+
+  // Clock Style Handler
+  const handleChangeClockStyle = (style: ClockStyle) => {
+    setClockStyle(style);
+    saveStoredClockStyle(style);
+    const labelMap: Record<ClockStyle, string> = {
+      chronograph: 'Kronograf Gelap',
+      ivory_card: 'Plakat Putih',
+      flip_split: 'Kartu Flip Retro',
+      nixie_amber: 'Tabung Nixie Hangat',
+      emerald_matrix: 'HUD Zamrud',
+      ultra_typo: 'Tipografi Editorial',
+    };
+    showToast(`Gaya jam diubah ke: ${labelMap[style]}`);
   };
 
   // Import Invoices from Excel Handler (Admin Only)
@@ -1340,6 +1363,7 @@ export default function App() {
       <main className={`flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6 ${receiptInvoice ? 'print:hidden' : ''}`}>
         {/* Live Chronometer, Day & Full Date Banner */}
         <LiveClockBanner
+          clockStyle={clockStyle}
           isTodayFilterActive={(() => {
             const d = new Date();
             const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1672,6 +1696,8 @@ export default function App() {
             onChangeNavPosition={handleChangeNavPosition}
             appTheme={appTheme}
             onChangeAppTheme={handleChangeAppTheme}
+            clockStyle={clockStyle}
+            onChangeClockStyle={handleChangeClockStyle}
             invoices={invoices}
             customers={customers}
             onBackupData={handleBackupData}
