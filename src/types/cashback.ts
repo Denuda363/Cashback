@@ -130,6 +130,8 @@ export type ActiveTab = 'dashboard' | 'top10' | 'invoices' | 'payout_records' | 
 
 export type NavPosition = 'sidebar' | 'top' | 'bottom';
 
+export type AppTheme = 'classic' | 'glass' | '3d' | 'glossy' | 'motion3d';
+
 export type AppRole = 'admin' | 'petugas';
 
 export type CancelRequestStatus = 'pending' | 'approved' | 'rejected' | 'executed';

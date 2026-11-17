@@ -8,6 +8,8 @@ import {
   saveStoredCustomers,
   loadStoredNavPosition,
   saveStoredNavPosition,
+  loadStoredAppTheme,
+  saveStoredAppTheme,
   loadStoredActiveTab,
   saveStoredActiveTab,
   loadStoredAppRole,
@@ -30,7 +32,7 @@ import {
 } from './utils/storage';
 import { exportCashbackToExcel, exportTandaTerimaFormat } from './utils/excelExport';
 import { calculateCashback, formatRupiah, getBenefitLabel } from './utils/cashbackCalculator';
-import { ActiveTab, AppRole, ClaimStatus, DisbursementCancelRequest, Invoice, CashbackSettings, CustomerMaster, CustomerSummary, NavPosition, CustomerBenefitType } from './types/cashback';
+import { ActiveTab, AppRole, AppTheme, ClaimStatus, DisbursementCancelRequest, Invoice, CashbackSettings, CustomerMaster, CustomerSummary, NavPosition, CustomerBenefitType } from './types/cashback';
 import { SmartNavigation } from './components/SmartNavigation';
 import { DashboardAnalytics } from './components/DashboardAnalytics';
 import { Top10Leaderboard } from './components/Top10Leaderboard';
@@ -82,6 +84,7 @@ export default function App() {
   const [customers, setCustomers] = useState<CustomerMaster[]>(() => loadStoredCustomers());
   const [settings, setSettings] = useState<CashbackSettings>(() => loadStoredSettings());
   const [navPosition, setNavPosition] = useState<NavPosition>(() => loadStoredNavPosition());
+  const [appTheme, setAppTheme] = useState<AppTheme>(() => loadStoredAppTheme());
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => loadStoredActiveTab());
   const [appRole, setAppRole] = useState<AppRole>(() => loadStoredAppRole());
   const [cancelRequests, setCancelRequests] = useState<DisbursementCancelRequest[]>(() => loadStoredCancelRequests());
@@ -95,6 +98,10 @@ export default function App() {
   useEffect(() => {
     saveStoredActiveTab(activeTab);
   }, [activeTab]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', appTheme);
+  }, [appTheme]);
 
   // Firebase Real-time Auto-Connection State (Direct & Automatic without login)
   const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(true);
@@ -350,6 +357,20 @@ export default function App() {
     saveStoredNavPosition(pos);
     const label = pos === 'sidebar' ? 'Samping (Sidebar)' : pos === 'top' ? 'Atas (Top Bar)' : 'Bawah (Dock Jempol)';
     showToast(`Posisi navigasi dipindahkan ke: ${label}`);
+  };
+
+  // App Theme Handler
+  const handleChangeAppTheme = (theme: AppTheme) => {
+    setAppTheme(theme);
+    saveStoredAppTheme(theme);
+    const labelMap: Record<AppTheme, string> = {
+      classic: 'Klasik 3D',
+      glass: 'Glass 3D Hidup',
+      '3d': '3D Spasial',
+      glossy: 'Glossy 3D',
+      motion3d: 'Full Animasi 3D',
+    };
+    showToast(`Tema tampilan diubah ke: ${labelMap[theme]}`);
   };
 
   // Import Invoices from Excel Handler (Admin Only)
@@ -1298,6 +1319,7 @@ export default function App() {
       }}
       navPosition={navPosition}
       onChangeNavPosition={handleChangeNavPosition}
+      appTheme={appTheme}
       onExportExcel={handleExportExcel}
       onOpenImportExcel={() => appRole === 'admin' && setIsImportModalOpen(true)}
       onOpenAbout={() => setIsAboutModalOpen(true)}
@@ -1626,6 +1648,8 @@ export default function App() {
             isSyncingWithCloud={isSyncingWithCloud}
             navPosition={navPosition}
             onChangeNavPosition={handleChangeNavPosition}
+            appTheme={appTheme}
+            onChangeAppTheme={handleChangeAppTheme}
             invoices={invoices}
             customers={customers}
             onBackupData={handleBackupData}

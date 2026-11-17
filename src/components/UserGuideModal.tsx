@@ -73,20 +73,20 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
               'Pencatatan Belanja: Admin menginput faktur penjualan secara manual atau mengimpor puluhan nota sekaligus lewat file Excel (.xlsx).',
               'Kalkulasi & Hak Paket Otomatis: Sistem menghitung nominal cashback secara otomatis sesuai skema aktif (% Flat atau Tiered) beserta penentuan paket hak (Cashback + Parsel, Cashback Saja, atau Parcel Saja).',
               'Sinkronisasi Master Konsumen Real: Identitas konsumen dari transaksi faktur otomatis terdata, tersinkronisasi, dan bebas duplikasi di Master Konsumen.',
-              'Pencairan Tunai (Cash) & Dokumentasi: Petugas menyerahkan uang tunai langsung, melampirkan foto serah terima, tanda tangan digital konsumen, serta mencetak Tanda Terima Resmi 2 rangkap.',
+              'Pencairan Tunai (Cash) & Dokumentasi: Petugas menyerahkan uang tunai langsung, melampirkan foto serah terima, tanda tangan digital layar penuh, serta mencetak Tanda Terima Resmi 2 rangkap.',
             ],
-            tips: 'Seluruh data otomatis tersinkronisasi ke Cloud secara real-time di berbagai perangkat (PC, laptop, tablet, maupun HP) tanpa perlu login akun email.',
+            tips: 'Seluruh data otomatis tersinkronisasi ke Cloud Firestore secara real-time di berbagai perangkat (PC, laptop, tablet, maupun HP) tanpa perlu login akun email.',
           },
           {
-            title: '2. Pemisahan Hak Akses & Fitur Utama',
+            title: '2. Pemisahan Hak Akses, Tampilan 3D & Fitur Utama',
             description:
-              'Sistem dilengkapi pengamanan peran untuk menjaga kerapian data operasional harian:',
+              'Sistem dilengkapi pengamanan peran serta personalisasi tampilan untuk mendukung kerja tim harian:',
             details: [
               'Mode Admin & Mode Petugas: Admin memiliki kendali penuh atas seluruh data & pengaturan, sedangkan Petugas fokus pada transaksi pencairan cashback serta dapat melihat halaman lain dalam mode lihat saja (Read-Only).',
-              'Dashboard & 10 Besar Tertinggi: Pantau omset, progres pencairan, grafik tren bulanan, serta peringkat 10 konsumen dengan belanja dan cashback tertinggi.',
-              'Filter Tanggal Universal: Saring seluruh angka dashboard, faktur, rekap konsumen, dan leaderboard berdasarkan rentang tanggal tertentu.',
-              'Kop Surat & Logo Perusahaan: Unggah logo usaha dan identitas perusahaan untuk ditampilkan pada aplikasi, struk, dan Tanda Terima Resmi.',
-              'Backup & Keamanan Cloud: Cadangkan seluruh database ke file .JSON dan pulihkan kapan saja.',
+              'Dashboard, 10 Besar & Filter Tanggal Universal: Pantau omset, progres pencairan, grafik tren bulanan, peringkat 10 besar konsumen, serta saring seluruh data lintas menu berdasarkan rentang tanggal.',
+              'Tema Tampilan 3D & Gaya Navigasi Fleksibel: Pilih dari 5 tema 3D (Klasik 3D, Glass 3D Hidup, 3D Spasial, Glossy 3D, atau Full Animasi 3D) serta posisi menu (Sidebar Samping, Top Bar Atas, atau Dock Bawah).',
+              'Kop Surat & Logo Perusahaan: Unggah logo usaha dan identitas perusahaan untuk ditampilkan pada navigasi aplikasi, Struk Digital, dan Tanda Terima Resmi.',
+              'Backup, Restore & PWA Multi-Perangkat: Cadangkan database ke file .JSON, pulihkan kapan saja, dan instal aplikasi ke layar utama Android, iOS, atau PC.',
             ],
           },
         ],
@@ -147,44 +147,43 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
       },
       {
         id: 'step1',
-        title: 'Langkah 1: Pengaturan Kebijakan, Profil & Logo Perusahaan',
-        shortTitle: '1. Pengaturan & Logo',
+        title: 'Langkah 1: Pengaturan Cashback, Tema 3D & Logo Perusahaan',
+        shortTitle: '1. Pengaturan, Tema & Logo',
         icon: SettingsIcon,
         tag: 'Konfigurasi Admin',
         summary:
-          'Mengatur persentase cashback, profil perusahaan, upload logo usaha, tata letak navigasi, hingga keamanan akses di menu Pengaturan (khusus Mode Admin).',
+          'Mengatur skema persentase cashback, gaya navigasi, tema tampilan 3D, upload logo perusahaan, hingga identitas kop surat resmi (khusus Mode Admin).',
         steps: [
           {
-            title: 'A. Skema & Aturan Perhitungan Cashback (Tab Aturan Cashback)',
+            title: 'A. Memilih Gaya Navigasi & Tema Tampilan 3D (Tab Aturan Cashback)',
+            description:
+              'Sesuaikan tampilan aplikasi agar paling nyaman dilihat di monitor kasir, tablet, maupun HP:',
+            details: [
+              'Tata Letak Posisi Navigasi: Pilih Di Samping (Sidebar — standar desktop + laci & bilah bawah di HP), Di Atas (Top Bar horizontal), atau Di Bawah (Dock Jempol melayang).',
+              'Tema Tampilan 3D (Semua Tema Berbasis 3D): Pilih Klasik 3D (matte bersih terang dengan kartu timbul), Glass 3D Hidup (kaca kristal transparan + aurora & prisma bergerak hidup), 3D Spasial (bevel 3D tegas di atas panggung kisi perspektif studio), Glossy 3D (efek kilap akrilik cermin & tombol jelly 3D berpantulan cahaya), atau Full Animasi 3D (kartu 3D melayang interaktif, cincin studio berputar, & kilau cahaya sapuan penuh). Perubahan langsung terlihat saat diklik.',
+            ],
+            tips: 'Saat mencetak struk atau Tanda Terima Resmi, sistem otomatis menyesuaikan ke halaman cetak putih bersih agar hemat tinta dan tajam.',
+          },
+          {
+            title: 'B. Skema & Aturan Perhitungan Cashback (Tab Aturan Cashback)',
             description:
               'Buka menu Pengaturan -> tab "Aturan Cashback" untuk menyesuaikan rumus promosi toko:',
             details: [
-              'Mode Flat (Persentase Tetap): Seluruh transaksi mendapatkan persentase cashback tetap (misalnya 2% Flat) tanpa batas minimal belanja.',
-              'Mode Tiered (Bertingkat): Persentase cashback menyesuaikan rentang nominal belanja.',
-              'Batas Maksimal Reward & Pembulatan: Atur batas maksimum cashback per transaksi (opsional) serta metode pembulatan rupiah (Tepat/Eksak, Ratusan Terdekat, atau Ribuan Terdekat).',
-              'Masa Berlaku Klaim & Target Belanja Parcel: Tentukan batas hari klaim dan nominal akumulasi belanja untuk kelayakan paket Parcel.',
-              'Simulasi Hitungan Langsung: Uji coba angka belanja di panel simulator hitam bagian bawah sebelum menyimpan.',
+              'Mode Flat (Persentase Tetap): Seluruh transaksi mendapatkan persentase cashback tetap (tersedia tombol cepat 1%, 2%, 2.5%, 3%, 5%, 7.5%, 10% atau geser slider).',
+              'Mode Tiered (Bertingkat): Persentase cashback otomatis menyesuaikan rentang nominal belanja; tingkatan dapat ditambah, diubah, atau dihapus.',
+              'Masa Berlaku Klaim & Pembulatan Rupiah: Atur jumlah hari masa berlaku klaim serta pembulatan angka (Tepat/Eksak, Ratusan Terdekat Rp 100, atau Ribuan Terdekat Rp 1.000).',
+              'Simulasi Hitungan Langsung: Uji coba nominal belanja pada panel simulator hitam di bagian bawah sebelum menekan "Simpan Pengaturan & Profil".',
             ],
-            tips: 'Setiap perubahan persentase atau aturan cashback akan otomatis menghitung ulang nilai cashback seluruh faktur yang ada.',
+            tips: 'Setiap perubahan persentase atau aturan cashback otomatis menghitung ulang nilai cashback seluruh faktur yang belum terkecualikan dengan tetap mempertahankan pilihan manual paket konsumen.',
           },
           {
-            title: 'B. Upload Logo & Identitas Perusahaan (Tab Profil Perusahaan)',
+            title: 'C. Upload Logo & Identitas Perusahaan (Tab Profil Perusahaan)',
             description:
               'Lengkapi profil usaha Anda agar seluruh dokumen tampil resmi dan profesional:',
             details: [
               'Upload Logo Perusahaan: Klik "Upload Logo" untuk mengunggah gambar logo berformat PNG, JPG, WebP, atau SVG. Logo otomatis dioptimalkan dan tampil di sidebar, header mobile/desktop, Struk Digital, dan kop surat Tanda Terima Resmi.',
               'Identitas & Kontak Usaha: Isi Nama Resmi Perusahaan/Toko, Tagline, Alamat Lengkap, Kota, Nomor Telepon/WA Bisnis, Email, Website, dan NPWP/NIB.',
-              'Pejabat Penanggung Jawab & Rekening: Isi Nama Pimpinan/Kasir, Jabatan, info rekening operasional, serta Catatan Kaki Kwitansi.',
-            ],
-          },
-          {
-            title: 'C. Memilih Gaya Tata Letak Navigasi',
-            description:
-              'Di tab "Aturan Cashback", Anda dapat memilih posisi menu navigasi aplikasi sesuai kenyamanan perangkat:',
-            details: [
-              'Di Samping (Sidebar): Menu vertikal elegan di sisi kiri pada PC/laptop dan laci samping (drawer) + bilah menu cepat 5 tombol di bagian bawah pada mode HP.',
-              'Di Atas (Top Bar): Navigasi horizontal ringkas di bagian atas layar.',
-              'Di Bawah (Thumb Dock): Bilah navigasi melayang di bawah layar.',
+              'Pejabat Penanggung Jawab & Rekening: Isi Nama Pimpinan/Kasir, Jabatan, rekening operasional, serta Catatan Kaki Kwitansi.',
             ],
           },
         ],
@@ -463,6 +462,11 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
           'Jawaban ringkas atas pertanyaan yang paling sering muncul saat pengoperasian harian oleh Admin maupun Petugas.',
         steps: [
           {
+            title: 'Q: Bagaimana cara mengganti tema tampilan 3D atau posisi menu navigasi?',
+            description:
+              'A: Masuk ke Mode Admin -> buka Pengaturan -> tab "Aturan Cashback". Pilih "Tema Tampilan Aplikasi" (Klasik 3D, Glass 3D Hidup, 3D Spasial, Glossy 3D, atau Full Animasi 3D) maupun "Tata Letak Posisi Navigasi" (Sidebar, Top Bar, atau Dock Bawah) — tampilan langsung berubah seketika dan tersimpan otomatis di perangkat Anda.',
+          },
+          {
             title: 'Q: Mengapa di Mode Petugas saya bisa membuka halaman lain tetapi tidak bisa mengedit atau membuka Pengaturan?',
             description:
               'A: Mode Petugas memang dirancang agar petugas dapat memproses pencairan cashback di "Penerimaan Cashback" serta melihat informasi pada halaman Dashboard, 10 Besar, Rekap Faktur, Rekap Konsumen, dan Master Konsumen dalam mode lihat saja (Read-Only). Pengubahan data dan menu Pengaturan dikunci khusus untuk Mode Admin menggunakan PIN Admin.',
@@ -470,7 +474,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
           {
             title: 'Q: Bagaimana cara agar nama petugas langsung muncul otomatis setiap mencairkan cashback?',
             description:
-              'A: Pada saat memproses pencairan pertama kali di suatu perangkat, isi kolom "Petugas Penyerah Cashback" (misalnya nama petugas yang bertugas di perangkat tersebut). Sistem otomatis mengingat nama tersebut khusus untuk perangkat itu pada transaksi berikutnya. Jika petugas berganti, klik tanda (×) di kolom petugas untuk menggantinya.',
+              'A: Pada saat memproses pencairan pertama kali di suatu perangkat, isi kolom "Petugas Penyerah Cashback" (misalnya nama petugas yang bertugas di perangkat tersebut). Sistem otomatis mengingat nama tersebut khusus untuk perangkat itu pada transaksi berikutnya. Jika petugas berganti shift, klik tanda (×) di kolom petugas untuk menggantinya.',
           },
           {
             title: 'Q: Bagaimana jika petugas terlanjur mencairkan cashback untuk konsumen yang salah?',
@@ -485,7 +489,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
           {
             title: 'Q: Apakah data Master Konsumen perlu diisi ulang satu per satu dari awal?',
             description:
-              'A: Tidak perlu. Setiap kali faktur baru diinput atau diimpor dari Excel, sistem otomatis mendaftarkan dan menyelaraskan konsumen ke Master Konsumen agar selalu sesuai dengan data transaksi real tanpa duplikasi.',
+              'A: Tidak perlu. Setiap kali faktur baru diinput atau diimpor dari Excel, sistem otomatis mendaftarkan dan menyelaraskan konsumen ke Master Konsumen agar selalu sesuai dengan data transaksi real tanpa duplikasi. Admin juga dapat menekan tombol "Sinkron Data Real" kapan saja untuk penyelarasan instan.',
           },
         ],
       },
@@ -548,7 +552,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-300 mt-0.5">
-                Panduan operasional Mode Admin & Petugas, faktur, pencairan tunai, logo usaha, hingga backup data
+                Panduan operasional Mode Admin & Petugas, tema 3D, faktur, pencairan tunai, logo usaha, hingga backup data
               </p>
             </div>
           </div>
@@ -569,7 +573,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari topik (misal: pin, petugas, acc, logo, tanda tangan, backup)..."
+              placeholder="Cari topik (misal: tema 3d, pin, petugas, acc, logo, tanda tangan, backup)..."
               className="w-full pl-9 pr-14 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-900"
             />
             {searchQuery && (

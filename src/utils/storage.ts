@@ -1,10 +1,11 @@
 import { DEFAULT_SETTINGS } from '../data/initialData';
-import { ActiveTab, AppRole, CashbackSettings, CustomerMaster, CustomerSummary, DisbursementCancelRequest, Invoice, NavPosition, CustomerBenefitType } from '../types/cashback';
+import { ActiveTab, AppRole, AppTheme, CashbackSettings, CustomerMaster, CustomerSummary, DisbursementCancelRequest, Invoice, NavPosition, CustomerBenefitType } from '../types/cashback';
 
 const INVOICES_KEY = 'cashback_app_invoices_v2';
 const SETTINGS_KEY = 'cashback_app_settings_v2';
 const CUSTOMERS_KEY = 'cashback_app_customers_v1';
 const NAV_POSITION_KEY = 'cashback_app_nav_position_v1';
+const APP_THEME_KEY = 'cashback_app_theme_v1';
 const ACTIVE_TAB_KEY = 'cashback_app_active_tab_v1';
 const DISBURSEMENT_DRAFTS_KEY = 'cashback_app_disbursement_drafts_v1';
 const OPEN_DISBURSEMENT_KEY = 'cashback_app_open_disbursement_v1';
@@ -257,6 +258,26 @@ export function saveStoredNavPosition(pos: NavPosition): void {
     localStorage.setItem(NAV_POSITION_KEY, pos);
   } catch (e) {
     console.error('Failed to save nav position to localStorage', e);
+  }
+}
+
+export function loadStoredAppTheme(): AppTheme {
+  try {
+    const raw = localStorage.getItem(APP_THEME_KEY);
+    if (raw === 'classic' || raw === 'glass' || raw === '3d' || raw === 'glossy' || raw === 'motion3d') {
+      return raw;
+    }
+    return 'classic';
+  } catch {
+    return 'classic';
+  }
+}
+
+export function saveStoredAppTheme(theme: AppTheme): void {
+  try {
+    localStorage.setItem(APP_THEME_KEY, theme);
+  } catch (e) {
+    console.error('Failed to save app theme to localStorage', e);
   }
 }
 

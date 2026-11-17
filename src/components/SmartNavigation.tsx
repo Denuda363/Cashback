@@ -18,7 +18,7 @@ import {
   UserCheck,
   Bell,
 } from 'lucide-react';
-import { ActiveTab, AppRole, NavPosition } from '../types/cashback';
+import { ActiveTab, AppRole, AppTheme, NavPosition } from '../types/cashback';
 import { PWAInstallButton } from './PWAInstallPrompt';
 
 interface SmartNavigationProps {
@@ -26,6 +26,7 @@ interface SmartNavigationProps {
   setActiveTab: (tab: ActiveTab) => void;
   navPosition: NavPosition;
   onChangeNavPosition?: (pos: NavPosition) => void;
+  appTheme?: AppTheme;
   onExportExcel?: () => void;
   onOpenImportExcel?: () => void;
   onOpenAbout?: () => void;
@@ -43,10 +44,145 @@ interface SmartNavigationProps {
   children: React.ReactNode;
 }
 
+const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) => {
+  if (appTheme === 'glass') {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/90 via-sky-50/85 to-teal-50/90" />
+        {/* Living drifting luminous aurora orbs */}
+        <div className="absolute -top-28 -left-24 w-[42vw] h-[42vw] max-w-[560px] max-h-[560px] rounded-full bg-gradient-to-br from-emerald-300/45 via-teal-200/40 to-transparent blur-3xl animate-glass-orb-1" />
+        <div className="absolute top-[22%] -right-24 w-[46vw] h-[46vw] max-w-[600px] max-h-[600px] rounded-full bg-gradient-to-bl from-sky-300/40 via-cyan-200/35 to-transparent blur-3xl animate-glass-orb-2" />
+        <div className="absolute -bottom-32 left-[24%] w-[44vw] h-[44vw] max-w-[580px] max-h-[580px] rounded-full bg-gradient-to-tr from-emerald-200/50 via-indigo-200/30 to-transparent blur-3xl animate-glass-orb-3" />
+        {/* Floating translucent 3D crystal glass prisms */}
+        <div className="hidden md:block absolute top-[14%] right-[9%] w-28 h-28 rounded-3xl bg-white/35 backdrop-blur-md border border-white/80 theme-3d-prism animate-3d-cube-float-1" />
+        <div className="hidden md:block absolute bottom-[18%] left-[18%] w-20 h-20 rounded-2xl bg-emerald-100/35 backdrop-blur-md border border-white/75 theme-3d-prism animate-3d-cube-float-2" />
+        <div className="hidden lg:block absolute top-[55%] right-[22%] w-16 h-16 rounded-2xl bg-sky-100/35 backdrop-blur-md border border-white/75 theme-3d-prism animate-3d-cube-float-3" />
+        {/* Living prismatic light ribbon */}
+        <div className="absolute top-[15%] left-[12%] w-[70vw] h-40 rounded-full bg-gradient-to-r from-transparent via-white/55 to-transparent blur-2xl animate-glass-prism" />
+      </div>
+    );
+  }
+
+  if (appTheme === '3d') {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-200/85 via-slate-100 to-slate-200/90" />
+        {/* Studio directional top-left key light */}
+        <div className="absolute -top-36 -left-36 w-[560px] h-[560px] rounded-full bg-radial from-white/95 via-white/45 to-transparent blur-2xl" />
+        {/* Moving studio key-light sweep */}
+        <div className="absolute -top-12 left-[10%] w-[65vw] h-44 rounded-full bg-gradient-to-r from-transparent via-white/65 to-transparent blur-2xl animate-3d-light-sweep" />
+        {/* Floating 3D architectural perspective grid plane */}
+        <div
+          className="absolute -bottom-24 inset-x-[-10%] h-[54vh] opacity-45 animate-stage-3d-float"
+          style={{
+            backgroundImage:
+              'linear-gradient(to right, rgba(148,163,184,0.45) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.45) 1px, transparent 1px)',
+            backgroundSize: '44px 44px',
+          }}
+        />
+        {/* Floating sculpted 3D isometric studio blocks */}
+        <div className="hidden md:block absolute top-[15%] right-[8%] w-28 h-28 rounded-3xl bg-gradient-to-br from-white/90 to-slate-200/75 border border-white theme-3d-prism animate-3d-cube-float-1" />
+        <div className="hidden md:block absolute bottom-[16%] left-[16%] w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-50/90 to-slate-200/70 border border-white theme-3d-prism animate-3d-cube-float-2" />
+        <div className="hidden lg:block absolute top-[54%] right-[20%] w-16 h-16 rounded-2xl bg-gradient-to-br from-white/85 to-sky-100/70 border border-white theme-3d-prism animate-3d-cube-float-3" />
+      </div>
+    );
+  }
+
+  if (appTheme === 'glossy') {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-sky-50/95 via-white to-indigo-50/85" />
+        {/* Top studio key specular reflection */}
+        <div className="absolute -top-40 left-[8%] w-[72vw] max-w-[820px] h-[340px] rounded-full bg-gradient-to-b from-white via-white/75 to-transparent blur-2xl" />
+        <div className="hidden md:block absolute top-[14%] -right-24 w-[420px] h-[420px] rounded-full bg-gradient-to-bl from-sky-200/45 via-cyan-100/35 to-transparent blur-3xl" />
+        <div className="hidden md:block absolute -bottom-28 left-[18%] w-[460px] h-[460px] rounded-full bg-gradient-to-tr from-emerald-100/45 via-indigo-100/35 to-transparent blur-3xl" />
+        {/* Glossy acrylic 3D orbs & mirror prisms */}
+        <div
+          className="hidden md:block absolute top-[15%] right-[10%] w-24 h-24 rounded-full border border-white/95 theme-3d-prism animate-3d-cube-float-1"
+          style={{
+            background:
+              'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.98) 0%, rgba(224,242,254,0.85) 45%, rgba(148,163,184,0.35) 100%)',
+          }}
+        />
+        <div
+          className="hidden lg:block absolute bottom-[18%] left-[18%] w-20 h-20 rounded-3xl border border-white/95 theme-3d-prism animate-3d-cube-float-2"
+          style={{
+            background:
+              'linear-gradient(155deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.7) 48%, rgba(209,250,229,0.55) 100%)',
+          }}
+        />
+        {/* Moving high-gloss studio light reflection */}
+        <div className="absolute top-[10%] left-0 w-[45vw] h-[36vh] rounded-full bg-gradient-to-r from-transparent via-white/80 to-transparent blur-2xl animate-glossy-sheen" />
+      </div>
+    );
+  }
+
+  if (appTheme === 'motion3d') {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-200/90 via-sky-50/85 to-emerald-50/85" />
+        {/* Multi-layered drifting kinetic light spheres */}
+        <div className="absolute -top-28 -left-24 w-[44vw] h-[44vw] max-w-[580px] max-h-[580px] rounded-full bg-gradient-to-br from-emerald-300/40 via-teal-200/35 to-transparent blur-3xl animate-glass-orb-1" />
+        <div className="absolute top-[18%] -right-28 w-[46vw] h-[46vw] max-w-[600px] max-h-[600px] rounded-full bg-gradient-to-bl from-indigo-300/35 via-sky-200/35 to-transparent blur-3xl animate-glass-orb-2" />
+        <div className="absolute -bottom-32 left-[22%] w-[44vw] h-[44vw] max-w-[580px] max-h-[580px] rounded-full bg-gradient-to-tr from-emerald-200/45 via-cyan-200/30 to-transparent blur-3xl animate-glass-orb-3" />
+        {/* Animated 3D perspective studio grid floor */}
+        <div
+          className="absolute -bottom-24 inset-x-[-10%] h-[56vh] opacity-50 animate-stage-3d-float"
+          style={{
+            backgroundImage:
+              'linear-gradient(to right, rgba(99,102,241,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(16,185,129,0.25) 1px, transparent 1px)',
+            backgroundSize: '42px 42px',
+          }}
+        />
+        {/* Rotating kinetic 3D studio halo ring */}
+        <div
+          className="hidden md:block absolute top-[12%] right-[6%] w-64 h-64 rounded-full border-2 border-dashed border-emerald-400/35 animate-motion3d-spin-slow"
+          style={{
+            background:
+              'conic-gradient(from 0deg, rgba(16,185,129,0.12), rgba(56,189,248,0.08), rgba(255,255,255,0.25), rgba(16,185,129,0.12))',
+          }}
+        />
+        {/* Sculpted rotating floating 3D kinetic blocks */}
+        <div className="hidden md:block absolute top-[16%] right-[11%] w-28 h-28 rounded-3xl bg-gradient-to-br from-white/95 to-emerald-100/80 border border-white theme-3d-prism animate-3d-cube-float-1" />
+        <div className="hidden md:block absolute bottom-[18%] left-[15%] w-22 h-22 rounded-2xl bg-gradient-to-br from-white/95 to-sky-100/80 border border-white theme-3d-prism animate-3d-cube-float-2" />
+        <div className="hidden lg:block absolute top-[52%] right-[20%] w-16 h-16 rounded-2xl bg-gradient-to-br from-white/90 to-indigo-100/75 border border-white theme-3d-prism animate-3d-cube-float-3" />
+        {/* Continuous sweeping studio light beam */}
+        <div className="absolute -top-8 left-[8%] w-[68vw] h-44 rounded-full bg-gradient-to-r from-transparent via-white/75 to-transparent blur-2xl animate-3d-light-sweep" />
+      </div>
+    );
+  }
+
+  // Classic 3D: Clean studio directional light + subtle matte 3D floating accents
+  return (
+    <div
+      aria-hidden="true"
+      className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-100/95 via-slate-50 to-slate-200/70" />
+      <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-radial from-white/95 via-white/35 to-transparent blur-2xl" />
+      <div className="hidden md:block absolute top-[18%] right-[10%] w-24 h-24 rounded-3xl bg-gradient-to-br from-white/80 to-slate-100/70 border border-white/90 theme-3d-prism opacity-70 animate-3d-cube-float-1" />
+      <div className="hidden lg:block absolute bottom-[18%] left-[20%] w-16 h-16 rounded-2xl bg-gradient-to-br from-white/80 to-emerald-50/60 border border-white/90 theme-3d-prism opacity-65 animate-3d-cube-float-2" />
+    </div>
+  );
+};
+
 export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   activeTab,
   setActiveTab,
   navPosition,
+  appTheme = 'classic',
   onOpenAbout,
   totalInvoicesCount,
   totalMasterCustomersCount,
@@ -120,12 +256,15 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
 
   const activeNavItem = navItems.find((n) => n.id === activeTab) || navItems[0];
 
+  const rootBgClass = 'bg-transparent';
+
   /* -------------------------------------------------------------
    * RENDER MODE 1: SIDEBAR NAVIGATION (DI SAMPING)
    * ----------------------------------------------------------- */
   if (navPosition === 'sidebar') {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col md:flex-row font-sans">
+      <div className={`min-h-screen ${rootBgClass} text-slate-900 flex flex-col md:flex-row font-sans relative`}>
+        <ThemeAmbientBackdrop appTheme={appTheme} />
 
         {/* Mobile Header (synced with Desktop Sidebar design: uncovered storeName, living border, no Firebase/Export/Import/Style switcher) */}
         <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md px-3 py-2 shadow-xs print:hidden relative">
@@ -520,12 +659,12 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto pb-20 md:pb-0 print:pb-0">
+        <div className="relative z-10 flex-1 flex flex-col min-w-0 overflow-y-auto pb-20 md:pb-0 print:pb-0">
           {children}
         </div>
 
         {/* Mobile Bottom Quick-Nav Bar (Living Top Architectural Border + Matching Active Tile Design) */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md px-1.5 pt-2 pb-1.5 grid grid-cols-5 gap-1 shadow-[0_-6px_24px_rgba(15,23,42,0.08)] print:hidden">
+        <nav className="theme-glass-dock md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md px-1.5 pt-2 pb-1.5 grid grid-cols-5 gap-1 shadow-[0_-6px_24px_rgba(15,23,42,0.08)] print:hidden">
           {/* Living Horizontal Top Seam */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[2.5px] bg-gradient-to-r from-slate-200 via-emerald-200/70 to-slate-200 overflow-hidden">
             <div className="h-full w-32 bg-gradient-to-r from-transparent via-emerald-500 to-teal-300 animate-header-edge-beam" />
@@ -597,7 +736,8 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
    * ----------------------------------------------------------- */
   if (navPosition === 'top') {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+      <div className={`min-h-screen ${rootBgClass} text-slate-900 flex flex-col font-sans relative`}>
+        <ThemeAmbientBackdrop appTheme={appTheme} />
 
         {/* Top Navbar (Consistent on Desktop & Mobile) */}
         <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-xs print:hidden relative">
@@ -741,7 +881,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
         </header>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="relative z-10 flex-1 flex flex-col min-w-0">
           {children}
         </div>
 
@@ -753,7 +893,8 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
    * RENDER MODE 3: FLOATING BOTTOM DOCK (DI BAWAH)
    * ----------------------------------------------------------- */
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative pb-24 print:pb-0 print:bg-white">
+    <div className={`min-h-screen ${rootBgClass} text-slate-900 flex flex-col font-sans relative pb-24 print:pb-0 print:bg-white`}>
+      <ThemeAmbientBackdrop appTheme={appTheme} />
 
       {/* Quiet Top Sub-Header (Consistent on Desktop & Mobile) */}
       <header className="bg-white/95 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6 py-2.5 shadow-xs print:hidden relative">
@@ -833,13 +974,13 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="relative z-10 flex-1 flex flex-col min-w-0">
         {children}
       </div>
 
       {/* Modern Bottom Dock (Fixed native bottom bar on mobile, floating dock on desktop) */}
       <div className="fixed bottom-0 sm:bottom-4 inset-x-0 z-50 flex justify-center pointer-events-none sm:px-3 print:hidden">
-        <div className="pointer-events-auto relative overflow-hidden w-full sm:w-auto bg-white/95 backdrop-blur-xl border-t sm:border border-slate-200/90 shadow-2xl sm:rounded-2xl px-1.5 py-1.5 sm:p-1.5 flex items-center justify-start sm:justify-center gap-1 max-w-full overflow-x-auto scrollbar-none ring-1 ring-black/5">
+        <div className="theme-glass-dock pointer-events-auto relative overflow-hidden w-full sm:w-auto bg-white/95 backdrop-blur-xl border-t sm:border border-slate-200/90 shadow-2xl sm:rounded-2xl px-1.5 py-1.5 sm:p-1.5 flex items-center justify-start sm:justify-center gap-1 max-w-full overflow-x-auto scrollbar-none ring-1 ring-black/5">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (

@@ -38,8 +38,13 @@ import {
   KeyRound,
   Eye,
   EyeOff,
+  Palette,
+  Sparkles,
+  Box,
+  Gem,
+  Orbit,
 } from 'lucide-react';
-import { CashbackSettings, CustomerMaster, Invoice, NavPosition, TierRule, CompanyProfile } from '../types/cashback';
+import { AppTheme, CashbackSettings, CustomerMaster, Invoice, NavPosition, TierRule, CompanyProfile } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
 import { ConfirmDialog } from './ConfirmDialog';
 import { AppBackupData, parseBackupJSON } from '../utils/storage';
@@ -54,6 +59,8 @@ interface SettingsModalProps {
   isSyncingWithCloud?: boolean;
   navPosition?: NavPosition;
   onChangeNavPosition?: (pos: NavPosition) => void;
+  appTheme?: AppTheme;
+  onChangeAppTheme?: (theme: AppTheme) => void;
   invoices: Invoice[];
   customers: CustomerMaster[];
   onBackupData: () => void;
@@ -71,6 +78,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isSyncingWithCloud = false,
   navPosition,
   onChangeNavPosition,
+  appTheme = 'classic',
+  onChangeAppTheme,
   invoices,
   customers,
   onBackupData,
@@ -626,6 +635,237 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <span className="text-xs font-bold text-slate-900 block">Bawah (Dock Jempol)</span>
                         <span className="text-[10px] text-slate-500">Ideal Layar HP / Mobile</span>
                       </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Visual Theme Picker (Semua Tema Berbasis 3D) */}
+              {onChangeAppTheme && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Palette className="w-4 h-4 text-emerald-600" />
+                      <span>Tema Tampilan Aplikasi (Semua 3D)</span>
+                    </label>
+                    <span className="text-[11px] font-medium text-slate-500">
+                      Berubah langsung saat dipilih
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {/* Theme 1: Klasik 3D */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeAppTheme('classic')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        appTheme === 'classic'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        {/* Mini Klasik 3D Preview */}
+                        <div className="h-12 rounded-lg bg-slate-100 border border-slate-200 p-2 mb-2.5 flex items-center gap-2">
+                          <div
+                            className="w-4 h-full rounded bg-slate-900"
+                            style={{ boxShadow: '0 2px 0 0 #334155, 0 3px 5px rgba(15,23,42,0.22)' }}
+                          />
+                          <div
+                            className="flex-1 h-full rounded bg-white border border-slate-200 p-1.5 flex flex-col justify-between transition-transform group-hover:-translate-y-0.5"
+                            style={{ boxShadow: '0 2.5px 0 0 #cbd5e1, 0 5px 8px rgba(15,23,42,0.14)' }}
+                          >
+                            <div className="h-1.5 w-3/4 rounded bg-slate-800/80" />
+                            <div className="h-1.5 w-1/2 rounded bg-emerald-500" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Palette className="w-3.5 h-3.5 text-slate-600" />
+                            Klasik 3D
+                          </span>
+                          {appTheme === 'classic' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Bersih, terang & kartu timbul 3D ringan
+                      </span>
+                    </button>
+
+                    {/* Theme 2: Glass 3D Hidup */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeAppTheme('glass')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        appTheme === 'glass'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        {/* Mini Living Glass 3D Aurora Preview */}
+                        <div className="relative h-12 rounded-lg overflow-hidden border border-white/80 bg-gradient-to-br from-emerald-100 via-sky-100 to-teal-100 p-2 mb-2.5 flex items-center gap-2 shadow-inner">
+                          <div
+                            aria-hidden="true"
+                            className="absolute -top-3 -left-2 w-10 h-10 rounded-full bg-emerald-400/50 blur-md animate-glass-orb-1"
+                          />
+                          <div
+                            aria-hidden="true"
+                            className="absolute -bottom-3 right-1 w-10 h-10 rounded-full bg-sky-400/50 blur-md animate-glass-orb-2"
+                          />
+                          <div
+                            className="relative z-10 w-4 h-full rounded bg-white/65 backdrop-blur-md border border-white/95"
+                            style={{ boxShadow: '0 2.5px 0 0 rgba(255,255,255,0.65), 0 4px 8px rgba(15,23,42,0.12)' }}
+                          />
+                          <div
+                            className="relative z-10 flex-1 h-full rounded bg-white/65 backdrop-blur-md border border-white/95 p-1.5 flex flex-col justify-between transition-transform group-hover:-translate-y-0.5"
+                            style={{ boxShadow: '0 2.5px 0 0 rgba(255,255,255,0.7), 0 5px 10px rgba(16,185,129,0.16)' }}
+                          >
+                            <div className="h-1.5 w-3/4 rounded-full bg-slate-700/75" />
+                            <div className="h-1.5 w-1/2 rounded-full bg-emerald-600/85" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                            Glass 3D Hidup
+                          </span>
+                          {appTheme === 'glass' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Kaca 3D kristal + aurora bergerak hidup
+                      </span>
+                    </button>
+
+                    {/* Theme 3: 3D Spasial */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeAppTheme('3d')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        appTheme === '3d'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        {/* Mini 3D Extruded Slab Preview */}
+                        <div className="h-12 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300/80 border border-slate-300 p-2 mb-2.5 flex items-center gap-2">
+                          <div
+                            className="w-4 h-full rounded bg-white border border-slate-300"
+                            style={{ boxShadow: '0 2.5px 0 0 #94a3b8, 0 4px 6px rgba(15,23,42,0.18)' }}
+                          />
+                          <div
+                            className="flex-1 h-full rounded bg-white border border-slate-300 p-1.5 flex flex-col justify-between transition-transform group-hover:-translate-y-0.5"
+                            style={{ boxShadow: '0 3px 0 0 #94a3b8, 0 6px 10px rgba(15,23,42,0.18)' }}
+                          >
+                            <div className="h-1.5 w-3/4 rounded bg-slate-800" />
+                            <div className="h-1.5 w-1/2 rounded bg-emerald-600" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Box className="w-3.5 h-3.5 text-indigo-600" />
+                            3D Spasial
+                          </span>
+                          {appTheme === '3d' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Panel timbul berdimensi & panggung perspektif
+                      </span>
+                    </button>
+
+                    {/* Theme 4: Glossy 3D */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeAppTheme('glossy')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        appTheme === 'glossy'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        {/* Mini Glossy 3D Lacquered Specular Preview */}
+                        <div className="relative h-12 rounded-lg overflow-hidden border border-white bg-gradient-to-br from-sky-100 via-white to-indigo-100 p-2 mb-2.5 flex items-center gap-2 shadow-inner">
+                          <div
+                            aria-hidden="true"
+                            className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/95 to-white/10 pointer-events-none"
+                          />
+                          <div
+                            className="relative z-10 w-4 h-full rounded border border-white"
+                            style={{
+                              background: 'linear-gradient(180deg, #475569 0%, #0f172a 52%, #020617 100%)',
+                              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.45), 0 2.5px 0 0 #334155, 0 4px 8px rgba(15,23,42,0.22)',
+                            }}
+                          />
+                          <div
+                            className="relative z-10 flex-1 h-full rounded border border-white p-1.5 flex flex-col justify-between transition-transform group-hover:-translate-y-0.5 overflow-hidden"
+                            style={{
+                              background: 'linear-gradient(180deg, #ffffff 0%, #ffffff 48%, #f1f5f9 100%)',
+                              boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,1), 0 3px 0 0 #cbd5e1, 0 6px 12px rgba(14,116,144,0.16)',
+                            }}
+                          >
+                            <div className="h-1.5 w-3/4 rounded-full bg-slate-800" />
+                            <div
+                              className="h-1.5 w-1/2 rounded-full"
+                              style={{ background: 'linear-gradient(180deg, #34d399 0%, #059669 100%)' }}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Gem className="w-3.5 h-3.5 text-sky-600" />
+                            Glossy 3D
+                          </span>
+                          {appTheme === 'glossy' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Kilap akrilik cermin, kilau atas & tombol jelly 3D
+                      </span>
+                    </button>
+
+                    {/* Theme 5: Full Animasi 3D */}
+                    <button
+                      type="button"
+                      onClick={() => onChangeAppTheme('motion3d')}
+                      className={`group p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                        appTheme === 'motion3d'
+                          ? 'border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        {/* Mini Full Kinetic 3D Preview */}
+                        <div className="relative h-12 rounded-lg overflow-hidden border border-white/90 bg-gradient-to-br from-slate-200 via-sky-100 to-emerald-100 p-2 mb-2.5 flex items-center gap-2 shadow-inner">
+                          <div
+                            aria-hidden="true"
+                            className="absolute -right-2 -top-2 w-10 h-10 rounded-full border border-dashed border-emerald-500/45 animate-motion3d-spin-slow"
+                          />
+                          <div
+                            className="relative z-10 w-4 h-full rounded bg-slate-900 border border-slate-700 animate-motion3d-levitate-alt"
+                            style={{ boxShadow: '0 2.5px 0 0 #334155, 0 5px 8px rgba(15,23,42,0.24)' }}
+                          />
+                          <div
+                            className="relative z-10 flex-1 h-full rounded bg-white/95 border border-white p-1.5 flex flex-col justify-between animate-motion3d-levitate"
+                            style={{ boxShadow: '0 3px 0 0 #94a3b8, 0 8px 14px rgba(16,185,129,0.2)' }}
+                          >
+                            <div className="h-1.5 w-3/4 rounded-full bg-slate-800" />
+                            <div className="h-1.5 w-1/2 rounded-full bg-emerald-500" />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Orbit className="w-3.5 h-3.5 text-emerald-600" />
+                            Full Animasi 3D
+                          </span>
+                          {appTheme === 'motion3d' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-500 leading-snug">
+                        Kartu 3D melayang hidup, cahaya sapu & latar kinetik
+                      </span>
                     </button>
                   </div>
                 </div>

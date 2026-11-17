@@ -110,8 +110,886 @@ body {
   .animate-header-edge-beam,
   .animate-sidebar-orbit,
   .animate-sidebar-aura,
-  .animate-sidebar-sheen {
+  .animate-sidebar-sheen,
+  .animate-glass-orb-1,
+  .animate-glass-orb-2,
+  .animate-glass-orb-3,
+  .animate-glass-prism,
+  .animate-stage-3d-float,
+  .animate-3d-cube-float-1,
+  .animate-3d-cube-float-2,
+  .animate-3d-cube-float-3,
+  .animate-3d-light-sweep,
+  .animate-motion3d-levitate,
+  .animate-motion3d-levitate-alt,
+  .animate-motion3d-spin-slow,
+  .animate-motion3d-sheen,
+  .animate-glossy-sheen {
     animation: none !important;
+  }
+}
+
+/* =========================================================================
+ * UNIVERSAL REALISTIC 3D ENGINE (Applies tactile 3D depth to ALL themes)
+ * ========================================================================= */
+@keyframes stage-3d-float {
+  0%, 100% {
+    transform: perspective(950px) rotateX(64deg) rotateZ(-14deg) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: perspective(950px) rotateX(61deg) rotateZ(-10deg) translate3d(0, -12px, 0);
+  }
+}
+
+@keyframes cube-3d-float-1 {
+  0%, 100% {
+    transform: perspective(800px) rotateX(22deg) rotateY(-24deg) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: perspective(800px) rotateX(28deg) rotateY(-12deg) translate3d(12px, -16px, 0);
+  }
+}
+
+@keyframes cube-3d-float-2 {
+  0%, 100% {
+    transform: perspective(800px) rotateX(-18deg) rotateY(22deg) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: perspective(800px) rotateX(-12deg) rotateY(30deg) translate3d(-14px, 14px, 0);
+  }
+}
+
+@keyframes cube-3d-float-3 {
+  0%, 100% {
+    transform: perspective(800px) rotateX(16deg) rotateY(18deg) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: perspective(800px) rotateX(24deg) rotateY(6deg) translate3d(8px, -12px, 0);
+  }
+}
+
+@keyframes studio-light-sweep {
+  0%, 100% {
+    transform: translate3d(-15%, -8%, 0) rotate(-8deg);
+    opacity: 0.38;
+  }
+  50% {
+    transform: translate3d(18%, 6%, 0) rotate(-4deg);
+    opacity: 0.65;
+  }
+}
+
+.animate-stage-3d-float {
+  animation: stage-3d-float 16s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-3d-cube-float-1 {
+  animation: cube-3d-float-1 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-3d-cube-float-2 {
+  animation: cube-3d-float-2 17s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-3d-cube-float-3 {
+  animation: cube-3d-float-3 15s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-3d-light-sweep {
+  animation: studio-light-sweep 13s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* 3D Isometric floating cube visual helper */
+.theme-3d-prism {
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 0.95),
+    inset -3px -5px 8px rgba(148, 163, 184, 0.25),
+    0 18px 36px -10px rgba(15, 23, 42, 0.16),
+    0 6px 0 -1px rgba(203, 213, 225, 0.75);
+}
+
+/* Tactile 3D Push-Down Keycap Buttons across ALL themes */
+button:not(:disabled).bg-slate-900,
+button:not(:disabled).bg-emerald-600,
+button:not(:disabled).bg-rose-600,
+button:not(:disabled).bg-red-600,
+button:not(:disabled).bg-amber-500,
+button:not(:disabled).bg-amber-600 {
+  box-shadow:
+    0 3.5px 0 0 rgba(15, 23, 42, 0.34),
+    0 9px 18px -5px rgba(15, 23, 42, 0.26),
+    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.18);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease, background-color 0.15s ease;
+}
+
+button:not(:disabled).bg-slate-900:hover,
+button:not(:disabled).bg-emerald-600:hover,
+button:not(:disabled).bg-rose-600:hover,
+button:not(:disabled).bg-red-600:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4.5px 0 0 rgba(15, 23, 42, 0.34),
+    0 12px 22px -6px rgba(15, 23, 42, 0.3),
+    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.34);
+}
+
+button:not(:disabled).border.bg-white,
+button:not(:disabled).border.bg-slate-50,
+button:not(:disabled).border.bg-slate-100,
+button:not(:disabled).border.bg-emerald-50,
+button:not(:disabled).border.bg-amber-50,
+button:not(:disabled).border.bg-amber-100,
+button:not(:disabled).border.bg-rose-50 {
+  box-shadow:
+    0 3px 0 0 rgba(148, 163, 184, 0.48),
+    0 6px 12px -4px rgba(15, 23, 42, 0.13),
+    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.96);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease, background-color 0.15s ease;
+}
+
+button:not(:disabled).border.bg-white:hover,
+button:not(:disabled).border.bg-slate-50:hover,
+button:not(:disabled).border.bg-slate-100:hover,
+button:not(:disabled).border.bg-emerald-50:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 0 0 rgba(148, 163, 184, 0.52),
+    0 8px 16px -4px rgba(15, 23, 42, 0.16),
+    inset 0 1.5px 0 0 rgba(255, 255, 255, 1);
+}
+
+button:not(:disabled).bg-slate-900:active,
+button:not(:disabled).bg-emerald-600:active,
+button:not(:disabled).bg-rose-600:active,
+button:not(:disabled).bg-red-600:active,
+button:not(:disabled).bg-amber-500:active,
+button:not(:disabled).bg-amber-600:active,
+button:not(:disabled).border.bg-white:active,
+button:not(:disabled).border.bg-slate-50:active,
+button:not(:disabled).border.bg-slate-100:active,
+button:not(:disabled).border.bg-emerald-50:active,
+button:not(:disabled).border.bg-amber-50:active,
+button:not(:disabled).border.bg-amber-100:active,
+button:not(:disabled).border.bg-rose-50:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 1px 0 0 rgba(15, 23, 42, 0.2),
+    0 2px 4px -2px rgba(15, 23, 42, 0.14);
+}
+
+/* 3D Recessed Control Wells (Inputs, Selects, Textareas) */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select,
+textarea {
+  box-shadow:
+    inset 0 2px 5px rgba(15, 23, 42, 0.08),
+    inset 0 1px 1.5px rgba(15, 23, 42, 0.05),
+    0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.2),
+    inset 0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 12px -4px rgba(16, 185, 129, 0.16);
+}
+
+/* Subtle 3D Embossed Icon Wells inside Dashboard & Cards */
+main .bg-white .p-2.rounded-xl,
+main .bg-white .p-2\.5.rounded-xl,
+main .bg-white .p-2.rounded-lg {
+  box-shadow:
+    0 2.5px 0 0 rgba(148, 163, 184, 0.28),
+    0 5px 10px -4px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+}
+
+/* =========================================================================
+ * THEME 1: KLASIK 3D (Default / [data-theme="classic"])
+ * Realistic matte ceramic 3D slabs with soft ambient studio lighting
+ * ========================================================================= */
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) body {
+  background: linear-gradient(155deg, #e7edf5 0%, #f8fafc 52%, #e4ebf4 100%);
+  color: #0f172a;
+}
+
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) header {
+  background: linear-gradient(180deg, #ffffff 0%, #f6f9fc 100%) !important;
+  box-shadow:
+    0 4px 0 0 rgba(203, 213, 225, 0.72),
+    0 16px 32px -12px rgba(15, 23, 42, 0.15),
+    inset 0 1.5px 0 0 #ffffff !important;
+}
+
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) aside {
+  background: linear-gradient(180deg, #ffffff 0%, #f6f9fc 100%) !important;
+  box-shadow:
+    5px 0 0 0 rgba(203, 213, 225, 0.58),
+    16px 0 36px -14px rgba(15, 23, 42, 0.16),
+    inset -1.5px 0 0 0 #ffffff !important;
+}
+
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) .theme-glass-dock {
+  background: linear-gradient(180deg, #ffffff 0%, #f6f9fc 100%) !important;
+  border-color: #cbd5e1 !important;
+  box-shadow:
+    0 5px 0 0 rgba(203, 213, 225, 0.88),
+    0 20px 40px -12px rgba(15, 23, 42, 0.24),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white.rounded-xl,
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white.rounded-2xl,
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white\/95.rounded-xl,
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white\/95.rounded-2xl,
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) footer {
+  background: linear-gradient(165deg, #ffffff 0%, #f8fafc 68%, #f1f5f9 100%) !important;
+  border-color: #cbd5e1 !important;
+  box-shadow:
+    0 4.5px 0 0 rgba(203, 213, 225, 0.85),
+    0 2px 4px rgba(15, 23, 42, 0.08),
+    0 18px 34px -12px rgba(15, 23, 42, 0.16),
+    inset 0 2px 0 0 #ffffff,
+    inset 0 -1px 0 0 rgba(148, 163, 184, 0.2) !important;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white.rounded-xl:hover,
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-white.rounded-2xl:hover {
+  transform: perspective(1100px) translateY(-3px) rotateX(0.8deg);
+  box-shadow:
+    0 7px 0 0 #cbd5e1,
+    0 24px 40px -12px rgba(15, 23, 42, 0.2),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-slate-900.rounded-xl,
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) main .bg-slate-900.rounded-2xl {
+  box-shadow:
+    0 6px 0 0 #020617,
+    0 22px 40px -10px rgba(15, 23, 42, 0.38),
+    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) div.fixed .bg-white.rounded-xl,
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) div.fixed .bg-white.rounded-2xl,
+:root:not([data-theme="glass"]):not([data-theme="3d"]):not([data-theme="glossy"]):not([data-theme="motion3d"]) div.fixed .bg-white.sm\:rounded-2xl {
+  background: linear-gradient(175deg, #ffffff 0%, #f8fafc 100%) !important;
+  box-shadow:
+    0 7px 0 0 #cbd5e1,
+    0 30px 60px -14px rgba(15, 23, 42, 0.34),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+/* =========================================================================
+ * THEME 2: GLASS 3D HIDUP ([data-theme="glass"])
+ * Crystal beveled 3D glass slabs + refractive top rim + living aurora
+ * ========================================================================= */
+@keyframes glass-orb-drift-1 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.75;
+  }
+  33% {
+    transform: translate3d(6vw, 4vh, 0) scale(1.09);
+    opacity: 0.92;
+  }
+  66% {
+    transform: translate3d(-4vw, 7vh, 0) scale(0.95);
+    opacity: 0.7;
+  }
+}
+
+@keyframes glass-orb-drift-2 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.72;
+  }
+  40% {
+    transform: translate3d(-7vw, -5vh, 0) scale(1.12);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translate3d(4vw, -3vh, 0) scale(0.96);
+    opacity: 0.68;
+  }
+}
+
+@keyframes glass-orb-drift-3 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(0.98) rotate(0deg);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate3d(5vw, -6vh, 0) scale(1.14) rotate(18deg);
+    opacity: 0.86;
+  }
+}
+
+@keyframes glass-prism-sweep {
+  0% {
+    transform: translate3d(-30%, -10%, 0) rotate(-14deg);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translate3d(25%, 10%, 0) rotate(-10deg);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate3d(-30%, -10%, 0) rotate(-14deg);
+    opacity: 0.3;
+  }
+}
+
+.animate-glass-orb-1 {
+  animation: glass-orb-drift-1 16s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-glass-orb-2 {
+  animation: glass-orb-drift-2 20s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-glass-orb-3 {
+  animation: glass-orb-drift-3 18s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-glass-prism {
+  animation: glass-prism-sweep 14s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+:root[data-theme="glass"] body {
+  background: linear-gradient(135deg, #ecf7f5 0%, #eff6ff 50%, #ecfdf5 100%);
+  color: #0f172a;
+}
+
+:root[data-theme="glass"] header,
+:root[data-theme="glass"] .theme-glass-dock {
+  background: linear-gradient(170deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.52) 100%) !important;
+  backdrop-filter: blur(22px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(190%) !important;
+  border-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow:
+    0 5px 0 0 rgba(255, 255, 255, 0.56),
+    0 6px 0 0 rgba(16, 185, 129, 0.14),
+    0 20px 40px -12px rgba(15, 23, 42, 0.18),
+    inset 0 2px 0 0 rgba(255, 255, 255, 1) !important;
+}
+
+:root[data-theme="glass"] aside {
+  background: linear-gradient(175deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.54) 100%) !important;
+  backdrop-filter: blur(22px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(190%) !important;
+  border-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow:
+    5px 0 0 0 rgba(255, 255, 255, 0.5),
+    18px 0 40px -14px rgba(15, 23, 42, 0.18),
+    inset -2px 0 0 0 rgba(255, 255, 255, 0.98) !important;
+}
+
+:root[data-theme="glass"] main .bg-white,
+:root[data-theme="glass"] main .bg-white\/95,
+:root[data-theme="glass"] main .bg-white\/90,
+:root[data-theme="glass"] main .bg-white\/80,
+:root[data-theme="glass"] footer {
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.74) 0%, rgba(255, 255, 255, 0.54) 100%) !important;
+  backdrop-filter: blur(20px) saturate(185%);
+  -webkit-backdrop-filter: blur(20px) saturate(185%);
+  border-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow:
+    0 4.5px 0 0 rgba(255, 255, 255, 0.58),
+    0 6px 0 0 rgba(148, 163, 184, 0.28),
+    0 20px 38px -12px rgba(15, 23, 42, 0.16),
+    inset 0 2px 0 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 0 rgba(16, 185, 129, 0.14);
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.24s ease, background 0.24s ease;
+}
+
+:root[data-theme="glass"] main .bg-slate-900.rounded-xl,
+:root[data-theme="glass"] main .bg-slate-900.rounded-2xl {
+  background-color: rgba(15, 23, 42, 0.88) !important;
+  backdrop-filter: blur(18px) saturate(165%);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
+  box-shadow:
+    0 6px 0 0 rgba(15, 23, 42, 0.6),
+    0 22px 40px -10px rgba(15, 23, 42, 0.36),
+    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.24);
+}
+
+:root[data-theme="glass"] div.fixed .bg-white,
+:root[data-theme="glass"] div.fixed .bg-white\/95 {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.78) 100%) !important;
+  backdrop-filter: blur(24px) saturate(185%);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
+  border-color: rgba(255, 255, 255, 0.96) !important;
+  box-shadow:
+    0 6px 0 0 rgba(255, 255, 255, 0.58),
+    0 8px 0 0 rgba(148, 163, 184, 0.32),
+    0 30px 64px -14px rgba(15, 23, 42, 0.3),
+    inset 0 2px 0 0 rgba(255, 255, 255, 1);
+}
+
+:root[data-theme="glass"] main .bg-slate-50,
+:root[data-theme="glass"] main .bg-slate-50\/70,
+:root[data-theme="glass"] main .bg-slate-50\/80,
+:root[data-theme="glass"] aside .bg-slate-50\/70,
+:root[data-theme="glass"] div.fixed .bg-slate-50,
+:root[data-theme="glass"] div.fixed .bg-slate-50\/80 {
+  background-color: rgba(248, 250, 252, 0.58) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+:root[data-theme="glass"] main .rounded-xl.bg-white:hover,
+:root[data-theme="glass"] main .rounded-2xl.bg-white:hover {
+  transform: perspective(1100px) translateY(-3px) rotateX(0.9deg);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.84) 0%, rgba(255, 255, 255, 0.66) 100%) !important;
+  box-shadow:
+    0 6.5px 0 0 rgba(255, 255, 255, 0.64),
+    0 8px 0 0 rgba(16, 185, 129, 0.24),
+    0 24px 46px -12px rgba(16, 185, 129, 0.22),
+    inset 0 2px 0 0 rgba(255, 255, 255, 1);
+}
+
+:root[data-theme="glass"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+:root[data-theme="glass"] select,
+:root[data-theme="glass"] textarea {
+  background-color: rgba(255, 255, 255, 0.74) !important;
+  border-color: rgba(203, 213, 225, 0.82) !important;
+}
+
+:root[data-theme="glass"] input:not([type="checkbox"]):not([type="radio"]):focus,
+:root[data-theme="glass"] select:focus,
+:root[data-theme="glass"] textarea:focus {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* =========================================================================
+ * THEME 3: 3D SPASIAL ([data-theme="3d"])
+ * Realistic sculpted multi-layered physical 3D slabs & studio lighting
+ * ========================================================================= */
+:root[data-theme="3d"] body {
+  background: linear-gradient(155deg, #dce5f0 0%, #eef3f8 48%, #d6e0ec 100%);
+  color: #0f172a;
+}
+
+:root[data-theme="3d"] header {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  box-shadow:
+    0 6px 0 0 #cbd5e1,
+    0 22px 40px -12px rgba(15, 23, 42, 0.2),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="3d"] aside {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+  box-shadow:
+    6px 0 0 0 #cbd5e1,
+    22px 0 44px -14px rgba(15, 23, 42, 0.2),
+    inset -2px 0 0 0 #ffffff !important;
+}
+
+:root[data-theme="3d"] .theme-glass-dock {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow:
+    0 7px 0 0 #cbd5e1,
+    0 26px 48px -12px rgba(15, 23, 42, 0.28),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="3d"] main .bg-white.rounded-xl,
+:root[data-theme="3d"] main .bg-white.rounded-2xl,
+:root[data-theme="3d"] main .bg-white\/95.rounded-xl,
+:root[data-theme="3d"] main .bg-white\/95.rounded-2xl,
+:root[data-theme="3d"] footer {
+  background: linear-gradient(160deg, #ffffff 0%, #f8fafc 60%, #eef2f7 100%) !important;
+  border-color: #cbd5e1 !important;
+  box-shadow:
+    0 6px 0 0 #cbd5e1,
+    0 7px 0 0 rgba(148, 163, 184, 0.45),
+    0 22px 38px -12px rgba(15, 23, 42, 0.2),
+    inset 0 2px 0 0 #ffffff,
+    inset 0 -1.5px 0 0 rgba(148, 163, 184, 0.28) !important;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="3d"] main .bg-white.rounded-xl:hover,
+:root[data-theme="3d"] main .bg-white.rounded-2xl:hover {
+  transform: perspective(1100px) translateY(-4px) rotateX(1.2deg);
+  box-shadow:
+    0 8px 0 0 #94a3b8,
+    0 9px 0 0 rgba(100, 116, 139, 0.35),
+    0 28px 46px -12px rgba(15, 23, 42, 0.25),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="3d"] main .bg-slate-900.rounded-xl,
+:root[data-theme="3d"] main .bg-slate-900.rounded-2xl {
+  background: linear-gradient(165deg, #1e293b 0%, #0f172a 70%, #020617 100%) !important;
+  box-shadow:
+    0 7px 0 0 #020617,
+    0 24px 44px -10px rgba(15, 23, 42, 0.44),
+    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.24);
+}
+
+:root[data-theme="3d"] div.fixed .bg-white.rounded-xl,
+:root[data-theme="3d"] div.fixed .bg-white.rounded-2xl,
+:root[data-theme="3d"] div.fixed .bg-white.sm\:rounded-2xl {
+  background: linear-gradient(170deg, #ffffff 0%, #f4f7fb 100%) !important;
+  border-color: #cbd5e1 !important;
+  box-shadow:
+    0 8px 0 0 #cbd5e1,
+    0 32px 68px -14px rgba(15, 23, 42, 0.38),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="3d"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+:root[data-theme="3d"] select,
+:root[data-theme="3d"] textarea {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+:root[data-theme="3d"] input:not([type="checkbox"]):not([type="radio"]):focus,
+:root[data-theme="3d"] select:focus,
+:root[data-theme="3d"] textarea:focus {
+  background-color: #ffffff !important;
+}
+
+/* =========================================================================
+ * THEME 4: GLOSSY 3D ([data-theme="glossy"])
+ * High-gloss lacquered acrylic 3D finish with crisp wet specular bands
+ * ========================================================================= */
+@keyframes glossy-sheen-glide {
+  0% {
+    transform: translate3d(-135%, 0, 0) skewX(-20deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.65;
+  }
+  55%, 100% {
+    transform: translate3d(230%, 0, 0) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+.animate-glossy-sheen {
+  animation: glossy-sheen-glide 6.5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  will-change: transform, opacity;
+}
+
+:root[data-theme="glossy"] body {
+  background: linear-gradient(150deg, #e0ecff 0%, #f4f8ff 46%, #dcf5ee 100%);
+  color: #0f172a;
+}
+
+/* Wet-gloss glazed navigation shells */
+:root[data-theme="glossy"] header,
+:root[data-theme="glossy"] .theme-glass-dock {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.94) 44%, rgba(235, 243, 252, 0.9) 46%, rgba(255, 255, 255, 0.96) 100%) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+  border-color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow:
+    0 5px 0 0 rgba(148, 163, 184, 0.55),
+    0 18px 38px -10px rgba(15, 23, 42, 0.18),
+    inset 0 2px 0 0 #ffffff,
+    inset 0 18px 18px -12px rgba(255, 255, 255, 0.95) !important;
+}
+
+:root[data-theme="glossy"] aside {
+  background: linear-gradient(165deg, #ffffff 0%, #f8fbff 52%, #edf4fc 100%) !important;
+  border-color: #ffffff !important;
+  box-shadow:
+    6px 0 0 0 rgba(148, 163, 184, 0.45),
+    20px 0 42px -12px rgba(15, 23, 42, 0.18),
+    inset -2px 0 0 0 #ffffff !important;
+}
+
+/* Porcelain/Acrylic Glossy 3D Cards inside main & footer */
+:root[data-theme="glossy"] main .bg-white.rounded-xl,
+:root[data-theme="glossy"] main .bg-white.rounded-2xl,
+:root[data-theme="glossy"] main .bg-white\/95.rounded-xl,
+:root[data-theme="glossy"] main .bg-white\/95.rounded-2xl,
+:root[data-theme="glossy"] footer {
+  background: linear-gradient(178deg, #ffffff 0%, rgba(255, 255, 255, 0.97) 36%, rgba(241, 246, 252, 0.92) 37%, #ffffff 100%) !important;
+  border-color: rgba(255, 255, 255, 0.98) !important;
+  box-shadow:
+    0 5px 0 0 #cbd5e1,
+    0 6px 0 0 rgba(148, 163, 184, 0.32),
+    0 20px 38px -12px rgba(15, 23, 42, 0.17),
+    inset 0 2.5px 0 0 #ffffff,
+    inset 0 22px 24px -18px rgba(255, 255, 255, 1),
+    inset 0 -2px 0 0 rgba(148, 163, 184, 0.22) !important;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="glossy"] main .bg-white.rounded-xl:hover,
+:root[data-theme="glossy"] main .bg-white.rounded-2xl:hover {
+  transform: perspective(1100px) translateY(-4px) rotateX(1.1deg);
+  box-shadow:
+    0 7px 0 0 #94a3b8,
+    0 8px 0 0 rgba(16, 185, 129, 0.18),
+    0 26px 46px -12px rgba(15, 23, 42, 0.22),
+    inset 0 2.5px 0 0 #ffffff,
+    inset 0 26px 26px -18px rgba(255, 255, 255, 1) !important;
+}
+
+/* Piano-Black Lacquered 3D Summary Slabs */
+:root[data-theme="glossy"] main .bg-slate-900.rounded-xl,
+:root[data-theme="glossy"] main .bg-slate-900.rounded-2xl {
+  background: linear-gradient(178deg, #334155 0%, #1e293b 34%, #0f172a 36%, #020617 100%) !important;
+  box-shadow:
+    0 6px 0 0 #020617,
+    0 22px 42px -10px rgba(15, 23, 42, 0.42),
+    inset 0 2px 0 0 rgba(255, 255, 255, 0.38),
+    inset 0 18px 20px -16px rgba(255, 255, 255, 0.28);
+}
+
+/* Glossy 3D Solid Gel Buttons */
+:root[data-theme="glossy"] button:not(:disabled).bg-slate-900 {
+  background: linear-gradient(180deg, #334155 0%, #1e293b 46%, #0f172a 48%, #020617 100%) !important;
+  box-shadow:
+    0 4px 0 0 #020617,
+    0 10px 20px -5px rgba(15, 23, 42, 0.35),
+    inset 0 2px 0 0 rgba(255, 255, 255, 0.36);
+}
+
+:root[data-theme="glossy"] button:not(:disabled).bg-emerald-600 {
+  background: linear-gradient(180deg, #34d399 0%, #10b981 44%, #059669 47%, #047857 100%) !important;
+  box-shadow:
+    0 4px 0 0 #065f46,
+    0 10px 20px -5px rgba(5, 150, 105, 0.38),
+    inset 0 2px 0 0 rgba(255, 255, 255, 0.55);
+}
+
+:root[data-theme="glossy"] button:not(:disabled).bg-rose-600,
+:root[data-theme="glossy"] button:not(:disabled).bg-red-600 {
+  background: linear-gradient(180deg, #fb7185 0%, #f43f5e 44%, #e11d48 47%, #be123c 100%) !important;
+  box-shadow:
+    0 4px 0 0 #881337,
+    0 10px 20px -5px rgba(225, 29, 72, 0.35),
+    inset 0 2px 0 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Glossy Modals */
+:root[data-theme="glossy"] div.fixed .bg-white.rounded-xl,
+:root[data-theme="glossy"] div.fixed .bg-white.rounded-2xl,
+:root[data-theme="glossy"] div.fixed .bg-white.sm\:rounded-2xl {
+  background: linear-gradient(178deg, #ffffff 0%, #f7faff 40%, #eef4fb 100%) !important;
+  border-color: #ffffff !important;
+  box-shadow:
+    0 7px 0 0 #cbd5e1,
+    0 32px 68px -14px rgba(15, 23, 42, 0.36),
+    inset 0 2.5px 0 0 #ffffff !important;
+}
+
+/* =========================================================================
+ * THEME 5: FULL ANIMASI 3D ([data-theme="motion3d"])
+ * Dynamic living 3D motion: levitating diorama, sweeping specular glints & spatial parallax
+ * ========================================================================= */
+@keyframes motion3d-levitate {
+  0%, 100% {
+    transform: perspective(1100px) translate3d(0, 0, 0) rotateX(0deg);
+  }
+  50% {
+    transform: perspective(1100px) translate3d(0, -3.5px, 0) rotateX(0.8deg);
+  }
+}
+
+@keyframes motion3d-levitate-alt {
+  0%, 100% {
+    transform: perspective(1100px) translate3d(0, -2px, 0) rotateX(0.4deg);
+  }
+  50% {
+    transform: perspective(1100px) translate3d(0, 1.5px, 0) rotateX(0deg);
+  }
+}
+
+@keyframes motion3d-spin-slow {
+  0% {
+    transform: perspective(1000px) rotateX(68deg) rotateZ(0deg);
+  }
+  100% {
+    transform: perspective(1000px) rotateX(68deg) rotateZ(360deg);
+  }
+}
+
+@keyframes motion3d-sheen-sweep {
+  0% {
+    transform: translate3d(-150%, 0, 0) skewX(-22deg);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.55;
+  }
+  42%, 100% {
+    transform: translate3d(240%, 0, 0) skewX(-22deg);
+    opacity: 0;
+  }
+}
+
+.animate-motion3d-levitate {
+  animation: motion3d-levitate 5.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-motion3d-levitate-alt {
+  animation: motion3d-levitate-alt 6.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-motion3d-spin-slow {
+  animation: motion3d-spin-slow 24s linear infinite;
+  will-change: transform;
+}
+
+.animate-motion3d-sheen {
+  animation: motion3d-sheen-sweep 5.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  will-change: transform, opacity;
+}
+
+:root[data-theme="motion3d"] body {
+  background: linear-gradient(145deg, #dff2ee 0%, #e7f0fb 48%, #dde7f4 100%);
+  color: #0f172a;
+}
+
+:root[data-theme="motion3d"] header,
+:root[data-theme="motion3d"] .theme-glass-dock {
+  background: linear-gradient(175deg, rgba(255, 255, 255, 0.9) 0%, rgba(244, 249, 255, 0.82) 100%) !important;
+  backdrop-filter: blur(20px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(185%) !important;
+  border-color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow:
+    0 6px 0 0 rgba(148, 163, 184, 0.52),
+    0 20px 42px -12px rgba(15, 23, 42, 0.2),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+:root[data-theme="motion3d"] aside {
+  background: linear-gradient(175deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 249, 255, 0.84) 100%) !important;
+  backdrop-filter: blur(20px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(185%) !important;
+  border-color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow:
+    6px 0 0 0 rgba(148, 163, 184, 0.48),
+    20px 0 44px -12px rgba(15, 23, 42, 0.2),
+    inset -2px 0 0 0 #ffffff !important;
+}
+
+/* Floating 3D Cards + Live Sweeping Highlight on overflow-hidden cards */
+:root[data-theme="motion3d"] main .bg-white.rounded-xl,
+:root[data-theme="motion3d"] main .bg-white.rounded-2xl,
+:root[data-theme="motion3d"] main .bg-white\/95.rounded-xl,
+:root[data-theme="motion3d"] main .bg-white\/95.rounded-2xl,
+:root[data-theme="motion3d"] footer {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 250, 255, 0.86) 100%) !important;
+  backdrop-filter: blur(14px) saturate(170%);
+  -webkit-backdrop-filter: blur(14px) saturate(170%);
+  border-color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow:
+    0 6px 0 0 #cbd5e1,
+    0 7px 0 0 rgba(16, 185, 129, 0.14),
+    0 22px 42px -12px rgba(15, 23, 42, 0.2),
+    inset 0 2px 0 0 #ffffff !important;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Buoyant animated 3D levitation on KPI display cards inside Dashboard/Summary grids */
+:root[data-theme="motion3d"] main .grid > div.bg-white.rounded-xl:nth-child(odd),
+:root[data-theme="motion3d"] main .grid > div.bg-white.rounded-2xl:nth-child(odd) {
+  animation: motion3d-levitate 5.8s ease-in-out infinite;
+}
+
+:root[data-theme="motion3d"] main .grid > div.bg-white.rounded-xl:nth-child(even),
+:root[data-theme="motion3d"] main .grid > div.bg-white.rounded-2xl:nth-child(even) {
+  animation: motion3d-levitate-alt 6.4s ease-in-out infinite;
+}
+
+:root[data-theme="motion3d"] main .bg-white.rounded-xl:hover,
+:root[data-theme="motion3d"] main .bg-white.rounded-2xl:hover {
+  animation-play-state: paused;
+  transform: perspective(1100px) translateY(-5px) rotateX(1.6deg) !important;
+  box-shadow:
+    0 8px 0 0 #94a3b8,
+    0 10px 0 0 rgba(16, 185, 129, 0.22),
+    0 28px 50px -12px rgba(15, 23, 42, 0.26),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+/* Sweeping diagonal specular light beam across Hero / Banner cards */
+:root[data-theme="motion3d"] main .bg-slate-900.rounded-xl,
+:root[data-theme="motion3d"] main .bg-slate-900.rounded-2xl {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(155deg, #1e293b 0%, #0f172a 65%, #020617 100%) !important;
+  box-shadow:
+    0 7px 0 0 #020617,
+    0 24px 46px -10px rgba(15, 23, 42, 0.44),
+    inset 0 1.5px 0 0 rgba(255, 255, 255, 0.25);
+}
+
+:root[data-theme="motion3d"] main .bg-slate-900.rounded-xl::after,
+:root[data-theme="motion3d"] main .bg-slate-900.rounded-2xl::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), rgba(52, 211, 153, 0.16), transparent);
+  pointer-events: none;
+  animation: motion3d-sheen-sweep 5.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+:root[data-theme="motion3d"] div.fixed .bg-white.rounded-xl,
+:root[data-theme="motion3d"] div.fixed .bg-white.rounded-2xl,
+:root[data-theme="motion3d"] div.fixed .bg-white.sm\:rounded-2xl {
+  background: linear-gradient(170deg, rgba(255, 255, 255, 0.96) 0%, rgba(242, 247, 253, 0.92) 100%) !important;
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.96) !important;
+  box-shadow:
+    0 8px 0 0 #cbd5e1,
+    0 32px 68px -14px rgba(15, 23, 42, 0.36),
+    inset 0 2px 0 0 #ffffff !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="motion3d"] main .grid > div.bg-white.rounded-xl,
+  :root[data-theme="motion3d"] main .grid > div.bg-white.rounded-2xl,
+  :root[data-theme="motion3d"] main .bg-slate-900.rounded-xl::after,
+  :root[data-theme="motion3d"] main .bg-slate-900.rounded-2xl::after {
+    animation: none !important;
+  }
+}
+
+/* Force clean white flat presentation during printing regardless of active theme */
+@media print {
+  body,
+  main .bg-white,
+  div.fixed .bg-white,
+  header,
+  aside,
+  footer {
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    transform: none !important;
   }
 }
 
