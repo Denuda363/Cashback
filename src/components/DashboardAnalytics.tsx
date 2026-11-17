@@ -121,13 +121,17 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
     return Math.max(...monthlyTrend.map((m) => m.cashback), 1);
   }, [monthlyTrend]);
 
+  const safeTrendPage = useMemo(() => {
+    if (trendRowsPerPage === 'all') return 1;
+    const totalPages = Math.max(1, Math.ceil(monthlyTrend.length / trendRowsPerPage));
+    return Math.min(Math.max(1, trendPage), totalPages);
+  }, [monthlyTrend.length, trendRowsPerPage, trendPage]);
+
   const paginatedTrend = useMemo(() => {
     if (trendRowsPerPage === 'all') return monthlyTrend;
-    const totalPages = Math.max(1, Math.ceil(monthlyTrend.length / trendRowsPerPage));
-    const safePage = Math.min(Math.max(1, trendPage), totalPages);
-    const start = (safePage - 1) * trendRowsPerPage;
+    const start = (safeTrendPage - 1) * trendRowsPerPage;
     return monthlyTrend.slice(start, start + trendRowsPerPage);
-  }, [monthlyTrend, trendRowsPerPage, trendPage]);
+  }, [monthlyTrend, trendRowsPerPage, safeTrendPage]);
 
   const top3Customers = useMemo(() => {
     return customerSummaries
@@ -418,7 +422,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                   <PaginationBar
                     totalItems={monthlyTrend.length}
                     rowsPerPage={trendRowsPerPage}
-                    currentPage={trendPage}
+                    currentPage={safeTrendPage}
                     onChangeRowsPerPage={(rows) => {
                       setTrendRowsPerPage(rows);
                       setTrendPage(1);

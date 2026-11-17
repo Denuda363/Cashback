@@ -1229,7 +1229,9 @@ export default function App() {
     batchUpdateInvoicesInFirestore(updatedInvoices).catch((err) => console.warn('Firestore batch recalc:', err));
 
     showToast(
-      `Pengaturan disimpan ke cloud! Persentase cashback diatur ke ${newSettings.flatPercentage}%. Semua ${updatedInvoices.length} faktur otomatis sinkron!`
+      newSettings.mode === 'tiered'
+        ? `Pengaturan disimpan ke cloud! Mode Cashback Bertingkat (Tiered) aktif. Semua ${updatedInvoices.length} faktur otomatis sinkron!`
+        : `Pengaturan disimpan ke cloud! Persentase cashback diatur ke ${newSettings.flatPercentage}%. Semua ${updatedInvoices.length} faktur otomatis sinkron!`
     );
   };
 
@@ -1329,6 +1331,7 @@ export default function App() {
   };
 
   return (
+    <>
     <SmartNavigation
       activeTab={effectiveActiveTab}
       setActiveTab={(tab) => {
@@ -1640,6 +1643,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+    </SmartNavigation>
 
       {/* Admin-Only Modals */}
       {appRole === 'admin' && (
@@ -1777,7 +1781,6 @@ export default function App() {
 
       {/* Real-time Connectivity Indicator */}
       <OfflineIndicator />
-
-    </SmartNavigation>
+    </>
   );
 }

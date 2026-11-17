@@ -49,7 +49,7 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
     return (
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+        className="fixed inset-0 -z-10 pointer-events-none overflow-hidden print:hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/90 via-sky-50/85 to-teal-50/90" />
         {/* Living drifting luminous aurora orbs */}
@@ -70,7 +70,7 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
     return (
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+        className="fixed inset-0 -z-10 pointer-events-none overflow-hidden print:hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-slate-200/85 via-slate-100 to-slate-200/90" />
         {/* Studio directional top-left key light */}
@@ -98,7 +98,7 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
     return (
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+        className="fixed inset-0 -z-10 pointer-events-none overflow-hidden print:hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-sky-50/95 via-white to-indigo-50/85" />
         {/* Top studio key specular reflection */}
@@ -130,7 +130,7 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
     return (
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+        className="fixed inset-0 -z-10 pointer-events-none overflow-hidden print:hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-slate-200/90 via-sky-50/85 to-emerald-50/85" />
         {/* Multi-layered drifting kinetic light spheres */}
@@ -168,7 +168,7 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
     return (
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+        className="fixed inset-0 -z-10 pointer-events-none overflow-hidden print:hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-slate-200/95 via-slate-100 to-slate-200" />
         {/* Soft sculpted clay dome highlights */}
@@ -183,7 +183,7 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
     return (
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+        className="fixed inset-0 -z-10 pointer-events-none overflow-hidden print:hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/90 via-amber-50/55 to-stone-100/90" />
         <div className="absolute -top-32 -left-24 w-[460px] h-[460px] rounded-full bg-gradient-to-br from-amber-200/45 via-emerald-100/35 to-transparent blur-3xl animate-glass-orb-1" />
@@ -199,7 +199,7 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
     return (
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+        className="fixed inset-0 -z-10 pointer-events-none overflow-hidden print:hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/85 via-sky-50/90 to-emerald-50/85" />
         <div className="absolute -top-28 -left-20 w-[44vw] h-[44vw] max-w-[540px] max-h-[540px] rounded-full bg-gradient-to-br from-indigo-300/35 via-sky-200/35 to-transparent blur-3xl animate-glass-orb-1" />
@@ -221,7 +221,7 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
     return (
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+        className="fixed inset-0 -z-10 pointer-events-none overflow-hidden print:hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-slate-300/75 via-slate-200/85 to-slate-300/90" />
         <div className="absolute -top-36 -left-32 w-[540px] h-[540px] rounded-full bg-radial from-white/90 via-white/35 to-transparent blur-2xl" />
@@ -243,7 +243,7 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
     return (
       <div
         aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+        className="fixed inset-0 -z-10 pointer-events-none overflow-hidden print:hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-orange-50/95 via-amber-50/75 to-stone-100/90" />
         <div className="absolute -top-28 -left-24 w-[460px] h-[460px] rounded-full bg-gradient-to-br from-orange-200/45 via-amber-100/40 to-transparent blur-3xl animate-glass-orb-1" />
@@ -258,7 +258,7 @@ const ThemeAmbientBackdrop: React.FC<{ appTheme: AppTheme }> = ({ appTheme }) =>
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 z-0 pointer-events-none overflow-hidden print:hidden"
+      className="fixed inset-0 -z-10 pointer-events-none overflow-hidden print:hidden"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-slate-100/95 via-slate-50 to-slate-200/70" />
       <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-radial from-white/95 via-white/35 to-transparent blur-2xl" />
@@ -353,7 +353,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
    * ----------------------------------------------------------- */
   if (navPosition === 'sidebar') {
     return (
-      <div className={`min-h-screen ${rootBgClass} text-slate-900 flex flex-col md:flex-row font-sans relative`}>
+      <div className={`min-h-screen isolate ${rootBgClass} text-slate-900 flex flex-col md:flex-row font-sans relative`}>
         <ThemeAmbientBackdrop appTheme={appTheme} />
 
         {/* Mobile Header (synced with Desktop Sidebar design: uncovered storeName, living border, no Firebase/Export/Import/Style switcher) */}
@@ -749,7 +749,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
         </aside>
 
         {/* Main Content Area */}
-        <div className="relative z-10 flex-1 flex flex-col min-w-0 overflow-y-auto pb-20 md:pb-0 print:pb-0">
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto pb-20 md:pb-0 print:pb-0">
           {children}
         </div>
 
@@ -826,7 +826,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
    * ----------------------------------------------------------- */
   if (navPosition === 'top') {
     return (
-      <div className={`min-h-screen ${rootBgClass} text-slate-900 flex flex-col font-sans relative`}>
+      <div className={`min-h-screen isolate ${rootBgClass} text-slate-900 flex flex-col font-sans relative`}>
         <ThemeAmbientBackdrop appTheme={appTheme} />
 
         {/* Top Navbar (Consistent on Desktop & Mobile) */}
@@ -971,7 +971,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
         </header>
 
         {/* Content */}
-        <div className="relative z-10 flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0">
           {children}
         </div>
 
@@ -983,7 +983,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
    * RENDER MODE 3: FLOATING BOTTOM DOCK (DI BAWAH)
    * ----------------------------------------------------------- */
   return (
-    <div className={`min-h-screen ${rootBgClass} text-slate-900 flex flex-col font-sans relative pb-24 print:pb-0 print:bg-white`}>
+    <div className={`min-h-screen isolate ${rootBgClass} text-slate-900 flex flex-col font-sans relative pb-24 print:pb-0 print:bg-white`}>
       <ThemeAmbientBackdrop appTheme={appTheme} />
 
       {/* Quiet Top Sub-Header (Consistent on Desktop & Mobile) */}
@@ -1064,12 +1064,12 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
       </header>
 
       {/* Main Content Area */}
-      <div className="relative z-10 flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0">
         {children}
       </div>
 
       {/* Modern Bottom Dock (Fixed native bottom bar on mobile, floating dock on desktop) */}
-      <div className="fixed bottom-0 sm:bottom-4 inset-x-0 z-50 flex justify-center pointer-events-none sm:px-3 print:hidden">
+      <div className="fixed bottom-0 sm:bottom-4 inset-x-0 z-40 flex justify-center pointer-events-none sm:px-3 print:hidden">
         <div className="theme-glass-dock pointer-events-auto relative overflow-hidden w-full sm:w-auto bg-white/95 backdrop-blur-xl border-t sm:border border-slate-200/90 shadow-2xl sm:rounded-2xl px-1.5 py-1.5 sm:p-1.5 flex items-center justify-start sm:justify-center gap-1 max-w-full overflow-x-auto scrollbar-none ring-1 ring-black/5">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;

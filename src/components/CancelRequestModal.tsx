@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Send,
@@ -63,7 +64,7 @@ export const RequestCancelDisbursementModal: React.FC<RequestCancelModalProps> =
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-70 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
       <div
         className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150"
@@ -169,7 +170,8 @@ export const RequestCancelDisbursementModal: React.FC<RequestCancelModalProps> =
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -208,7 +210,7 @@ export const AdminCancelApprovalModal: React.FC<AdminCancelApprovalModalProps> =
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-70 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
       <div
         className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
@@ -361,6 +363,7 @@ export const AdminCancelApprovalModal: React.FC<AdminCancelApprovalModalProps> =
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

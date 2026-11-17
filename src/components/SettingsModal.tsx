@@ -447,15 +447,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       footerNotes: footerNotes.trim(),
     };
 
+    const safeFlatPercentage =
+      Number.isFinite(flatPercentage) && flatPercentage > 0
+        ? Math.min(100, flatPercentage)
+        : settings.flatPercentage > 0
+          ? settings.flatPercentage
+          : 2;
+    const safeValidityDays =
+      Number.isFinite(claimValidityDays) && claimValidityDays >= 1
+        ? Math.min(365, Math.round(claimValidityDays))
+        : 30;
+    const safeMaxCap =
+      hasMaxCap && Number.isFinite(maxCapValue) && maxCapValue > 0
+        ? Math.round(maxCapValue)
+        : null;
+    const sanitizedTiers = tiers.map((t) => ({
+      ...t,
+      label: t.label.trim() || 'Tier Cashback',
+      percentage:
+        Number.isFinite(t.percentage) && t.percentage >= 0
+          ? Math.min(100, t.percentage)
+          : 0,
+    }));
+
     const finalSettings: CashbackSettings = {
       ...settings,
       mode,
-      flatPercentage,
-      tiers,
+      flatPercentage: safeFlatPercentage,
+      tiers: sanitizedTiers,
       minPurchaseAmount: 0,
-      maxCashbackPerTransaction: hasMaxCap ? maxCapValue : null,
+      maxCashbackPerTransaction: safeMaxCap,
       rounding,
-      claimValidityDays,
+      claimValidityDays: safeValidityDays,
       storeName: finalCompanyName,
       companyProfile: updatedCompanyProfile,
       adminPin: cleanedPin,

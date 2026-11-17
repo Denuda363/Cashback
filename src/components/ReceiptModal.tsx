@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Printer, 
-  Share2, 
   Check, 
   Copy, 
   ShieldCheck, 
@@ -27,6 +27,23 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   onMarkDisbursed,
 }) => {
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!invoice) return;
+    document.body.classList.add('printing-receipt-modal');
+    return () => {
+      document.body.classList.remove('printing-receipt-modal');
+    };
+  }, [invoice]);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
 
   if (!invoice) return null;
 
@@ -55,16 +72,47 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     `--------------------------------\n` +
     `Terima kasih atas kepercayaan Anda berbelanja di ${settings.storeName}!`;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(shareText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    let success = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareText);
+        success = true;
+      }
+    } catch {
+      success = false;
+    }
+    if (!success) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = shareText;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch {
+        success = false;
+      }
+    }
+    if (success) {
+      setCopied(true);
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = window.setTimeout(() => setCopied(false), 2000);
+    }
   };
 
+  const cleanPhone = (invoice.customerPhone || '').replace(/\D/g, '');
+  const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+
   const handleWhatsAppShare = () => {
-    const cleanPhone = invoice.customerPhone.replace(/\D/g, '');
-    const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
-    const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(shareText)}`;
+    const url = formattedPhone
+      ? `https://wa.me/${formattedPhone}?text=${encodeURIComponent(shareText)}`
+      : `https://wa.me/?text=${encodeURIComponent(shareText)}`;
     const a = document.createElement('a');
     a.href = url;
     a.target = '_blank';
@@ -74,8 +122,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     document.body.removeChild(a);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 print:static print:inset-auto print:block print:bg-white print:p-0">
+  return createPortal(
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 print:static print:inset-auto print:block print:bg-white print:p-0 print:overflow-visible">
       <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150 print:max-w-none print:shadow-none print:border-none print:rounded-none">
         
         {/* Header */}
@@ -264,6 +312,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

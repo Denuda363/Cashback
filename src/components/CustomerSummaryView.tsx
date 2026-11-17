@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Users, 
   Search, 
@@ -82,6 +82,40 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   // Copy feedback state
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
+  const copyTimerRef = useRef<number | null>(null);
+  const copyAllTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+      if (copyAllTimerRef.current !== null) window.clearTimeout(copyAllTimerRef.current);
+    };
+  }, []);
+
+  const copyTextSafely = async (text: string): Promise<boolean> => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      // Fallback below
+    }
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return ok;
+    } catch {
+      return false;
+    }
+  };
 
   // Set of normalized clean excluded customer names
   const excludedSet = useMemo(() => {
@@ -268,19 +302,23 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   };
 
   // Copy single customer text
-  const handleCopyCustomer = (cust: CustomerSummary, idx: number, e?: React.MouseEvent) => {
+  const handleCopyCustomer = async (cust: CustomerSummary, idx: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const key = getCustomerKey(cust, idx);
     const text = generateSingleCustomerText(cust, idx);
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => {
-      setCopiedKey(null);
-    }, 2500);
+    const ok = await copyTextSafely(text);
+    if (ok) {
+      setCopiedKey(key);
+      if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = window.setTimeout(() => {
+        setCopiedKey(null);
+      }, 2500);
+    }
   };
 
   // Copy all visible customers formatted exactly as user requested
-  const handleCopyAllRecap = () => {
+  const handleCopyAllRecap = async () => {
+    if (filtered.length === 0) return;
     let text = `REKAP KONSUMEN - ${storeName.toUpperCase()}\n`;
     text += `(Data per tiap konsumen diambil dari Rekap Faktur)\n`;
     text += `Tanggal: ${new Date().toLocaleDateString('id-ID')}\n\n`;
@@ -294,11 +332,14 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
       text += `   Transaksi     : ${cust.invoiceCount} Faktur\n\n`;
     });
 
-    navigator.clipboard.writeText(text);
-    setCopiedAll(true);
-    setTimeout(() => {
-      setCopiedAll(false);
-    }, 3000);
+    const ok = await copyTextSafely(text);
+    if (ok) {
+      setCopiedAll(true);
+      if (copyAllTimerRef.current !== null) window.clearTimeout(copyAllTimerRef.current);
+      copyAllTimerRef.current = window.setTimeout(() => {
+        setCopiedAll(false);
+      }, 3000);
+    }
   };
 
   // Open WhatsApp template with customer's breakdown
@@ -427,7 +468,8 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
             {/* Salin Rekap Teks */}
             <button
               onClick={handleCopyAllRecap}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors"
+              disabled={filtered.length === 0}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               title="Salin data pertiap konsumen dalam format teks (Dr Santi, Dr Sany...)"
             >
               {copiedAll ? (

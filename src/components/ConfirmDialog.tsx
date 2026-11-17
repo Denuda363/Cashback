@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, Trash2, X, Loader2 } from 'lucide-react';
 
 interface ConfirmDialogProps {
@@ -40,7 +41,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   const isRequirementMet = !requireText || typedText.trim().toUpperCase() === requireText.trim().toUpperCase();
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-60 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
       <div 
         className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-5 sm:p-6 overflow-hidden animate-in zoom-in-95 duration-150"
@@ -123,6 +124,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

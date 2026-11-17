@@ -1182,6 +1182,7 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                                     appRole === 'admin' ? (
                                       onRevertCustomerDisbursement && (
                                         <button
+                                          type="button"
                                           onClick={() => setCustomerToRevert(cust.customerName)}
                                           className="text-rose-600 hover:underline font-semibold flex items-center gap-1"
                                           title="Batalkan status pencairan konsumen ini"

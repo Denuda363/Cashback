@@ -409,13 +409,17 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
     });
   }, [effectiveGranularity, dailySeries, monthlySeries, isCumulative]);
 
+  const safeReceiptPage = useMemo(() => {
+    if (receiptRowsPerPage === 'all') return 1;
+    const totalPages = Math.max(1, Math.ceil(customerReceiptStats.length / receiptRowsPerPage));
+    return Math.min(Math.max(1, receiptPage), totalPages);
+  }, [customerReceiptStats.length, receiptRowsPerPage, receiptPage]);
+
   const paginatedCustomerReceipts = useMemo(() => {
     if (receiptRowsPerPage === 'all') return customerReceiptStats;
-    const totalPages = Math.max(1, Math.ceil(customerReceiptStats.length / receiptRowsPerPage));
-    const safePage = Math.min(Math.max(1, receiptPage), totalPages);
-    const start = (safePage - 1) * receiptRowsPerPage;
+    const start = (safeReceiptPage - 1) * receiptRowsPerPage;
     return customerReceiptStats.slice(start, start + receiptRowsPerPage);
-  }, [customerReceiptStats, receiptRowsPerPage, receiptPage]);
+  }, [customerReceiptStats, receiptRowsPerPage, safeReceiptPage]);
 
   // SVG chart dimensions & geometry
   const svgWidth = 640;
@@ -1262,7 +1266,7 @@ export const CashbackMovementChart: React.FC<CashbackMovementChartProps> = ({
               <PaginationBar
                 totalItems={customerReceiptStats.length}
                 rowsPerPage={receiptRowsPerPage}
-                currentPage={receiptPage}
+                currentPage={safeReceiptPage}
                 onChangeRowsPerPage={(rows) => {
                   setReceiptRowsPerPage(rows);
                   setReceiptPage(1);
