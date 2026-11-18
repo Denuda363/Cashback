@@ -229,15 +229,18 @@ export function populateTandaTerimaSheet(
             ? Number(((cust.totalCashback / cust.totalPurchase) * 100).toFixed(2))
             : (settings.flatPercentage || 2));
 
-    // Formula: Total Belanja (Col C) * Persentase Cashback (e.g. C2*2% or C2*0%)
+    // Formula: Total Belanja (Col C) * Persentase Cashback, or exact rounded manual override if edited
     const formulaString = `ROUND(C${rowNum}*${pct}%, 0)`;
     const expectedCashback = isParcelOnly ? 0 : (cust.totalCashback || 0);
+    const colDValue = cust.isCashbackManualOverride
+      ? expectedCashback
+      : { formula: formulaString, result: expectedCashback };
 
     const row = ws.addRow([
       seqNo,
       cust.customerName,
       cust.totalPurchase || 0,
-      { formula: formulaString, result: expectedCashback },
+      colDValue,
       parcelText,
       sigF,
       sigG,
@@ -698,6 +701,10 @@ export async function exportCashbackToExcel(
       custSigText = custSigImage ? '' : (cust.recipientName ? `[✓ ${cust.recipientName}]` : '[✓ Sudah Terima]');
     }
 
+    const colHValue = cust.isCashbackManualOverride
+      ? cust.totalCashback
+      : { formula: formulaCashback, result: cust.totalCashback };
+
     const row = wsCustomers.addRow([
       idx + 1,
       cust.customerName,
@@ -706,7 +713,7 @@ export async function exportCashbackToExcel(
       cust.invoiceCount,
       cust.totalPurchase,
       effectiveRate,
-      { formula: formulaCashback, result: cust.totalCashback },
+      colHValue,
       cust.benefitType ? getBenefitLabel(cust.benefitType) : (isParcel ? 'Cashback + Parsel' : 'Cashback'),
       cust.disbursedCashback,
       { formula: formulaSisa, result: cust.totalCashback - cust.disbursedCashback },
@@ -862,7 +869,7 @@ export async function exportCashbackToExcel(
       c.invoiceCount,
       c.totalPurchase,
       rate,
-      { formula: `ROUND(F${r}*G${r}, 0)`, result: c.totalCashback },
+      c.isCashbackManualOverride ? c.totalCashback : { formula: `ROUND(F${r}*G${r}, 0)`, result: c.totalCashback },
       c.benefitType ? getBenefitLabel(c.benefitType) : (isParcel ? 'Cashback + Parsel' : 'Cashback'),
       kontribusi,
     ]);

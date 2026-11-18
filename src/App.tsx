@@ -277,9 +277,17 @@ export default function App() {
       settings.minSpendForParcel || 5000000,
       customers,
       settings.excludedCustomerNames || [],
-      settings.customerBenefitOverrides || {}
+      settings.customerBenefitOverrides || {},
+      settings.customerCashbackOverrides || {}
     );
-  }, [dateFilteredInvoices, settings.minSpendForParcel, customers, settings.excludedCustomerNames, settings.customerBenefitOverrides]);
+  }, [
+    dateFilteredInvoices,
+    settings.minSpendForParcel,
+    customers,
+    settings.excludedCustomerNames,
+    settings.customerBenefitOverrides,
+    settings.customerCashbackOverrides,
+  ]);
 
   // Helpers to open/close disbursement modal while preserving target across refresh
   const openCustomerDisbursement = (cust: CustomerSummary) => {
@@ -1070,6 +1078,37 @@ export default function App() {
     showToast(`Paket untuk ${customerName} berhasil diatur ke: "${getBenefitLabel(benefitType)}"`);
   };
 
+  // Set or reset manual / rounded total cashback per customer (Admin Only)
+  const handleSetCustomerCashback = async (customerName: string, manualAmount: number | null) => {
+    if (appRole !== 'admin') {
+      showToast('Akses ditolak: edit manual total cashback hanya untuk Mode Admin.');
+      return;
+    }
+    const clean = normalizeCustomerName(customerName);
+    if (!clean) return;
+    const currentOverrides = { ...(settings.customerCashbackOverrides || {}) };
+    if (manualAmount === null) {
+      delete currentOverrides[clean];
+    } else {
+      const safeVal = Math.max(0, Math.round(Number(manualAmount) || 0));
+      currentOverrides[clean] = safeVal;
+    }
+    const nextSettings: CashbackSettings = {
+      ...settings,
+      customerCashbackOverrides: currentOverrides,
+    };
+    setSettings(nextSettings);
+    saveStoredSettings(nextSettings);
+    await saveSettingsToFirestore(nextSettings).catch((err) =>
+      console.warn('Sync manual cashback override settings:', err)
+    );
+    showToast(
+      manualAmount === null
+        ? `Total cashback ${customerName} dikembalikan ke hitungan otomatis faktur.`
+        : `Total cashback ${customerName} diperbarui manual menjadi ${formatRupiah(Math.max(0, Math.round(Number(manualAmount) || 0)))}.`
+    );
+  };
+
   // Master Customer Handlers (Admin Only)
   const handleSaveCustomer = async (customerData: Omit<CustomerMaster, 'id'>, customerId?: string) => {
     if (appRole !== 'admin') {
@@ -1528,8 +1567,10 @@ export default function App() {
             customerSummaries={customerSummaries}
             excludedCustomerNames={settings.excludedCustomerNames || []}
             benefitOverrides={settings.customerBenefitOverrides || {}}
+            cashbackOverrides={settings.customerCashbackOverrides || {}}
             isReadOnly={isPetugasReadOnly}
             onSetCustomerBenefit={appRole === 'admin' ? handleSetCustomerBenefit : undefined}
+            onSetCustomerCashback={appRole === 'admin' ? handleSetCustomerCashback : undefined}
             onToggleExcludeCustomer={appRole === 'admin' ? handleToggleExcludeCustomer : undefined}
             onOpenCustomerDisbursement={appRole === 'admin' ? openCustomerDisbursement : undefined}
             onSelectCustomerForInvoices={handleSelectCustomerForInvoices}

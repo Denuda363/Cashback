@@ -71,6 +71,8 @@
         "currency": { "type": "string" },
         "minSpendForParcel": { "type": "number" },
         "excludedCustomerNames": { "type": "array", "items": { "type": "string" } },
+        "customerBenefitOverrides": { "type": "object", "description": "Pengaturan paket hak manual per konsumen" },
+        "customerCashbackOverrides": { "type": "object", "description": "Edit manual / pembulatan total cashback per konsumen" },
         "companyProfile": {
           "type": "object",
           "properties": {

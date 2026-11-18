@@ -125,6 +125,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         };
       });
 
+      const activeCashbackOverrides =
+        settings.mode === 'flat' && activePercentage === settings.flatPercentage
+          ? (settings.customerCashbackOverrides || {})
+          : {};
+
       const exportCustomers: CustomerSummary[] =
         exportInvoices.length > 0
           ? aggregateCustomerSummaries(
@@ -132,7 +137,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               parcelThreshold,
               masterCustomers,
               settings.excludedCustomerNames || [],
-              settings.customerBenefitOverrides || {}
+              settings.customerBenefitOverrides || {},
+              activeCashbackOverrides
             ).filter((c) => !c.isExcludedFromCashback)
           : eligibleCustomers.map((cust) => {
               const isParcelOnly = cust.benefitType === 'parcel_only';

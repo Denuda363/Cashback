@@ -470,7 +470,7 @@ export async function saveSettingsToFirestore(settings: CashbackSettings): Promi
   try {
     const sanitized = sanitizeForFirestore(settings);
     const docRef = doc(db, SETTINGS_COLLECTION, MAIN_SETTINGS_DOC_ID);
-    await setDoc(docRef, sanitized, { merge: true });
+    await setDoc(docRef, sanitized);
     console.log('[Firestore] Pengaturan cashback berhasil disimpan ke Cloud.');
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);

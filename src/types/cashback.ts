@@ -43,6 +43,7 @@ export interface CashbackSettings {
   minSpendForParcel?: number; // e.g. 5000000
   excludedCustomerNames?: string[]; // Names of customers disqualified/excluded from receiving cashback
   customerBenefitOverrides?: Record<string, CustomerBenefitType>; // Manual configuration of benefit per customer (clean lowercase name -> benefit)
+  customerCashbackOverrides?: Record<string, number>; // Manual / rounded total cashback override per customer (clean lowercase name -> Rp amount)
   companyProfile?: CompanyProfile; // Profil identitas perusahaan / toko
   adminPin?: string; // PIN khusus mode admin yang dapat dikonfigurasi di pengaturan
 }
@@ -105,6 +106,8 @@ export interface CustomerSummary {
   disbursementSignature?: string;
   disbursementNotes?: string;
   disbursementPayoutMethod?: PayoutMethod;
+  calculatedCashback?: number;
+  isCashbackManualOverride?: boolean;
 }
 
 export interface CustomerMaster {

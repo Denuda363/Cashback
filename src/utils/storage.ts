@@ -859,7 +859,8 @@ export function aggregateCustomerSummaries(
   minSpendForParcel = 5000000,
   masterCustomers: CustomerMaster[] = [],
   excludedCustomerNames: string[] = [],
-  benefitOverrides: Record<string, CustomerBenefitType> = {}
+  benefitOverrides: Record<string, CustomerBenefitType> = {},
+  cashbackOverrides: Record<string, number> = {}
 ): CustomerSummary[] {
   // Pre-index master customers by normalized phone and by clean name
   const masterByPhone = new Map<string, CustomerMaster>();
@@ -992,16 +993,6 @@ export function aggregateCustomerSummaries(
     c.dates.sort((a, b) => b.localeCompare(a));
     const lastDate = c.dates[0] || '-';
 
-    // Determine loyalty tier
-    let tier: 'Platinum' | 'Gold' | 'Silver' | 'Bronze' = 'Bronze';
-    if (c.totalCashback >= 1000000 || c.totalPurchase >= 15000000) {
-      tier = 'Platinum';
-    } else if (c.totalCashback >= 500000 || c.totalPurchase >= 7500000) {
-      tier = 'Gold';
-    } else if (c.totalCashback >= 200000 || c.totalPurchase >= 3000000) {
-      tier = 'Silver';
-    }
-
     const cleanName = normalizeCustomerName(c.customerName);
     const isExcluded = excludedCustomerNames.some(
       (ex) => normalizeCustomerName(ex) === cleanName
@@ -1029,6 +1020,58 @@ export function aggregateCustomerSummaries(
       // Legacy undefined invoices default to Cashback + Parsel upfront
       benefitType = c.totalCashback > 0 ? 'cashback_parcel' : 'parcel_only';
       getParcel = true;
+    }
+
+    const calculatedCashback = Math.round(c.totalCashback);
+    const rawDisbursed = Math.round(c.disbursedCashback);
+    const rawReady = Math.round(c.readyCashback);
+    const rawPending = Math.round(c.pendingCashback);
+
+    const manualCashbackRaw =
+      cashbackOverrides[cleanName] ??
+      cashbackOverrides[(c.customerName || '').trim().toLowerCase()];
+    const hasManualCashback =
+      typeof manualCashbackRaw === 'number' &&
+      Number.isFinite(manualCashbackRaw) &&
+      manualCashbackRaw >= 0 &&
+      benefitType !== 'parcel_only';
+
+    let finalTotalCashback = calculatedCashback;
+    let finalDisbursedCashback = rawDisbursed;
+    let finalReadyCashback = rawReady;
+    let finalPendingCashback = rawPending;
+
+    if (hasManualCashback) {
+      finalTotalCashback = Math.round(manualCashbackRaw);
+      if (rawDisbursed > 0 && rawReady === 0 && rawPending === 0) {
+        finalDisbursedCashback = finalTotalCashback;
+        finalReadyCashback = 0;
+        finalPendingCashback = 0;
+      } else {
+        finalDisbursedCashback = Math.min(finalTotalCashback, rawDisbursed);
+        const remaining = Math.max(0, finalTotalCashback - finalDisbursedCashback);
+        const origRemaining = rawReady + rawPending;
+        if (origRemaining === 0 || (rawReady > 0 && rawPending === 0)) {
+          finalReadyCashback = remaining;
+          finalPendingCashback = 0;
+        } else if (rawPending > 0 && rawReady === 0) {
+          finalReadyCashback = 0;
+          finalPendingCashback = remaining;
+        } else {
+          finalPendingCashback = Math.round((rawPending / origRemaining) * remaining);
+          finalReadyCashback = Math.max(0, remaining - finalPendingCashback);
+        }
+      }
+    }
+
+    // Determine loyalty tier
+    let tier: 'Platinum' | 'Gold' | 'Silver' | 'Bronze' = 'Bronze';
+    if (finalTotalCashback >= 1000000 || c.totalPurchase >= 15000000) {
+      tier = 'Platinum';
+    } else if (finalTotalCashback >= 500000 || c.totalPurchase >= 7500000) {
+      tier = 'Gold';
+    } else if (finalTotalCashback >= 200000 || c.totalPurchase >= 3000000) {
+      tier = 'Silver';
     }
 
     // Sort itemized invoices newest to oldest
@@ -1072,10 +1115,10 @@ export function aggregateCustomerSummaries(
       customerName: c.customerName,
       customerPhone: c.customerPhone,
       totalPurchase: Math.round(c.totalPurchase),
-      totalCashback: Math.round(c.totalCashback),
-      disbursedCashback: Math.round(c.disbursedCashback),
-      pendingCashback: Math.round(c.pendingCashback),
-      readyCashback: Math.round(c.readyCashback),
+      totalCashback: finalTotalCashback,
+      disbursedCashback: finalDisbursedCashback,
+      pendingCashback: finalPendingCashback,
+      readyCashback: finalReadyCashback,
       invoiceCount: c.invoiceCount,
       lastPurchaseDate: lastDate,
       tier,
@@ -1097,6 +1140,8 @@ export function aggregateCustomerSummaries(
       disbursementSignature: signature,
       disbursementNotes: notes,
       disbursementPayoutMethod: payoutMethod,
+      calculatedCashback,
+      isCashbackManualOverride: hasManualCashback,
     };
   });
 

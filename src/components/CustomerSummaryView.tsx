@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Users, 
   Search, 
@@ -22,7 +23,10 @@ import {
   UserX,
   UserCheck,
   Printer,
-  Eye
+  Eye,
+  Pencil,
+  RotateCcw,
+  X
 } from 'lucide-react';
 import { CustomerSummary, Invoice, CustomerBenefitType, CompanyProfile } from '../types/cashback';
 import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
@@ -36,7 +40,9 @@ interface CustomerSummaryViewProps {
   invoices?: Invoice[];
   excludedCustomerNames?: string[];
   benefitOverrides?: Record<string, CustomerBenefitType>;
+  cashbackOverrides?: Record<string, number>;
   onSetCustomerBenefit?: (customerName: string, benefitType: CustomerBenefitType) => void;
+  onSetCustomerCashback?: (customerName: string, manualAmount: number | null) => void;
   onToggleExcludeCustomer?: (customerName: string) => void;
   onOpenCustomerDisbursement?: (customer: CustomerSummary) => void;
   onSelectCustomerForInvoices: (customerName: string) => void;
@@ -51,7 +57,9 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   invoices = [],
   excludedCustomerNames = [],
   benefitOverrides = {},
+  cashbackOverrides = {},
   onSetCustomerBenefit,
+  onSetCustomerCashback,
   onToggleExcludeCustomer,
   onOpenCustomerDisbursement,
   onSelectCustomerForInvoices,
@@ -78,6 +86,17 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   
   // Modal confirmation for excluding a customer
   const [customerToExclude, setCustomerToExclude] = useState<string | null>(null);
+
+  // Modal state for manual total cashback edit / rounding
+  const [editingCashbackCustomer, setEditingCashbackCustomer] = useState<CustomerSummary | null>(null);
+  const [manualCashbackInput, setManualCashbackInput] = useState<string>('');
+  const [cashbackInputError, setCashbackInputError] = useState<string | null>(null);
+
+  const openEditCashbackModal = (cust: CustomerSummary) => {
+    setEditingCashbackCustomer(cust);
+    setManualCashbackInput(String(Math.max(0, Math.round(cust.totalCashback || 0))));
+    setCashbackInputError(null);
+  };
 
   // Copy feedback state
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -139,7 +158,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   const resolvedSummaries = useMemo(() => {
     const baseList = customerSummaries.length > 0 
       ? customerSummaries 
-      : aggregateCustomerSummaries(invoices, 5000000, [], excludedCustomerNames, benefitOverrides);
+      : aggregateCustomerSummaries(invoices, 5000000, [], excludedCustomerNames, benefitOverrides, cashbackOverrides);
 
     return baseList.map((c) => {
       const nameKey = normalizeCustomerName(c.customerName);
@@ -162,7 +181,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
         getParcel,
       };
     });
-  }, [customerSummaries, invoices, invoicesByCustomerName, excludedSet, excludedCustomerNames, benefitOverrides]);
+  }, [customerSummaries, invoices, invoicesByCustomerName, excludedSet, excludedCustomerNames, benefitOverrides, cashbackOverrides]);
 
   // Filter and sort the per-customer data
   const filtered = useMemo(() => {
@@ -862,29 +881,55 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                         <div className={`flex sm:flex-col justify-between sm:justify-start items-center sm:items-start p-2 bg-white rounded-lg border ${
                           isExcluded ? 'border-rose-200' : 'border-emerald-100'
                         }`}>
-                          <div className="flex items-center gap-1.5 font-sans">
-                            <span className={`text-[11px] font-bold uppercase tracking-wider ${
-                              isExcluded ? 'text-rose-700' : 'text-emerald-800'
-                            }`}>
-                              Total Cashback
-                            </span>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                              isExcluded ? 'bg-rose-100 text-rose-800' : 'bg-emerald-50 text-emerald-700'
-                            }`}>
-                              {ratio}%
-                            </span>
+                          <div className="w-full flex items-center justify-between gap-1.5 font-sans">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`text-[11px] font-bold uppercase tracking-wider ${
+                                isExcluded ? 'text-rose-700' : 'text-emerald-800'
+                              }`}>
+                                Total Cashback
+                              </span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                                isExcluded ? 'bg-rose-100 text-rose-800' : 'bg-emerald-50 text-emerald-700'
+                              }`}>
+                                {ratio}%
+                              </span>
+                              {cust.isCashbackManualOverride && !isExcluded && (
+                                <span
+                                  className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200"
+                                  title="Nominal Total Cashback telah diedit / dibulatkan manual"
+                                >
+                                  Manual
+                                </span>
+                              )}
+                            </div>
+
+                            {!isReadOnly && !isExcluded && cust.benefitType !== 'parcel_only' && onSetCustomerCashback && (
+                              <button
+                                type="button"
+                                onClick={() => openEditCashbackModal(cust)}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded transition-colors shrink-0"
+                                title="Edit atau bulatkan nominal Total Cashback konsumen ini secara manual"
+                              >
+                                <Pencil className="w-2.5 h-2.5" />
+                                <span>Edit</span>
+                              </button>
+                            )}
                           </div>
-                          <div className="mt-0.5">
+                          <div className="mt-0.5 text-right sm:text-left">
                             <span className={`text-base sm:text-lg font-black ${
                               isExcluded ? 'line-through text-slate-400' : 'text-emerald-700'
                             }`}>
                               {formatRupiah(cust.totalCashback)}
                             </span>
-                            {isExcluded && (
+                            {isExcluded ? (
                               <span className="text-[10px] text-rose-600 font-bold font-sans block">
                                 (Hak Cashback Dicoret)
                               </span>
-                            )}
+                            ) : cust.isCashbackManualOverride && cust.calculatedCashback !== undefined ? (
+                              <span className="text-[10px] text-slate-500 font-sans block">
+                                Asli faktur: {formatRupiah(cust.calculatedCashback)}
+                              </span>
+                            ) : null}
                           </div>
                         </div>
 
@@ -999,7 +1044,12 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                                   {formatRupiah(cust.totalPurchase)}
                                 </td>
                                 <td className="py-2 px-3 text-right text-emerald-700 font-black">
-                                  {formatRupiah(cust.totalCashback)}
+                                  <div>{formatRupiah(cust.totalCashback)}</div>
+                                  {cust.isCashbackManualOverride && cust.calculatedCashback !== undefined && (
+                                    <div className="text-[10px] font-sans font-semibold text-amber-700">
+                                      Edit Manual (Faktur: {formatRupiah(cust.calculatedCashback)})
+                                    </div>
+                                  )}
                                 </td>
                                 <td colSpan={2}></td>
                               </tr>
@@ -1081,9 +1131,39 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                             {formatRupiah(cust.totalPurchase)}
                           </td>
                           <td className="py-3 px-3.5 text-right font-mono tabular-nums font-black text-sm">
-                            <span className={isExcluded ? 'line-through text-slate-400' : 'text-emerald-700'}>
-                              {formatRupiah(cust.totalCashback)}
-                            </span>
+                            <div className="inline-flex items-center justify-end gap-1.5">
+                              <div className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  {cust.isCashbackManualOverride && !isExcluded && (
+                                    <span
+                                      className="text-[9px] font-sans font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200"
+                                      title={`Hitungan asli faktur: ${formatRupiah(cust.calculatedCashback ?? cust.totalCashback)}`}
+                                    >
+                                      Manual
+                                    </span>
+                                  )}
+                                  <span className={isExcluded ? 'line-through text-slate-400' : 'text-emerald-700'}>
+                                    {formatRupiah(cust.totalCashback)}
+                                  </span>
+                                </div>
+                                {cust.isCashbackManualOverride && !isExcluded && cust.calculatedCashback !== undefined && (
+                                  <div className="text-[10px] font-sans font-normal text-slate-400">
+                                    Asli: {formatRupiah(cust.calculatedCashback)}
+                                  </div>
+                                )}
+                              </div>
+                              {!isReadOnly && !isExcluded && cust.benefitType !== 'parcel_only' && onSetCustomerCashback && (
+                                <button
+                                  type="button"
+                                  onClick={() => openEditCashbackModal(cust)}
+                                  className="p-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded transition-colors shrink-0"
+                                  title="Edit / bulatkan Total Cashback manual"
+                                  aria-label={`Edit total cashback ${cust.customerName}`}
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                           
                           {/* Paket Diterima (Dropdown / Badge) */}
@@ -1297,6 +1377,232 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
           storeName={storeName}
         />
       )}
+
+      {/* Manual Total Cashback Edit / Rounding Modal */}
+      {!isReadOnly &&
+        editingCashbackCustomer &&
+        onSetCustomerCashback &&
+        (() => {
+          const target = editingCashbackCustomer;
+          const autoCalcAmount =
+            target.calculatedCashback ??
+            (target.invoices && target.invoices.length > 0
+              ? target.invoices.reduce((sum, inv) => sum + Math.round(Number(inv.cashbackAmount) || 0), 0)
+              : target.totalCashback);
+
+          const rawInvDisbursed = (target.invoices || [])
+            .filter((i) => i.claimStatus === 'disbursed')
+            .reduce((sum, i) => sum + Math.round(Number(i.cashbackAmount) || 0), 0);
+          const hasPartialDisbursement =
+            rawInvDisbursed > 0 && (target.invoices || []).some((i) => i.claimStatus !== 'disbursed');
+
+          const parsedValue = Number(manualCashbackInput.replace(/[^\d]/g, ''));
+          const safePreviewAmount =
+            manualCashbackInput.trim() === '' || !Number.isFinite(parsedValue) ? 0 : Math.round(parsedValue);
+          const diffFromAuto = safePreviewAmount - autoCalcAmount;
+          const previewRatio =
+            target.totalPurchase > 0 ? ((safePreviewAmount / target.totalPurchase) * 100).toFixed(2) : '0.00';
+
+          const quickPresets = [
+            { label: 'Bulat Ratusan', value: Math.round(autoCalcAmount / 100) * 100 },
+            { label: 'Ribuan ↓', value: Math.floor(autoCalcAmount / 1000) * 1000 },
+            { label: 'Terdekat Rp 1.000', value: Math.round(autoCalcAmount / 1000) * 1000 },
+            { label: 'Ribuan ↑', value: Math.ceil(autoCalcAmount / 1000) * 1000 },
+            { label: 'Kelipatan Rp 5.000', value: Math.round(autoCalcAmount / 5000) * 5000 },
+            { label: 'Kelipatan Rp 10.000', value: Math.round(autoCalcAmount / 10000) * 10000 },
+          ];
+
+          const handleSaveManualCashback = (e: React.FormEvent) => {
+            e.preventDefault();
+            if (manualCashbackInput.trim() === '') {
+              setCashbackInputError('Nominal total cashback wajib diisi.');
+              return;
+            }
+            const cleanNum = Number(manualCashbackInput);
+            if (!Number.isFinite(cleanNum) || cleanNum < 0) {
+              setCashbackInputError('Nominal tidak valid (minimal Rp 0).');
+              return;
+            }
+            const roundedVal = Math.round(cleanNum);
+            if (hasPartialDisbursement && roundedVal < rawInvDisbursed) {
+              setCashbackInputError(
+                `Nominal tidak boleh lebih kecil dari cashback faktur yang sudah cair sebagian (${formatRupiah(rawInvDisbursed)}).`
+              );
+              return;
+            }
+            onSetCustomerCashback(target.customerName, roundedVal);
+            setEditingCashbackCustomer(null);
+          };
+
+          return createPortal(
+            <div className="fixed inset-0 z-70 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+              <div
+                className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden"
+                role="dialog"
+                aria-modal="true"
+              >
+                <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                      <Pencil className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-sm font-bold truncate">Edit &amp; Pembulatan Total Cashback</h2>
+                      <p className="text-[11px] text-slate-300 truncate">
+                        {target.customerName} {target.customerCode ? `(${target.customerCode})` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingCashbackCustomer(null)}
+                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                    aria-label="Tutup modal edit cashback"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveManualCashback} className="p-5 space-y-4 text-xs">
+                  {/* Reference Info */}
+                  <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 font-mono">
+                    <div>
+                      <span className="text-[10px] font-sans font-bold uppercase text-slate-500 block">
+                        Total Belanja
+                      </span>
+                      <span className="text-sm font-black text-slate-900">
+                        {formatRupiah(target.totalPurchase)}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-sans font-bold uppercase text-slate-500 block">
+                        Hitungan Faktur Asli
+                      </span>
+                      <span className="text-sm font-black text-emerald-700">
+                        {formatRupiah(autoCalcAmount)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {cashbackInputError && (
+                    <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-medium">
+                      {cashbackInputError}
+                    </div>
+                  )}
+
+                  {/* Quick Rounding Buttons */}
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      Pembulatan Cepat
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {quickPresets.map((preset) => {
+                        const isSelected = safePreviewAmount === preset.value;
+                        return (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => {
+                              setManualCashbackInput(String(preset.value));
+                              setCashbackInputError(null);
+                            }}
+                            className={`p-2 rounded-xl border text-left transition-colors ${
+                              isSelected
+                                ? 'bg-emerald-50 border-emerald-500 text-emerald-900 ring-1 ring-emerald-500'
+                                : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <div className="text-[10px] font-bold text-slate-500 truncate">{preset.label}</div>
+                            <div className="text-xs font-mono font-extrabold text-emerald-700 mt-0.5 truncate">
+                              {formatRupiah(preset.value)}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Manual Input */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Nominal Total Cashback Manual (Rp)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-slate-500">
+                        Rp
+                      </span>
+                      <input
+                        type="number"
+                        min={hasPartialDisbursement ? rawInvDisbursed : 0}
+                        step={1}
+                        autoFocus
+                        value={manualCashbackInput}
+                        onChange={(e) => {
+                          setManualCashbackInput(e.target.value);
+                          setCashbackInputError(null);
+                        }}
+                        className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-black text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-emerald-600"
+                        placeholder="Contoh: 250000"
+                      />
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between text-[11px] font-mono">
+                      <span className="text-slate-600">
+                        Rasio: <strong className="text-slate-900">{previewRatio}%</strong>
+                      </span>
+                      <span
+                        className={
+                          diffFromAuto > 0
+                            ? 'text-emerald-700 font-bold'
+                            : diffFromAuto < 0
+                              ? 'text-amber-700 font-bold'
+                              : 'text-slate-500'
+                        }
+                      >
+                        Selisih: {diffFromAuto > 0 ? `+${formatRupiah(diffFromAuto)}` : formatRupiah(diffFromAuto)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
+                    {target.isCashbackManualOverride ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSetCustomerCashback(target.customerName, null);
+                          setEditingCashbackCustomer(null);
+                        }}
+                        className="min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 flex items-center gap-1.5 transition-colors"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Reset Otomatis</span>
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        type="button"
+                        onClick={() => setEditingCashbackCustomer(null)}
+                        className="min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        className="min-h-[38px] px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-colors flex items-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Simpan Nominal</span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>,
+            document.body
+          );
+        })()}
 
     </div>
   );
