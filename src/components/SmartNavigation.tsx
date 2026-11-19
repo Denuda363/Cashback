@@ -37,6 +37,7 @@ interface SmartNavigationProps {
   companyLogoUrl?: string;
   isFirebaseConnected?: boolean;
   appRole: AppRole;
+  isSuperUser?: boolean;
   onOpenAdminPinModal: () => void;
   onSwitchToPetugas: () => void;
   pendingCancelCount?: number;
@@ -279,6 +280,7 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
   storeName = 'CashbackPro',
   companyLogoUrl,
   appRole,
+  isSuperUser = false,
   onOpenAdminPinModal,
   onSwitchToPetugas,
   pendingCancelCount = 0,
@@ -406,17 +408,25 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
               <button
                 type="button"
                 onClick={appRole === 'admin' ? onSwitchToPetugas : onOpenAdminPinModal}
-                title={appRole === 'admin' ? 'Kunci dan kembali ke Mode Petugas' : 'Masuk ke Mode Admin (PIN)'}
+                title={
+                  appRole === 'admin'
+                    ? isSuperUser
+                      ? 'Mode Super User Aktif (Waktu penginputan tanggal & jam terlihat) — Klik untuk kunci ke Mode Petugas'
+                      : 'Kunci dan kembali ke Mode Petugas'
+                    : 'Masuk ke Mode Admin (PIN)'
+                }
                 className={`h-10 px-2.5 flex items-center gap-1 text-[11px] font-bold rounded-xl border active:scale-95 transition-all ${
                   appRole === 'admin'
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                    ? isSuperUser
+                      ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                     : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
                 }`}
               >
                 {appRole === 'admin' ? (
                   <>
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Admin</span>
+                    <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${isSuperUser ? 'text-amber-600' : 'text-emerald-600'}`} />
+                    <span>{isSuperUser ? 'Super' : 'Admin'}</span>
                   </>
                 ) : (
                   <>
@@ -676,17 +686,25 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                     onSwitchToPetugas();
                     setIsMobileMenuOpen(false);
                   }}
-                  title="Mode Admin Aktif — Klik untuk beralih ke Mode Petugas"
-                  className={`w-full py-1.5 px-2 text-[11px] font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors flex items-center ${
-                    showCollapsed ? 'justify-center gap-1 text-[10px]' : 'justify-between px-2.5'
-                  }`}
+                  title={
+                    isSuperUser
+                      ? 'Mode Super User Aktif (Waktu penginputan tanggal & jam terlihat) — Klik untuk kunci ke Mode Petugas'
+                      : 'Mode Admin Aktif — Klik untuk beralih ke Mode Petugas'
+                  }
+                  className={`w-full py-1.5 px-2 text-[11px] font-bold rounded-lg border transition-colors flex items-center ${
+                    isSuperUser
+                      ? 'text-amber-950 bg-amber-50 hover:bg-amber-100 border-amber-300'
+                      : 'text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border-emerald-300'
+                  } ${showCollapsed ? 'justify-center gap-1 text-[10px]' : 'justify-between px-2.5'}`}
                 >
                   <span className="flex items-center gap-1.5 min-w-0">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                    <span className="truncate">{showCollapsed ? 'Admin' : 'Mode Admin'}</span>
+                    <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${isSuperUser ? 'text-amber-600' : 'text-emerald-700'}`} />
+                    <span className="truncate">
+                      {showCollapsed ? (isSuperUser ? 'Super' : 'Admin') : isSuperUser ? 'Super User' : 'Mode Admin'}
+                    </span>
                   </span>
                   {!showCollapsed && (
-                    <span className="text-[10px] font-semibold text-emerald-700 bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+                    <span className={`text-[10px] font-semibold bg-white px-1.5 py-0.5 rounded border ${isSuperUser ? 'text-amber-700 border-amber-200' : 'text-emerald-700 border-emerald-200'}`}>
                       Kunci
                     </span>
                   )}
@@ -900,16 +918,23 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
                 <button
                   type="button"
                   onClick={appRole === 'admin' ? onSwitchToPetugas : onOpenAdminPinModal}
+                  title={
+                    appRole === 'admin' && isSuperUser
+                      ? 'Mode Super User Aktif (Waktu penginputan tanggal & jam terlihat) — Klik untuk kunci ke Mode Petugas'
+                      : undefined
+                  }
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
                     appRole === 'admin'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                      ? isSuperUser
+                        ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                       : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
                   }`}
                 >
                   {appRole === 'admin' ? (
                     <>
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Mode Admin</span>
+                      <ShieldCheck className={`w-3.5 h-3.5 ${isSuperUser ? 'text-amber-600' : 'text-emerald-600'}`} />
+                      <span>{isSuperUser ? 'Super User' : 'Mode Admin'}</span>
                     </>
                   ) : (
                     <>
@@ -1021,16 +1046,23 @@ export const SmartNavigation: React.FC<SmartNavigationProps> = ({
             <button
               type="button"
               onClick={appRole === 'admin' ? onSwitchToPetugas : onOpenAdminPinModal}
+              title={
+                appRole === 'admin' && isSuperUser
+                  ? 'Mode Super User Aktif (Waktu penginputan tanggal & jam terlihat) — Klik untuk kunci ke Mode Petugas'
+                  : undefined
+              }
               className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
                 appRole === 'admin'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                  ? isSuperUser
+                    ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                   : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
               }`}
             >
               {appRole === 'admin' ? (
                 <>
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Admin</span>
+                  <ShieldCheck className={`w-3.5 h-3.5 ${isSuperUser ? 'text-amber-600' : 'text-emerald-600'}`} />
+                  <span>{isSuperUser ? 'Super User' : 'Admin'}</span>
                 </>
               ) : (
                 <>

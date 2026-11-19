@@ -12,6 +12,7 @@ const DISBURSEMENT_DRAFTS_KEY = 'cashback_app_disbursement_drafts_v1';
 const OPEN_DISBURSEMENT_KEY = 'cashback_app_open_disbursement_v1';
 const DISBURSEMENT_OFFICER_KEY = 'cashback_app_disbursement_officer_v1';
 const APP_ROLE_KEY = 'cashback_app_role_v1';
+const IS_SUPERUSER_KEY = 'cashback_app_is_superuser_v1';
 const CANCEL_REQUESTS_KEY = 'cashback_app_cancel_requests_v1';
 const SUPERUSER_ADMIN_PIN = '151219';
 
@@ -84,13 +85,73 @@ export function saveStoredAppRole(role: AppRole): void {
   }
 }
 
-export function verifyAdminPin(inputPin: string, configuredAdminPin?: string): boolean {
+export function loadStoredIsSuperUser(): boolean {
+  try {
+    return localStorage.getItem(IS_SUPERUSER_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function saveStoredIsSuperUser(isSuperUser: boolean): void {
+  try {
+    if (isSuperUser) {
+      localStorage.setItem(IS_SUPERUSER_KEY, 'true');
+    } else {
+      localStorage.removeItem(IS_SUPERUSER_KEY);
+    }
+  } catch (e) {
+    console.warn('Failed to save superuser state to localStorage:', e);
+  }
+}
+
+export function resolveAdminPinLevel(
+  inputPin: string,
+  configuredAdminPin?: string
+): 'invalid' | 'admin' | 'superuser' {
   const cleaned = (inputPin || '').trim();
-  if (!cleaned) return false;
-  if (cleaned === SUPERUSER_ADMIN_PIN) return true;
+  if (!cleaned) return 'invalid';
+  if (cleaned === SUPERUSER_ADMIN_PIN) return 'superuser';
   const custom = (configuredAdminPin || '').trim();
-  if (custom.length >= 4 && cleaned === custom) return true;
-  return false;
+  if (custom.length >= 4 && cleaned === custom) return 'admin';
+  return 'invalid';
+}
+
+export function verifyAdminPin(inputPin: string, configuredAdminPin?: string): boolean {
+  return resolveAdminPinLevel(inputPin, configuredAdminPin) !== 'invalid';
+}
+
+const SHORT_MONTHS_ID = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+  'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+];
+
+/**
+ * Formats an ISO timestamp (or YYYY-MM-DD fallback) into readable Indonesian date & time
+ * for Super User inspection (e.g. "19 Nov 2026, 08:15:30").
+ */
+export function formatInputTimestamp(isoOrDate?: string): string | null {
+  if (!isoOrDate || !isoOrDate.trim()) return null;
+  const trimmed = isoOrDate.trim();
+  if (/T\d{2}:\d{2}/.test(trimmed) || /\s\d{2}:\d{2}/.test(trimmed)) {
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      const dd = String(parsed.getDate()).padStart(2, '0');
+      const mmm = SHORT_MONTHS_ID[parsed.getMonth()] || '';
+      const yyyy = parsed.getFullYear();
+      const hh = String(parsed.getHours()).padStart(2, '0');
+      const min = String(parsed.getMinutes()).padStart(2, '0');
+      const ss = String(parsed.getSeconds()).padStart(2, '0');
+      return `${dd} ${mmm} ${yyyy}, ${hh}:${min}:${ss}`;
+    }
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [y, m, d] = trimmed.split('-').map(Number);
+    if (m >= 1 && m <= 12) {
+      return `${String(d).padStart(2, '0')} ${SHORT_MONTHS_ID[m - 1]} ${y} (jam belum tercatat)`;
+    }
+  }
+  return trimmed;
 }
 
 export function loadStoredCancelRequests(): DisbursementCancelRequest[] {
@@ -830,6 +891,7 @@ export function reconcileMasterCustomersWithInvoices(
       email: invMeta.email,
       preferredPayoutMethod: 'tunai',
       joinedDate: invMeta.earliestDate || getTodayLocalYmd(),
+      createdAt: new Date().toISOString(),
       isActive: true,
     };
     newCustomers.push(newCust);

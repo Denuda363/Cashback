@@ -107,6 +107,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
       preferredPayoutMethod,
       notes: notes.trim() || undefined,
       joinedDate: editingCustomer ? editingCustomer.joinedDate : getTodayLocalYmd(),
+      createdAt: editingCustomer ? editingCustomer.createdAt : new Date().toISOString(),
       isActive,
     };
 

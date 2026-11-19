@@ -147,6 +147,7 @@ export const ImportCustomerModal: React.FC<ImportCustomerModalProps> = ({
         preferredPayoutMethod: 'tunai',
         notes: r.notes,
         joinedDate: getTodayLocalYmd(),
+        createdAt: new Date().toISOString(),
         isActive: true,
       };
 

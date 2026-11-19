@@ -42,6 +42,19 @@ export function calculateCashback(
     }
   }
 
+  const minPurchase = Math.max(0, Number(settings.minPurchaseAmount) || 0);
+  if (minPurchase > 0 && safeAmount < minPurchase) {
+    return {
+      effectivePercentage: 0,
+      cashbackAmount: 0,
+      rawAmount: 0,
+      isCapped: false,
+      isBelowMinimum: true,
+      appliedTier,
+      breakdown: `Belanja Rp ${safeAmount.toLocaleString('id-ID')} di bawah minimal belanja Rp ${minPurchase.toLocaleString('id-ID')} → Cashback Rp 0`,
+    };
+  }
+
   // Calculate raw cashback
   const rawCashback = (safeAmount * effectiveRate) / 100;
   let finalCashback = rawCashback;

@@ -51,6 +51,7 @@
         "eWalletNumber": { "type": "string" },
         "preferredPayoutMethod": { "type": "string", "enum": ["transfer_bank", "e_wallet", "potongan_belanja", "tunai"] },
         "joinedDate": { "type": "string" },
+        "createdAt": { "type": "string" },
         "isActive": { "type": "boolean" },
         "notes": { "type": "string" }
       },

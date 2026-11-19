@@ -52,6 +52,9 @@ import {
   Crown,
   Hexagon,
   Sun,
+  Minus,
+  Square,
+  Copy,
 } from 'lucide-react';
 import { AppTheme, CashbackSettings, ClockStyle, CustomerMaster, Invoice, NavPosition, TierRule, CompanyProfile } from '../types/cashback';
 import { calculateCashback, formatRupiah } from '../utils/cashbackCalculator';
@@ -108,8 +111,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [flatPercentage, setFlatPercentage] = useState<number>(settings.flatPercentage);
   const [tiers, setTiers] = useState<TierRule[]>(settings.tiers);
   const [tierError, setTierError] = useState<string | null>(null);
+  const [minPurchaseAmount, setMinPurchaseAmount] = useState<number>(settings.minPurchaseAmount || 0);
   const [hasMaxCap, setHasMaxCap] = useState<boolean>(settings.maxCashbackPerTransaction !== null);
   const [maxCapValue, setMaxCapValue] = useState<number>(settings.maxCashbackPerTransaction || 1000000);
+  const [minSpendForParcel, setMinSpendForParcel] = useState<number>(settings.minSpendForParcel ?? 5000000);
   const [rounding, setRounding] = useState<'exact' | 'round_hundred' | 'round_thousand'>(settings.rounding);
   const [claimValidityDays, setClaimValidityDays] = useState<number>(settings.claimValidityDays);
   const [storeName, setStoreName] = useState<string>(settings.storeName || 'Mitra Niaga Utama');
@@ -169,6 +174,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [showAdminPinInput, setShowAdminPinInput] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
 
+  // Window Controls State (Windows-style Minimize & Maximize)
+  const [windowState, setWindowState] = useState<'normal' | 'maximized' | 'minimized'>('normal');
+  const [lastExpandedState, setLastExpandedState] = useState<'normal' | 'maximized'>('normal');
+
   const wasOpenRef = useRef(false);
 
   // Sync all rule, profile, logo, and PIN fields cleanly on each modal open transition
@@ -179,13 +188,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
     if (wasOpenRef.current) return;
     wasOpenRef.current = true;
+    setWindowState('normal');
+    setLastExpandedState('normal');
 
     setMode(settings.mode);
     setFlatPercentage(settings.flatPercentage);
     setTiers(settings.tiers);
     setTierError(null);
+    setMinPurchaseAmount(settings.minPurchaseAmount || 0);
     setHasMaxCap(settings.maxCashbackPerTransaction !== null);
     setMaxCapValue(settings.maxCashbackPerTransaction || 1000000);
+    setMinSpendForParcel(settings.minSpendForParcel ?? 5000000);
     setRounding(settings.rounding);
     setClaimValidityDays(settings.claimValidityDays);
     setStoreName(settings.storeName || 'Mitra Niaga Utama');
@@ -365,8 +378,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     mode,
     flatPercentage,
     tiers,
-    minPurchaseAmount: 0,
-    maxCashbackPerTransaction: hasMaxCap ? maxCapValue : null,
+    minPurchaseAmount: Math.max(0, Math.round(Number(minPurchaseAmount) || 0)),
+    maxCashbackPerTransaction: hasMaxCap ? Math.max(0, Math.round(Number(maxCapValue) || 0)) : null,
+    minSpendForParcel: Math.max(0, Math.round(Number(minSpendForParcel) || 0)),
     rounding,
     claimValidityDays,
     storeName: companyName.trim() || storeName.trim(),
@@ -457,26 +471,57 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       Number.isFinite(claimValidityDays) && claimValidityDays >= 1
         ? Math.min(365, Math.round(claimValidityDays))
         : 30;
+    const safeMinPurchase =
+      Number.isFinite(minPurchaseAmount) && minPurchaseAmount > 0
+        ? Math.round(minPurchaseAmount)
+        : 0;
+    const safeMinSpendParcel =
+      Number.isFinite(minSpendForParcel) && minSpendForParcel >= 0
+        ? Math.round(minSpendForParcel)
+        : 0;
     const safeMaxCap =
       hasMaxCap && Number.isFinite(maxCapValue) && maxCapValue > 0
         ? Math.round(maxCapValue)
         : null;
-    const sanitizedTiers = tiers.map((t) => ({
-      ...t,
-      label: t.label.trim() || 'Tier Cashback',
-      percentage:
-        Number.isFinite(t.percentage) && t.percentage >= 0
-          ? Math.min(100, t.percentage)
-          : 0,
-    }));
+    const sanitizedTiers = tiers.map((t) => {
+      const safeMinSpend = Number.isFinite(t.minSpend) && t.minSpend >= 0 ? Math.round(t.minSpend) : 0;
+      const safeMaxSpend =
+        t.maxSpend !== null && Number.isFinite(t.maxSpend) && t.maxSpend >= 0
+          ? Math.round(t.maxSpend)
+          : null;
+      return {
+        ...t,
+        label: t.label.trim() || 'Tier Cashback',
+        minSpend: safeMinSpend,
+        maxSpend: safeMaxSpend,
+        percentage:
+          Number.isFinite(t.percentage) && t.percentage >= 0
+            ? Math.min(100, t.percentage)
+            : 0,
+      };
+    });
+
+    if (mode === 'tiered') {
+      const invalidTier = sanitizedTiers.find(
+        (t) => t.maxSpend !== null && t.maxSpend < t.minSpend
+      );
+      if (invalidTier) {
+        setTierError(
+          `Nilai Max pada "${invalidTier.label}" tidak boleh lebih kecil dari nilai Min.`
+        );
+        setActiveTab('rules');
+        return;
+      }
+    }
 
     const finalSettings: CashbackSettings = {
       ...settings,
       mode,
       flatPercentage: safeFlatPercentage,
       tiers: sanitizedTiers,
-      minPurchaseAmount: 0,
+      minPurchaseAmount: safeMinPurchase,
       maxCashbackPerTransaction: safeMaxCap,
+      minSpendForParcel: safeMinSpendParcel,
       rounding,
       claimValidityDays: safeValidityDays,
       storeName: finalCompanyName,
@@ -488,45 +533,169 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onClose();
   };
 
+  const handleMinimizeWindow = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLastExpandedState(windowState === 'maximized' ? 'maximized' : 'normal');
+    setWindowState('minimized');
+  };
+
+  const handleToggleMaximizeWindow = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setWindowState((prev) => {
+      const next = prev === 'maximized' ? 'normal' : 'maximized';
+      setLastExpandedState(next);
+      return next;
+    });
+  };
+
+  const handleRestoreFromMinimized = () => {
+    setWindowState(lastExpandedState);
+  };
+
+  const activeTabLabel =
+    activeTab === 'rules'
+      ? 'Aturan & % Cashback'
+      : activeTab === 'company'
+      ? 'Profil Perusahaan'
+      : 'Cloud & Cadangan';
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
-      <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-xl max-w-2xl w-full max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        
-        {/* Header */}
-        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            <div className="p-1.5 sm:p-2 bg-slate-900 text-white rounded-lg">
-              <SettingsIcon className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-xs sm:text-sm font-bold text-slate-900">
-                Pengaturan Sistem & Profil Perusahaan
-              </h2>
-              <p className="text-[10px] sm:text-[11px] text-slate-500">
-                Konfigurasi aturan cashback, identitas perusahaan untuk tanda terima, dan sinkronisasi database
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {onOpenGuide && (
+    <>
+      {windowState === 'minimized' ? (
+        <div className="fixed bottom-4 right-4 z-50 max-w-[calc(100vw-2rem)] sm:w-80 bg-slate-900 text-white rounded-xl border border-slate-700/80 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <div className="px-3 py-2.5 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={handleRestoreFromMinimized}
+              className="flex items-center gap-2.5 min-w-0 flex-1 text-left hover:opacity-90 transition-opacity"
+              title="Klik untuk membuka kembali jendela Pengaturan"
+            >
+              <div className="p-1.5 bg-emerald-600 text-white rounded-lg shrink-0">
+                <SettingsIcon className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold truncate">Pengaturan Sistem</div>
+                <div className="text-[10px] text-slate-400 truncate">{activeTabLabel} (Diminimalkan)</div>
+              </div>
+            </button>
+            <div className="flex items-center gap-0.5 shrink-0">
               <button
                 type="button"
-                onClick={onOpenGuide}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
-                title="Buka panduan lengkap penggunaan aplikasi"
+                onClick={handleRestoreFromMinimized}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-md transition-colors"
+                title="Pulihkan Jendela (Restore)"
               >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Buku Panduan</span>
+                <Square className="w-3.5 h-3.5" />
               </button>
-            )}
-            <button
-              onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
+              <button
+                type="button"
+                onClick={() => setWindowState('maximized')}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-md transition-colors"
+                title="Perbesar Penuh (Maximize)"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 text-slate-300 hover:text-white hover:bg-rose-600 rounded-md transition-colors"
+                title="Tutup Pengaturan"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
+      ) : (
+        <div
+          className={`fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex ${
+            windowState === 'maximized'
+              ? 'items-stretch justify-stretch p-0 overflow-hidden'
+              : 'items-center justify-center p-2.5 sm:p-4 overflow-y-auto'
+          }`}
+        >
+          <div
+            className={`bg-white flex flex-col overflow-hidden transition-all duration-150 ${
+              windowState === 'maximized'
+                ? 'w-full h-full max-w-none max-h-none rounded-none border-0 shadow-2xl'
+                : 'rounded-xl sm:rounded-2xl border border-slate-200 shadow-xl max-w-2xl w-full max-h-[94vh] animate-in fade-in zoom-in-95'
+            }`}
+          >
+            {/* Header / Windows-style Title Bar */}
+            <div
+              onDoubleClick={() => handleToggleMaximizeWindow()}
+              className="px-4 py-3 sm:px-6 sm:py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50 select-none"
+              title="Klik dua kali untuk Maximize / Restore"
+            >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <div className="p-1.5 sm:p-2 bg-slate-900 text-white rounded-lg shrink-0">
+                  <SettingsIcon className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                    Pengaturan Sistem &amp; Profil Perusahaan
+                  </h2>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 truncate">
+                    Konfigurasi aturan cashback, identitas perusahaan untuk tanda terima, dan sinkronisasi database
+                  </p>
+                </div>
+              </div>
+              <div
+                className="flex items-center gap-1 shrink-0"
+                onDoubleClick={(e) => e.stopPropagation()}
+              >
+                {onOpenGuide && (
+                  <button
+                    type="button"
+                    onClick={onOpenGuide}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 mr-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                    title="Buka panduan lengkap penggunaan aplikasi"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Buku Panduan</span>
+                  </button>
+                )}
+
+                {/* Windows-style Window Controls: Minimize, Maximize/Restore, Close */}
+                <div className="flex items-center bg-slate-200/60 border border-slate-200 rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={handleMinimizeWindow}
+                    className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded-md transition-colors"
+                    title="Minimize (Perkecil ke sudut bawah)"
+                    aria-label="Minimize"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleToggleMaximizeWindow}
+                    className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-white rounded-md transition-colors"
+                    title={
+                      windowState === 'maximized'
+                        ? 'Restore Down (Kembalikan ukuran normal)'
+                        : 'Maximize (Layar Penuh)'
+                    }
+                    aria-label={windowState === 'maximized' ? 'Restore Down' : 'Maximize'}
+                  >
+                    {windowState === 'maximized' ? (
+                      <Copy className="w-3.5 h-3.5" />
+                    ) : (
+                      <Square className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="p-1.5 text-slate-600 hover:text-white hover:bg-rose-600 rounded-md transition-colors"
+                    title="Tutup"
+                    aria-label="Close"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
 
         {/* Tab Navigation Switcher */}
         <div className="flex items-center px-4 sm:px-6 pt-2.5 pb-2 border-b border-slate-200 bg-slate-100/60 gap-1.5 overflow-x-auto">
@@ -1450,40 +1619,82 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                   <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
                     {tiers.map((t, idx) => (
-                      <div key={t.id} className="p-3 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                        <div className="flex-1 space-y-1">
+                      <div key={t.id} className="p-3 bg-white flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between gap-2">
                           <input
                             type="text"
                             value={t.label}
                             onChange={(e) => handleUpdateTier(idx, 'label', e.target.value)}
-                            className="font-bold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-slate-900 focus:outline-hidden w-full"
+                            className="font-bold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-slate-900 focus:outline-hidden flex-1"
+                            placeholder="Nama tier..."
                           />
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono">
-                            <span>Min: Rp {t.minSpend.toLocaleString('id-ID')}</span>
-                            <span>-</span>
-                            <span>Max: {t.maxSpend ? `Rp ${t.maxSpend.toLocaleString('id-ID')}` : 'Tak Terbatas'}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={0.5}
+                                value={t.percentage}
+                                onChange={(e) => handleUpdateTier(idx, 'percentage', parseFloat(e.target.value) || 0)}
+                                className="w-12 text-right font-mono font-bold bg-transparent focus:outline-hidden"
+                              />
+                              <span className="text-slate-500 font-bold">%</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTier(idx)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                              title="Hapus tier"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                            <span className="font-bold text-slate-500 shrink-0">Min Rp</span>
                             <input
                               type="number"
-                              min={0.1}
-                              max={100}
-                              step={0.5}
-                              value={t.percentage}
-                              onChange={(e) => handleUpdateTier(idx, 'percentage', parseFloat(e.target.value) || 0)}
-                              className="w-12 text-right font-mono font-bold bg-transparent focus:outline-hidden"
+                              min={0}
+                              step={50000}
+                              value={t.minSpend}
+                              onChange={(e) => handleUpdateTier(idx, 'minSpend', Math.max(0, parseInt(e.target.value, 10) || 0))}
+                              className="w-full font-mono font-semibold text-slate-800 bg-transparent focus:outline-hidden"
                             />
-                            <span className="text-slate-500 font-bold">%</span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTier(idx)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+
+                          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                            <span className="font-bold text-slate-500 shrink-0">Max Rp</span>
+                            {t.maxSpend === null ? (
+                              <span className="flex-1 font-mono font-semibold text-emerald-700">Tak Terbatas</span>
+                            ) : (
+                              <input
+                                type="number"
+                                min={0}
+                                step={50000}
+                                value={t.maxSpend}
+                                onChange={(e) => handleUpdateTier(idx, 'maxSpend', Math.max(0, parseInt(e.target.value, 10) || 0))}
+                                className="w-full font-mono font-semibold text-slate-800 bg-transparent focus:outline-hidden"
+                              />
+                            )}
+                            <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-600 cursor-pointer shrink-0 pl-1 border-l border-slate-200">
+                              <input
+                                type="checkbox"
+                                checked={t.maxSpend === null}
+                                onChange={(e) =>
+                                  handleUpdateTier(
+                                    idx,
+                                    'maxSpend',
+                                    e.target.checked ? null : (t.minSpend || 0) + 2000000
+                                  )
+                                }
+                                className="rounded text-emerald-600"
+                              />
+                              <span>∞</span>
+                            </label>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1491,8 +1702,183 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               )}
 
+              {/* Min & Max Rules Section */}
+              <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-slate-800 text-xs">
+                    Batas Minimal (Min) &amp; Maksimal (Max)
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500">
+                    Berlaku pada kalkulasi cashback &amp; parsel
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Minimal Belanja Dapat Cashback (Min) */}
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between gap-1">
+                      <label className="font-bold text-slate-800 text-[11px]">
+                        Minimal Belanja Cashback (Min)
+                      </label>
+                      <span className="text-[10px] font-mono font-bold text-emerald-700">
+                        {minPurchaseAmount > 0 ? formatRupiah(minPurchaseAmount) : 'Tanpa Min'}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 font-mono">
+                        Rp
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={10000}
+                        value={minPurchaseAmount}
+                        onChange={(e) => setMinPurchaseAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        placeholder="0 (Tanpa Minimal)"
+                        className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {[
+                        { label: 'Rp 0 (Semua)', val: 0 },
+                        { label: '50rb', val: 50000 },
+                        { label: '100rb', val: 100000 },
+                        { label: '500rb', val: 500000 },
+                      ].map((preset) => (
+                        <button
+                          key={preset.val}
+                          type="button"
+                          onClick={() => setMinPurchaseAmount(preset.val)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                            minPurchaseAmount === preset.val
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 border border-slate-200'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-snug">
+                      Belanja di bawah nominal ini otomatis Rp 0 cashback (0 = semua transaksi dapat).
+                    </p>
+                  </div>
+
+                  {/* Maksimal Cashback Per Transaksi (Max) */}
+                  <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between gap-1">
+                      <label className="font-bold text-slate-800 text-[11px]">
+                        Maksimal Cashback / Faktur (Max)
+                      </label>
+                      <span className="text-[10px] font-mono font-bold text-amber-700">
+                        {hasMaxCap ? formatRupiah(maxCapValue) : 'Tak Terbatas'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setHasMaxCap(false)}
+                        className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-colors ${
+                          !hasMaxCap
+                            ? 'bg-slate-900 text-white border-slate-900'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        Tak Terbatas (∞)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHasMaxCap(true);
+                          if (!maxCapValue || maxCapValue <= 0) setMaxCapValue(500000);
+                        }}
+                        className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-colors ${
+                          hasMaxCap
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        Batasi Nominal
+                      </button>
+                    </div>
+
+                    {hasMaxCap ? (
+                      <>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 font-mono">
+                            Rp
+                          </span>
+                          <input
+                            type="number"
+                            min={1000}
+                            step={50000}
+                            value={maxCapValue}
+                            onChange={(e) => setMaxCapValue(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                            placeholder="Contoh: 500000"
+                            className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900"
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {[
+                            { label: '100rb', val: 100000 },
+                            { label: '250rb', val: 250000 },
+                            { label: '500rb', val: 500000 },
+                            { label: '1 Jt', val: 1000000 },
+                          ].map((preset) => (
+                            <button
+                              key={preset.val}
+                              type="button"
+                              onClick={() => setMaxCapValue(preset.val)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                maxCapValue === preset.val
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 border border-slate-200'
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-[10px] text-slate-500 leading-snug pt-1">
+                        Tidak ada batas maksimal — nilai cashback murni dihitung penuh dari total belanja × %.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Minimal Belanja Dapat Parcel */}
+                <div className="p-3 bg-white rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div>
+                    <label className="font-bold text-slate-800 text-[11px] block">
+                      Batas Minimal Belanja Dapat Parsel (Min)
+                    </label>
+                    <p className="text-[10px] text-slate-500">
+                      Standar belanja untuk acuan hak parsel konsumen pada laporan &amp; ekspor Excel.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="relative w-36">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 font-mono">
+                        Rp
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={500000}
+                        value={minSpendForParcel}
+                        onChange={(e) => setMinSpendForParcel(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Rules Grid */}
-              <div className="pt-2">
+              <div className="pt-1">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
                     Masa Berlaku Klaim (Hari)
@@ -1545,11 +1931,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className="flex-1 bg-slate-800 text-white font-mono px-3 py-1.5 rounded-lg border border-slate-700 text-xs focus:outline-hidden"
                   />
                 </div>
-                <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
-                  <span className="text-xs text-slate-400">Estimasi Cashback Diperoleh:</span>
-                  <span className="text-base font-black text-emerald-400 font-mono">
-                    {formatRupiah(simResult.cashbackAmount)}
-                  </span>
+                <div className="pt-2 border-t border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                      <span>Estimasi Cashback Diperoleh:</span>
+                      {simResult.isBelowMinimum && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                          Di bawah Min
+                        </span>
+                      )}
+                      {simResult.isCapped && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-400/30">
+                          Terbatas Max
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-base font-black text-emerald-400 font-mono">
+                      {formatRupiah(simResult.cashbackAmount)}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    {simResult.breakdown}
+                  </div>
                 </div>
               </div>
 
@@ -2194,7 +2597,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         </form>
 
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* Restore Confirmation Dialog */}
       <ConfirmDialog
@@ -2230,7 +2635,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         isOpen={isPwaModalOpen}
         onClose={() => setIsPwaModalOpen(false)}
       />
-
-    </div>
+    </>
   );
 };

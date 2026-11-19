@@ -229,6 +229,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       email: customerEmail.trim() || undefined,
       city: quickCustomerCity.trim() || undefined,
       joinedDate: getTodayLocalYmd(),
+      createdAt: new Date().toISOString(),
       isActive: true,
       preferredPayoutMethod: payoutMethod,
     };
@@ -669,9 +670,19 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
             {/* Live Transparent Calculation Box */}
             <div className="p-3 bg-white rounded-lg border border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-emerald-800 font-semibold">
+                <div className="flex items-center gap-1.5 flex-wrap text-emerald-800 font-semibold">
                   <Calculator className="w-3.5 h-3.5" />
                   <span>Kalkulasi Cashback Transparan:</span>
+                  {benefitType !== 'parcel_only' && calculation.isBelowMinimum && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                      Di bawah Minimal Belanja
+                    </span>
+                  )}
+                  {benefitType !== 'parcel_only' && calculation.isCapped && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200">
+                      Terbatas Max Cap
+                    </span>
+                  )}
                 </div>
                 <div className="text-[11px] text-slate-600 font-mono">
                   {benefitType === 'parcel_only'

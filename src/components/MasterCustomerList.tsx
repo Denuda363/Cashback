@@ -16,11 +16,12 @@ import {
   Upload,
   AlertTriangle,
   UserX,
-  Eye
+  Eye,
+  Clock
 } from 'lucide-react';
 import { CustomerMaster, CustomerSummary, Invoice } from '../types/cashback';
 import { formatRupiah, formatNumber } from '../utils/cashbackCalculator';
-import { isValidRealPhone, normalizeCustomerName, normalizePhone } from '../utils/storage';
+import { isValidRealPhone, normalizeCustomerName, normalizePhone, formatInputTimestamp } from '../utils/storage';
 import { ConfirmDialog } from './ConfirmDialog';
 import { PaginationBar } from './PaginationBar';
 
@@ -37,6 +38,7 @@ interface MasterCustomerListProps {
   onOpenImportExcel?: () => void;
   onSyncWithInvoices?: () => void;
   isReadOnly?: boolean;
+  isSuperUser?: boolean;
 }
 
 export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
@@ -52,6 +54,7 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
   onOpenImportExcel,
   onSyncWithInvoices,
   isReadOnly = false,
+  isSuperUser = false,
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -550,6 +553,12 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
                       <span>{displayPhone || 'Tanpa Kontak'}</span>
                       {cust.city && <span>· {cust.city}</span>}
                     </div>
+                    {isSuperUser && formatInputTimestamp(cust.createdAt || cust.joinedDate) && (
+                      <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-mono text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                        <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                        <span>Input: {formatInputTimestamp(cust.createdAt || cust.joinedDate)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {!isReadOnly && onToggleStatus ? (
@@ -717,6 +726,12 @@ export const MasterCustomerList: React.FC<MasterCustomerListProps> = ({
                             </>
                           )}
                         </div>
+                        {isSuperUser && formatInputTimestamp(cust.createdAt || cust.joinedDate) && (
+                          <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-mono text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                            <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                            <span>Input: {formatInputTimestamp(cust.createdAt || cust.joinedDate)}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* City & Address */}

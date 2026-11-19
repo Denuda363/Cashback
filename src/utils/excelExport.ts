@@ -1028,6 +1028,11 @@ export async function exportCashbackToExcel(
         : settings.tiers.map((t) => `${t.label}: ${t.percentage}%`).join(' | '),
       false,
     ],
+    [
+      'Minimal Belanja Dapat Cashback',
+      settings.minPurchaseAmount > 0 ? settings.minPurchaseAmount : 'Tanpa Batas Minimal',
+      settings.minPurchaseAmount > 0,
+    ],
     ['Batas Minimal Belanja Dapat Parcel', settings.minSpendForParcel || 5000000, true],
     [
       'Maksimum Cashback / Transaksi',

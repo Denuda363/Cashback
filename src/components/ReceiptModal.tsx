@@ -8,16 +8,19 @@ import {
   ShieldCheck, 
   Receipt as ReceiptIcon,
   Phone,
-  CheckCircle2
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { CashbackSettings, Invoice } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
+import { formatInputTimestamp } from '../utils/storage';
 
 interface ReceiptModalProps {
   invoice: Invoice | null;
   onClose: () => void;
   settings: CashbackSettings;
   onMarkDisbursed?: (invoiceId: string) => void;
+  isSuperUser?: boolean;
 }
 
 export const ReceiptModal: React.FC<ReceiptModalProps> = ({
@@ -25,6 +28,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   onClose,
   settings,
   onMarkDisbursed,
+  isSuperUser = false,
 }) => {
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<number | null>(null);
@@ -194,6 +198,24 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <span>Tanggal Pembelian:</span>
               <span className="font-mono text-slate-800">{invoice.date}</span>
             </div>
+            {isSuperUser && formatInputTimestamp(invoice.createdAt) && (
+              <div className="flex justify-between text-amber-800 print:hidden">
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-600" />
+                  Waktu Penginputan:
+                </span>
+                <span className="font-mono font-semibold">{formatInputTimestamp(invoice.createdAt)}</span>
+              </div>
+            )}
+            {isSuperUser && invoice.claimStatus === 'disbursed' && formatInputTimestamp(invoice.disbursedAt) && (
+              <div className="flex justify-between text-emerald-700 print:hidden">
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-emerald-600" />
+                  Waktu Pencairan:
+                </span>
+                <span className="font-mono font-semibold">{formatInputTimestamp(invoice.disbursedAt)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span>Nama Konsumen:</span>
               <span className="font-bold text-slate-900">{invoice.customerName}</span>

@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { CustomerSummary, Invoice, CustomerBenefitType, CompanyProfile } from '../types/cashback';
 import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
-import { aggregateCustomerSummaries, normalizeCustomerName } from '../utils/storage';
+import { aggregateCustomerSummaries, normalizeCustomerName, formatInputTimestamp } from '../utils/storage';
 import { ConfirmDialog } from './ConfirmDialog';
 import { OfficialReceiptModal } from './OfficialReceiptModal';
 import { PaginationBar } from './PaginationBar';
@@ -50,6 +50,7 @@ interface CustomerSummaryViewProps {
   companyProfile?: CompanyProfile;
   storeName?: string;
   isReadOnly?: boolean;
+  isSuperUser?: boolean;
 }
 
 export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
@@ -67,6 +68,7 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
   companyProfile,
   storeName = 'CashbackPro',
   isReadOnly = false,
+  isSuperUser = false,
 }) => {
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState<'all' | 'Platinum' | 'Gold' | 'Silver' | 'Bronze'>('all');
@@ -717,11 +719,36 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                             })()}
                           </div>
 
-                          <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mt-0.5">
+                          <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mt-0.5 flex-wrap">
                             <span>No. Telp: {cust.customerPhone || 'Tanpa Kontak'}</span>
                             <span aria-hidden="true">·</span>
                             <span>Terakhir: {cust.lastPurchaseDate}</span>
                           </div>
+                          {isSuperUser && (() => {
+                            const latestInputIso = (cust.invoices || [])
+                              .map((i) => i.createdAt)
+                              .filter(Boolean)
+                              .sort((a, b) => b.localeCompare(a))[0];
+                            const formattedInput = formatInputTimestamp(latestInputIso);
+                            const formattedDisbursed = formatInputTimestamp(cust.lastDisbursedAt);
+                            if (!formattedInput && !formattedDisbursed) return null;
+                            return (
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+                                {formattedInput && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800">
+                                    <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                    Input Terakhir: {formattedInput}
+                                  </span>
+                                )}
+                                {formattedDisbursed && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800">
+                                    <Clock className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                    Cair: {formattedDisbursed}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Quick Benefit Package Setting */}
                           {!isReadOnly && onSetCustomerBenefit && !isExcluded && (
@@ -1002,7 +1029,17 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                                     {inv.invoiceNumber}
                                   </td>
                                   <td className="py-2 px-3 text-slate-600 text-[11px]">
-                                    {inv.date}
+                                    <div>{inv.date}</div>
+                                    {isSuperUser && formatInputTimestamp(inv.createdAt) && (
+                                      <div className="text-[9.5px] text-amber-800 mt-0.5">
+                                        Input: {formatInputTimestamp(inv.createdAt)}
+                                      </div>
+                                    )}
+                                    {isSuperUser && inv.claimStatus === 'disbursed' && formatInputTimestamp(inv.disbursedAt) && (
+                                      <div className="text-[9.5px] text-emerald-700">
+                                        Cair: {formatInputTimestamp(inv.disbursedAt)}
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="py-2 px-3 font-sans text-slate-700">
                                     {inv.category || '-'}
@@ -1126,6 +1163,20 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                             <div className="text-[11px] text-slate-400 font-mono font-normal">
                               {cust.customerPhone || 'Tanpa Kontak'}
                             </div>
+                            {isSuperUser && (() => {
+                              const latestInputIso = (cust.invoices || [])
+                                .map((i) => i.createdAt)
+                                .filter(Boolean)
+                                .sort((a, b) => b.localeCompare(a))[0];
+                              const formattedInput = formatInputTimestamp(latestInputIso);
+                              if (!formattedInput) return null;
+                              return (
+                                <div className="text-[10px] font-mono font-normal text-amber-800 mt-0.5 flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                  <span>Input: {formattedInput}</span>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="py-3 px-3.5 text-right font-mono tabular-nums text-slate-900 font-black text-sm">
                             {formatRupiah(cust.totalPurchase)}
@@ -1308,7 +1359,14 @@ export const CustomerSummaryView: React.FC<CustomerSummaryViewProps> = ({
                                     {cust.invoices.map((inv, invIdx) => (
                                       <tr key={inv.id || `${inv.invoiceNumber}_${invIdx}`}>
                                         <td className="py-1 px-2 font-bold font-sans text-slate-900">{inv.invoiceNumber}</td>
-                                        <td className="py-1 px-2 text-slate-600">{inv.date}</td>
+                                        <td className="py-1 px-2 text-slate-600">
+                                          <div>{inv.date}</div>
+                                          {isSuperUser && formatInputTimestamp(inv.createdAt) && (
+                                            <div className="text-[9.5px] text-amber-800">
+                                              Input: {formatInputTimestamp(inv.createdAt)}
+                                            </div>
+                                          )}
+                                        </td>
                                         <td className="py-1 px-2 font-sans text-slate-700">{inv.category || '-'}</td>
                                         <td className="py-1 px-2 text-right text-slate-900 font-semibold">{formatRupiah(inv.purchaseAmount)}</td>
                                         <td className="py-1 px-2 text-right text-emerald-700 font-bold">{formatRupiah(inv.cashbackAmount)}</td>

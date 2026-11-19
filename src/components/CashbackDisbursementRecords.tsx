@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { AppRole, CustomerSummary, DisbursementCancelRequest, Invoice, PayoutMethod, CompanyProfile } from '../types/cashback';
 import { formatRupiah } from '../utils/cashbackCalculator';
-import { normalizeCustomerName, downloadProofPhoto } from '../utils/storage';
+import { normalizeCustomerName, downloadProofPhoto, formatInputTimestamp } from '../utils/storage';
 import { ConfirmDialog } from './ConfirmDialog';
 import { OfficialReceiptModal } from './OfficialReceiptModal';
 import { PaginationBar } from './PaginationBar';
@@ -42,6 +42,7 @@ interface CashbackDisbursementRecordsProps {
   companyProfile?: CompanyProfile;
   storeName?: string;
   appRole?: AppRole;
+  isSuperUser?: boolean;
   cancelRequests?: DisbursementCancelRequest[];
   onRequestCancelDisbursement?: (customer: CustomerSummary, requestedBy: string, reason: string) => Promise<void>;
   onExecuteApprovedCancel?: (customerName: string, requestId: string) => Promise<void>;
@@ -58,6 +59,7 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
   companyProfile,
   storeName = 'CashbackPro',
   appRole = 'admin',
+  isSuperUser = false,
   cancelRequests = [],
   onRequestCancelDisbursement,
   onExecuteApprovedCancel,
@@ -658,6 +660,11 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                               {cust.lastDisbursedDate || 'Bukti tersimpan'}
                               {cust.disbursedBy ? ` · Petugas: ${cust.disbursedBy}` : ''}
                             </div>
+                            {isSuperUser && formatInputTimestamp(cust.lastDisbursedAt) && (
+                              <div className="text-[10px] text-amber-800 font-mono mt-0.5 truncate">
+                                Waktu Cair: {formatInputTimestamp(cust.lastDisbursedAt)}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <span className="text-[11px] font-semibold text-emerald-700 shrink-0">
@@ -789,6 +796,16 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                               <div className="text-[10px] text-slate-500 font-mono tabular-nums">
                                 {inv.date} · {formatRupiah(inv.purchaseAmount)} ({inv.cashbackPercentage}%)
                               </div>
+                              {isSuperUser && (
+                                <div className="text-[9.5px] font-mono text-amber-800 mt-0.5 space-y-0.5">
+                                  {formatInputTimestamp(inv.createdAt) && (
+                                    <div>Input: {formatInputTimestamp(inv.createdAt)}</div>
+                                  )}
+                                  {inv.claimStatus === 'disbursed' && formatInputTimestamp(inv.disbursedAt) && (
+                                    <div className="text-emerald-700">Cair: {formatInputTimestamp(inv.disbursedAt)}</div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <div className="text-right shrink-0">
                               <div className="font-mono font-bold text-emerald-700 tabular-nums">
@@ -1065,6 +1082,11 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                                 <span className="block font-mono text-slate-700">
                                   {cust.lastDisbursedDate || 'Tercatat'}
                                 </span>
+                                {isSuperUser && formatInputTimestamp(cust.lastDisbursedAt) && (
+                                  <span className="block font-mono text-[9.5px] text-amber-800 font-semibold mt-0.5">
+                                    Jam: {formatInputTimestamp(cust.lastDisbursedAt)}
+                                  </span>
+                                )}
                                 <span className="block text-[9px] text-emerald-700 font-semibold">
                                   Penerima: {cust.recipientName || cust.customerName}
                                 </span>
@@ -1248,7 +1270,12 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                                           {inv.invoiceNumber}
                                         </td>
                                         <td className="py-1.5 px-2 font-mono text-slate-600">
-                                          {inv.date}
+                                          <div>{inv.date}</div>
+                                          {isSuperUser && formatInputTimestamp(inv.createdAt) && (
+                                            <div className="text-[9.5px] text-amber-800">
+                                              Input: {formatInputTimestamp(inv.createdAt)}
+                                            </div>
+                                          )}
                                         </td>
                                         <td className="py-1.5 px-2 text-right font-mono">
                                           {formatRupiah(inv.purchaseAmount)}
@@ -1274,7 +1301,12 @@ export const CashbackDisbursementRecords: React.FC<CashbackDisbursementRecordsPr
                                           {methodLabel(inv.payoutMethod)}
                                         </td>
                                         <td className="py-1.5 px-2 font-mono text-slate-500">
-                                          {inv.disbursedDate || '-'}
+                                          <div>{inv.disbursedDate || '-'}</div>
+                                          {isSuperUser && inv.claimStatus === 'disbursed' && formatInputTimestamp(inv.disbursedAt) && (
+                                            <div className="text-[9.5px] text-emerald-700">
+                                              {formatInputTimestamp(inv.disbursedAt)}
+                                            </div>
+                                          )}
                                         </td>
                                       </tr>
                                     ))}

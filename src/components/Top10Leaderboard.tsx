@@ -476,9 +476,6 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
                         </span>
                       );
                     })()}
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
-                      {cust.tier}
-                    </span>
                   </div>
                 </div>
 
@@ -533,14 +530,13 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
                 <th className="py-3 px-4 text-center">Paket Diterima</th>
                 <th className="py-3 px-4">Kontribusi Relatif</th>
                 <th className="py-3 px-4 text-center">Jml Faktur</th>
-                <th className="py-3 px-4 text-center">Tier</th>
                 <th className="py-3 px-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
               {top10.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400">
+                  <td colSpan={8} className="py-8 text-center text-slate-400">
                     Tidak ada konsumen yang sesuai dengan filter.
                   </td>
                 </tr>
@@ -625,23 +621,6 @@ export const Top10Leaderboard: React.FC<Top10LeaderboardProps> = ({
                       {/* Invoice count */}
                       <td className="py-3.5 px-4 text-center font-mono tabular-nums text-slate-700">
                         {cust.invoiceCount}
-                      </td>
-
-                      {/* Loyalty Tier */}
-                      <td className="py-3.5 px-4 text-center">
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                            cust.tier === 'Platinum'
-                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                              : cust.tier === 'Gold'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : cust.tier === 'Silver'
-                              ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          }`}
-                        >
-                          {cust.tier}
-                        </span>
                       </td>
 
                       {/* Actions */}

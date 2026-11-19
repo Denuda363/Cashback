@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Lock, ShieldCheck, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { verifyAdminPin } from '../utils/storage';
+import { resolveAdminPinLevel } from '../utils/storage';
 
 interface AdminPinModalProps {
   isOpen: boolean;
   onClose: () => void;
   configuredAdminPin?: string;
-  onSuccessUnlock: () => void;
+  onSuccessUnlock: (level: 'admin' | 'superuser') => void;
 }
 
 export const AdminPinModal: React.FC<AdminPinModalProps> = ({
@@ -39,10 +39,11 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({
       setErrorMsg('Masukkan PIN Admin terlebih dahulu.');
       return;
     }
-    if (verifyAdminPin(pin, configuredAdminPin)) {
+    const level = resolveAdminPinLevel(pin, configuredAdminPin);
+    if (level !== 'invalid') {
       setPin('');
       setErrorMsg(null);
-      onSuccessUnlock();
+      onSuccessUnlock(level);
       onClose();
     } else {
       setErrorMsg('PIN tidak valid. Akses Mode Admin ditolak.');

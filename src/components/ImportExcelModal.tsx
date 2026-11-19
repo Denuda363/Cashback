@@ -151,6 +151,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
           phone: isValidRealPhone(r.customerPhone) ? r.customerPhone.trim() : '-',
           preferredPayoutMethod: 'tunai',
           joinedDate: r.date,
+          createdAt: new Date().toISOString(),
           isActive: true,
         };
         customerByName.set(nameKey, newCust);

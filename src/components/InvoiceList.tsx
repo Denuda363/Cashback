@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { ClaimStatus, CustomerBenefitType, Invoice, PayoutMethod } from '../types/cashback';
 import { formatRupiah, getBenefitLabel, getBenefitBadgeClasses } from '../utils/cashbackCalculator';
+import { formatInputTimestamp } from '../utils/storage';
 import { ConfirmDialog } from './ConfirmDialog';
 import { PaginationBar } from './PaginationBar';
 
@@ -37,6 +38,7 @@ interface InvoiceListProps {
   initialCustomerFilter?: string;
   onClearCustomerFilter?: () => void;
   isReadOnly?: boolean;
+  isSuperUser?: boolean;
 }
 
 export const InvoiceList: React.FC<InvoiceListProps> = ({
@@ -55,6 +57,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   initialCustomerFilter,
   onClearCustomerFilter,
   isReadOnly = false,
+  isSuperUser = false,
 }) => {
   const [search, setSearch] = useState(initialCustomerFilter || '');
   const [statusFilter, setStatusFilter] = useState<'all' | ClaimStatus>('all');
@@ -435,6 +438,22 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                     <span>·</span>
                     <span>{inv.date}</span>
                   </div>
+                  {isSuperUser && (
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] font-mono text-amber-800">
+                      {formatInputTimestamp(inv.createdAt) && (
+                        <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                          <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                          Input: {formatInputTimestamp(inv.createdAt)}
+                        </span>
+                      )}
+                      {inv.claimStatus === 'disbursed' && formatInputTimestamp(inv.disbursedAt) && (
+                        <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded">
+                          <Clock className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                          Cair: {formatInputTimestamp(inv.disbursedAt)}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="shrink-0">
                   {getStatusBadge(inv.claimStatus)}
@@ -547,7 +566,23 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
 
                     {/* Date */}
                     <td className="py-3 px-4 text-slate-600 font-mono tabular-nums whitespace-nowrap">
-                      {inv.date}
+                      <div>{inv.date}</div>
+                      {isSuperUser && (
+                        <div className="mt-0.5 space-y-0.5">
+                          {formatInputTimestamp(inv.createdAt) && (
+                            <div className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                              <span>Input: {formatInputTimestamp(inv.createdAt)}</span>
+                            </div>
+                          )}
+                          {inv.claimStatus === 'disbursed' && formatInputTimestamp(inv.disbursedAt) && (
+                            <div className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded flex items-center gap-1 w-fit">
+                              <Clock className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                              <span>Cair: {formatInputTimestamp(inv.disbursedAt)}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
 
                     {/* Customer */}

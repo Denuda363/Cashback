@@ -126,6 +126,7 @@ export interface CustomerMaster {
   preferredPayoutMethod?: PayoutMethod;
   notes?: string;
   joinedDate: string;
+  createdAt?: string;
   isActive: boolean;
 }
 

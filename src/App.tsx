@@ -16,6 +16,8 @@ import {
   saveStoredActiveTab,
   loadStoredAppRole,
   saveStoredAppRole,
+  loadStoredIsSuperUser,
+  saveStoredIsSuperUser,
   loadStoredCancelRequests,
   saveStoredCancelRequests,
   loadOpenDisbursementTarget,
@@ -92,10 +94,14 @@ export default function App() {
   const [clockStyle, setClockStyle] = useState<ClockStyle>(() => loadStoredClockStyle());
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => loadStoredActiveTab());
   const [appRole, setAppRole] = useState<AppRole>(() => loadStoredAppRole());
+  const [isSuperUser, setIsSuperUser] = useState<boolean>(
+    () => loadStoredAppRole() === 'admin' && loadStoredIsSuperUser()
+  );
   const [cancelRequests, setCancelRequests] = useState<DisbursementCancelRequest[]>(() => loadStoredCancelRequests());
   const [isAdminPinModalOpen, setIsAdminPinModalOpen] = useState(false);
   const [isCancelApprovalsModalOpen, setIsCancelApprovalsModalOpen] = useState(false);
 
+  const effectiveIsSuperUser = appRole === 'admin' && isSuperUser;
   const isPetugasReadOnly = appRole !== 'admin';
   const effectiveActiveTab: ActiveTab =
     appRole !== 'admin' && activeTab === 'settings' ? 'payout_records' : activeTab;
@@ -345,15 +351,24 @@ export default function App() {
   );
 
   // Role Switch Handlers
-  const handleUnlockAdmin = () => {
+  const handleUnlockAdmin = (level: 'admin' | 'superuser') => {
+    const nextSuper = level === 'superuser';
     setAppRole('admin');
     saveStoredAppRole('admin');
-    showToast('Mode Admin aktif — Akses penuh dibuka.');
+    setIsSuperUser(nextSuper);
+    saveStoredIsSuperUser(nextSuper);
+    showToast(
+      nextSuper
+        ? 'Mode Super User aktif — Akses penuh & waktu penginputan (tanggal & jam) dibuka.'
+        : 'Mode Admin aktif — Akses penuh dibuka.'
+    );
   };
 
   const handleSwitchToPetugas = () => {
     setAppRole('petugas');
     saveStoredAppRole('petugas');
+    setIsSuperUser(false);
+    saveStoredIsSuperUser(false);
     setIsSettingsModalOpen(false);
     setIsImportModalOpen(false);
     setIsImportCustomerModalOpen(false);
@@ -555,6 +570,7 @@ export default function App() {
         email: invoiceData.customerEmail,
         preferredPayoutMethod: invoiceData.payoutMethod,
         joinedDate: invoiceData.date,
+        createdAt: new Date().toISOString(),
         isActive: true,
       };
       const updatedCustomers = [...customers, newCust];
@@ -741,6 +757,7 @@ export default function App() {
           ...inv,
           claimStatus: newStatus,
           disbursedDate: newStatus === 'disbursed' ? (inv.disbursedDate || getTodayLocalYmd()) : undefined,
+          disbursedAt: newStatus === 'disbursed' ? (inv.disbursedAt || new Date().toISOString()) : undefined,
         };
         return updatedInv;
       }
@@ -1134,6 +1151,7 @@ export default function App() {
       const newCust: CustomerMaster = {
         ...customerData,
         id: `cust-${Date.now()}`,
+        createdAt: customerData.createdAt || new Date().toISOString(),
       };
       const updated = [newCust, ...customers];
       setCustomers(updated);
@@ -1226,6 +1244,7 @@ export default function App() {
     const newCust: CustomerMaster = {
       ...newCustData,
       id: `cust-${Date.now()}`,
+      createdAt: newCustData.createdAt || new Date().toISOString(),
     };
     const updated = [...customers, newCust];
     setCustomers(updated);
@@ -1397,6 +1416,7 @@ export default function App() {
       companyLogoUrl={settings.companyProfile?.logoUrl}
       isFirebaseConnected={isFirebaseConnected}
       appRole={appRole}
+      isSuperUser={effectiveIsSuperUser}
       onOpenAdminPinModal={() => setIsAdminPinModalOpen(true)}
       onSwitchToPetugas={handleSwitchToPetugas}
       pendingCancelCount={pendingCancelRequestsCount}
@@ -1498,6 +1518,7 @@ export default function App() {
           <InvoiceList
             invoices={dateFilteredInvoices}
             isReadOnly={isPetugasReadOnly}
+            isSuperUser={effectiveIsSuperUser}
             onOpenNewInvoice={
               appRole === 'admin'
                 ? () => {
@@ -1553,6 +1574,7 @@ export default function App() {
             companyProfile={settings.companyProfile}
             storeName={settings.companyProfile?.companyName || settings.storeName}
             appRole={appRole}
+            isSuperUser={effectiveIsSuperUser}
             cancelRequests={cancelRequests}
             onRequestCancelDisbursement={handleRequestCancelDisbursement}
             onExecuteApprovedCancel={handleExecuteApprovedCancel}
@@ -1569,6 +1591,7 @@ export default function App() {
             benefitOverrides={settings.customerBenefitOverrides || {}}
             cashbackOverrides={settings.customerCashbackOverrides || {}}
             isReadOnly={isPetugasReadOnly}
+            isSuperUser={effectiveIsSuperUser}
             onSetCustomerBenefit={appRole === 'admin' ? handleSetCustomerBenefit : undefined}
             onSetCustomerCashback={appRole === 'admin' ? handleSetCustomerCashback : undefined}
             onToggleExcludeCustomer={appRole === 'admin' ? handleToggleExcludeCustomer : undefined}
@@ -1587,6 +1610,7 @@ export default function App() {
             invoices={dateFilteredInvoices}
             customerSummaries={customerSummaries}
             isReadOnly={isPetugasReadOnly}
+            isSuperUser={effectiveIsSuperUser}
             onOpenNewCustomer={
               appRole === 'admin'
                 ? () => {
@@ -1805,6 +1829,7 @@ export default function App() {
         invoice={receiptInvoice}
         onClose={() => setReceiptInvoice(null)}
         settings={settings}
+        isSuperUser={effectiveIsSuperUser}
         onMarkDisbursed={appRole === 'admin' ? (id) => handleUpdateStatus(id, 'disbursed') : undefined}
       />
 
